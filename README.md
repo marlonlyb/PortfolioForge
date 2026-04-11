@@ -240,3 +240,4 @@ client/src/
 
 - `docs/PRD.md` — fuente de verdad del producto
 - `docs/MEMORY-SINCE-SDD-INIT.md` — memoria resumida del trabajo realizado desde `/sdd-init`
+- `docs/PROJECT-CREATION-GUIDE.md` — guía para crear proyectos y entender cómo impactan en el buscador IA
