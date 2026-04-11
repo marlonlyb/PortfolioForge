@@ -1,0 +1,173 @@
+package handlers
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/labstack/echo/v4"
+
+	"github.com/marlonlyb/portfolioforge/domain/ports/embedding"
+	"github.com/marlonlyb/portfolioforge/infrastructure/handlers/response"
+	"github.com/marlonlyb/portfolioforge/infrastructure/postgres"
+)
+
+type projectAdminTx interface {
+	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
+	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
+	Commit(ctx context.Context) error
+	Rollback(ctx context.Context) error
+}
+
+type ProjectAdminHandler struct {
+	beginTx         func(context.Context) (projectAdminTx, error)
+	embeddingProv   embedding.EmbeddingProvider
+	semanticEnabled bool
+}
+
+func NewProjectAdminHandler(
+	db *pgxpool.Pool,
+	embeddingProv embedding.EmbeddingProvider,
+	semanticEnabled bool,
+) *ProjectAdminHandler {
+	return &ProjectAdminHandler{
+		beginTx: func(ctx context.Context) (projectAdminTx, error) {
+			return db.Begin(ctx)
+		},
+		embeddingProv:   embeddingProv,
+		semanticEnabled: semanticEnabled,
+	}
+}
+
+type EnrichmentProfileReq struct {
+	BusinessGoal     string `json:"business_goal"`
+	ProblemStatement string `json:"problem_statement"`
+	SolutionSummary  string `json:"solution_summary"`
+	Architecture     string `json:"architecture"`
+	AIUsage          string `json:"ai_usage"`
+}
+
+type EnrichmentReq struct {
+	Profile       EnrichmentProfileReq `json:"profile"`
+	TechnologyIDs []string             `json:"technology_ids"`
+}
+
+func (h *ProjectAdminHandler) UpdateProjectEnrichment(c echo.Context) error {
+	idStr := c.Param("id")
+	projectID, err := uuid.Parse(idStr)
+	if err != nil {
+		return response.ContractError(400, "validation_error", "ID de proyecto inválido")
+	}
+
+	var req EnrichmentReq
+	if err := c.Bind(&req); err != nil {
+		return response.ContractError(400, "validation_error", "Datos de entrada inválidos")
+	}
+
+	ctx := c.Request().Context()
+	tx, err := h.beginTx(ctx)
+	if err != nil {
+		return response.ContractError(500, "unexpected_error", "Error actualizando información del proyecto: "+err.Error())
+	}
+	defer tx.Rollback(ctx)
+
+	err = h.executeEnrichmentTx(ctx, tx, projectID, req)
+	if err != nil {
+		return response.ContractError(500, "unexpected_error", "Error actualizando información del proyecto: "+err.Error())
+	}
+
+	rawSearchText, _, err := postgres.RefreshProjectSearchDocument(ctx, tx, projectID)
+	if err != nil {
+		return response.ContractError(500, "unexpected_error", "Error al actualizar documento de búsqueda: "+err.Error())
+	}
+
+	if h.semanticEnabled {
+		if h.embeddingProv == nil {
+			return response.ContractError(500, "unexpected_error", "No hay proveedor de embeddings configurado para reindexar el proyecto")
+		}
+
+		embeddingVec, embeddingErr := h.embeddingProv.Generate(ctx, rawSearchText)
+		if embeddingErr != nil {
+			return response.ContractError(500, "unexpected_error", "Error generando embedding del proyecto: "+embeddingErr.Error())
+		}
+
+		if err = postgres.UpdateProjectSearchEmbedding(ctx, tx, projectID, embeddingVec); err != nil {
+			return response.ContractError(500, "unexpected_error", "Error guardando embedding del proyecto: "+err.Error())
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return response.ContractError(500, "unexpected_error", "Error confirmando actualización del proyecto: "+err.Error())
+	}
+
+	return c.JSON(response.ContractOK(map[string]interface{}{
+		"message": "Proyecto enriquecido exitosamente",
+	}))
+}
+
+func (h *ProjectAdminHandler) executeEnrichmentTx(ctx context.Context, tx projectAdminTx, projectID uuid.UUID, req EnrichmentReq) error {
+	var err error
+
+	// Upsert project_profiles
+	// NOTE: Because there might not be a row yet, we use INSERT ON CONFLICT
+	upsertQuery := `
+		INSERT INTO project_profiles (
+			project_id, business_goal, problem_statement, solution_summary,
+			architecture, ai_usage, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, EXTRACT(EPOCH FROM NOW())::int)
+		ON CONFLICT (project_id) DO UPDATE SET
+			business_goal = EXCLUDED.business_goal,
+			problem_statement = EXCLUDED.problem_statement,
+			solution_summary = EXCLUDED.solution_summary,
+			architecture = EXCLUDED.architecture,
+			ai_usage = EXCLUDED.ai_usage,
+			updated_at = EXCLUDED.updated_at
+	`
+	_, err = tx.Exec(ctx, upsertQuery,
+		projectID,
+		req.Profile.BusinessGoal,
+		req.Profile.ProblemStatement,
+		req.Profile.SolutionSummary,
+		req.Profile.Architecture,
+		req.Profile.AIUsage,
+	)
+	if err != nil {
+		return fmt.Errorf("upsert profile: %w", err)
+	}
+
+	// Delete old technologies
+	_, err = tx.Exec(ctx, "DELETE FROM project_technologies WHERE project_id = $1", projectID)
+	if err != nil {
+		return fmt.Errorf("delete technologies: %w", err)
+	}
+
+	// Insert new technologies
+	if len(req.TechnologyIDs) > 0 {
+		var valArgs []string
+		var args []interface{}
+		args = append(args, projectID) // $1 is projectID
+
+		for i, techIDStr := range req.TechnologyIDs {
+			techID, parseErr := uuid.Parse(techIDStr)
+			if parseErr == nil {
+				paramIndex := i + 2
+				valArgs = append(valArgs, fmt.Sprintf("($1, $%d)", paramIndex))
+				args = append(args, techID)
+			}
+		}
+
+		if len(valArgs) > 0 {
+			insertQuery := fmt.Sprintf("INSERT INTO project_technologies (project_id, technology_id) VALUES %s", strings.Join(valArgs, ","))
+			_, err = tx.Exec(ctx, insertQuery, args...)
+			if err != nil {
+				return fmt.Errorf("insert technologies: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
