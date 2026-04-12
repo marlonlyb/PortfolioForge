@@ -67,7 +67,7 @@ export function ProductDetailPage() {
         <div className="card card--muted">
           <p className="eyebrow">Error</p>
           <p>{error ?? 'Project not found.'}</p>
-          <Link to="/projects">Back to projects</Link>
+          <Link to="/">Back to projects</Link>
         </div>
       </section>
     );
@@ -75,7 +75,7 @@ export function ProductDetailPage() {
 
   return (
     <section className="detail">
-      <Link className="detail__back" to="/projects">
+      <Link className="detail__back" to="/">
         &larr; Back to projects
       </Link>
 

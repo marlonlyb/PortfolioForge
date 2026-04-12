@@ -91,7 +91,7 @@ export function LoginPage() {
         </form>
 
         <p className="auth-page__alt">
-          <Link to="/projects">Back to portfolio</Link>
+          <Link to="/">Back to portfolio</Link>
         </p>
       </article>
     </section>

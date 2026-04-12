@@ -4,7 +4,6 @@ import { AdminLayout } from './layouts/AdminLayout';
 import { StoreLayout } from './layouts/StoreLayout';
 import { LandingPage } from '../features/landing/LandingPage';
 import { LoginPage } from '../features/auth/LoginPage';
-import { CatalogPage } from '../features/catalog/CatalogPage';
 import { ProductDetailPage } from '../features/catalog/ProductDetailPage';
 import { SearchResultsPage } from '../features/search/SearchResultsPage';
 import { AdminProductListPage } from '../features/admin-products/AdminProductListPage';
@@ -20,7 +19,7 @@ export const router = createBrowserRouter([
     element: <StoreLayout />,
     children: [
       { index: true, element: <LandingPage /> },
-      { path: 'projects', element: <CatalogPage /> },
+      { path: 'projects', element: <Navigate replace to="/" /> },
       { path: 'projects/:id', element: <ProductDetailPage /> },
       { path: 'search', element: <SearchResultsPage /> },
       { path: 'login', element: <LoginPage /> },

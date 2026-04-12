@@ -1,22 +1,45 @@
-import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
+import { useEffect, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface SearchBarProps {
   initialQuery?: string;
+  value?: string;
+  onQueryChange?: (query: string) => void;
   onSearch?: (query: string) => void;
   loading?: boolean;
+  showSubmit?: boolean;
+  suggestions?: string[];
+  onSuggestionSelect?: (query: string) => void;
 }
 
-export function SearchBar({ initialQuery = '', onSearch, loading }: SearchBarProps) {
-  const [query, setQuery] = useState(initialQuery);
+export function SearchBar({
+  initialQuery = '',
+  value,
+  onQueryChange,
+  onSearch,
+  loading,
+  showSubmit = true,
+  suggestions = [],
+  onSuggestionSelect,
+}: SearchBarProps) {
+  const [internalQuery, setInternalQuery] = useState(initialQuery);
   const navigate = useNavigate();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const isControlled = value !== undefined;
+  const query = isControlled ? value : internalQuery;
 
   useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
+    if (!isControlled) {
+      setInternalQuery(initialQuery);
+    }
+  }, [initialQuery]);
+
+  function updateQuery(nextQuery: string) {
+    if (!isControlled) {
+      setInternalQuery(nextQuery);
+    }
+
+    onQueryChange?.(nextQuery);
+  }
 
   function executeSearch(value: string) {
     const trimmed = value.trim();
@@ -29,54 +52,78 @@ export function SearchBar({ initialQuery = '', onSearch, loading }: SearchBarPro
     }
   }
 
-  function handleChange(value: string) {
-    setQuery(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    if (value.trim().length >= 2) {
-      debounceRef.current = setTimeout(() => executeSearch(value), 300);
-    }
-  }
-
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      executeSearch(query);
-    } else if (e.key === 'Escape') {
-      setQuery('');
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (e.key === 'Escape') {
+      updateQuery('');
       (e.target as HTMLInputElement).blur();
     }
   }
 
   function handleClear() {
-    setQuery('');
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    updateQuery('');
   }
 
   return (
-    <div className="search-bar">
-      <input
-        className="search-bar__input"
-        type="search"
-        placeholder="Busca proyectos por tecnología, cliente o concepto…"
-        value={query}
-        onChange={(e) => handleChange(e.target.value)}
+    <form
+      className="search-bar"
+      onSubmit={(event) => {
+        event.preventDefault();
+        executeSearch(query);
+      }}
+    >
+        <input
+          className={showSubmit ? 'search-bar__input' : 'search-bar__input search-bar__input--compact'}
+          type="text"
+          placeholder="Busca proyectos por tecnología, cliente o concepto…"
+          value={query}
+        onChange={(e) => updateQuery(e.target.value)}
         onKeyDown={handleKeyDown}
         disabled={loading}
         aria-label="Buscar proyectos"
       />
-      {query && !loading && (
-        <button
-          className="search-bar__clear"
-          onClick={handleClear}
-          type="button"
-          aria-label="Limpiar búsqueda"
-        >
-          ×
-        </button>
+
+      <div className="search-bar__actions">
+        {query && !loading && (
+          <button
+            className="search-bar__clear"
+            onClick={handleClear}
+            type="button"
+            aria-label="Limpiar búsqueda"
+          >
+            ×
+          </button>
+        )}
+
+        {showSubmit && (
+          <button
+            className="btn btn--ghost search-bar__submit"
+            type="submit"
+            disabled={loading || query.trim().length < 2}
+          >
+            Buscar
+          </button>
+        )}
+
+        {loading && <span className="search-bar__spinner" aria-label="Buscando…" />}
+      </div>
+
+      {suggestions.length > 0 && query.trim() && (
+        <div className="search-bar__suggestions" aria-label="Sugerencias de búsqueda">
+          {suggestions.map((suggestion) => (
+            <button
+              key={suggestion}
+              className="search-bar__suggestion"
+              type="button"
+              onClick={() => {
+                updateQuery(suggestion);
+                onSuggestionSelect?.(suggestion);
+              }}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
       )}
-      {loading && <span className="search-bar__spinner" aria-label="Buscando…" />}
-    </div>
+    </form>
   );
 }

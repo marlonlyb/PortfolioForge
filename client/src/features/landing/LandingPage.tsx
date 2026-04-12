@@ -1,8 +1,17 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { CatalogPage } from '../catalog/CatalogPage';
 import { SearchBar } from '../search/SearchBar';
 
 export function LandingPage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  function scrollToProjects() {
+    document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   return (
     <section className="card-stack landing-page">
       <article className="card">
@@ -12,24 +21,38 @@ export function LandingPage() {
           Public landing + interactive project catalog + private admin console to curate case
           studies, technical decisions, media, and future contact leads.
         </p>
-        <SearchBar />
+        <SearchBar
+          value={searchQuery}
+          onQueryChange={setSearchQuery}
+          onSearch={(query) => {
+            setSearchQuery(query);
+            scrollToProjects();
+          }}
+          showSubmit={false}
+          suggestions={suggestions}
+          onSuggestionSelect={(suggestion) => {
+            setSearchQuery(suggestion);
+            scrollToProjects();
+          }}
+        />
         <div className="landing__sub-actions">
-          <Link className="btn btn--ghost" to="/projects">
+          <button className="btn btn--ghost" type="button" onClick={scrollToProjects}>
             Explore projects
-          </Link>
+          </button>
           <Link className="btn btn--ghost" to="/login">
             Admin access
           </Link>
         </div>
       </article>
 
-      <article className="card">
-        <h3>Planned portfolio profile</h3>
-        <p>
-          Each project will evolve from a simple catalog entry into a full case study with
-          architecture, AI usage, results, media, and management context.
-        </p>
-      </article>
+      <div id="projects">
+        <CatalogPage
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          onSuggestionsChange={setSuggestions}
+          renderSearchControls={false}
+        />
+      </div>
     </section>
   );
 }

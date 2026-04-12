@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
 import { useSession } from '../providers/SessionProvider';
@@ -6,6 +7,10 @@ export function StoreLayout() {
   const { user, logout } = useSession();
   const location = useLocation();
   const isLanding = location.pathname === '/';
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.pathname]);
 
   return (
     <div className={isLanding ? 'app-shell app-shell--landing' : 'app-shell'}>
@@ -21,16 +26,9 @@ export function StoreLayout() {
               isActive ? 'nav-link nav-link--active' : 'nav-link'
             }
             to="/"
+            end
           >
             Home
-          </NavLink>
-          <NavLink
-            className={({ isActive }) =>
-              isActive ? 'nav-link nav-link--active' : 'nav-link'
-            }
-            to="/projects"
-          >
-            Projects
           </NavLink>
 
           {user ? (
@@ -57,7 +55,7 @@ export function StoreLayout() {
                 }
                 to="/login"
               >
-                Admin Login
+                Admin
               </NavLink>
             </>
           )}

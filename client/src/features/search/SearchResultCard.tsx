@@ -24,7 +24,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
   return (
     <Link
       className="search-results__card"
-      to={`/projects/${result.slug}`}
+      to={`/projects/${result.id}`}
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="search-results__card-body">

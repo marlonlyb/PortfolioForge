@@ -138,7 +138,7 @@ export function SearchResultsPage() {
       {!loading && query.trim().length >= 2 && results.length === 0 && !error && (
         <div className="search-results__empty">
           <p>No se encontraron proyectos para &lsquo;{query}&rsquo;</p>
-          <Link className="btn btn--ghost" to="/projects" style={{ marginTop: '1rem' }}>
+          <Link className="btn btn--ghost" to="/" style={{ marginTop: '1rem' }}>
             Ver catálogo completo
           </Link>
         </div>
