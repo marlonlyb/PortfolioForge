@@ -1,19 +1,16 @@
 import { httpGet } from '../../shared/api/http';
-import type { ProductListResponse, ProductDetail } from '../../shared/types/product';
+import type { Project, ProjectListResponse } from '../../shared/types/project';
 
 /**
- * Fetch all active products (public endpoint).
- * The backend currently returns `{ data: { items: StoreProduct[] } }`
- * without server-side pagination or filters.
+ * Fetch all public projects using the portfolio contract.
  */
-export function fetchProducts(): Promise<ProductListResponse> {
-  return httpGet<ProductListResponse>('/api/v1/public/products');
+export function fetchProjects(): Promise<ProjectListResponse> {
+  return httpGet<ProjectListResponse>('/api/v1/public/projects');
 }
 
 /**
- * Fetch a single product by ID with full detail and variants.
- * Returns `{ data: StoreProduct }` which includes the `variants` array.
+ * Fetch a single public project by slug using the rich case-study contract.
  */
-export function fetchProductById(id: string): Promise<ProductDetail> {
-  return httpGet<ProductDetail>(`/api/v1/public/products/${id}`);
+export function fetchProjectBySlug(slug: string): Promise<Project> {
+  return httpGet<Project>(`/api/v1/public/projects/${slug}`);
 }

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -44,11 +45,17 @@ func NewProjectAdminHandler(
 }
 
 type EnrichmentProfileReq struct {
-	BusinessGoal     string `json:"business_goal"`
-	ProblemStatement string `json:"problem_statement"`
-	SolutionSummary  string `json:"solution_summary"`
-	Architecture     string `json:"architecture"`
-	AIUsage          string `json:"ai_usage"`
+	BusinessGoal       string          `json:"business_goal"`
+	ProblemStatement   string          `json:"problem_statement"`
+	SolutionSummary    string          `json:"solution_summary"`
+	Architecture       string          `json:"architecture"`
+	Integrations       json.RawMessage `json:"integrations"`
+	AIUsage            string          `json:"ai_usage"`
+	TechnicalDecisions json.RawMessage `json:"technical_decisions"`
+	Challenges         json.RawMessage `json:"challenges"`
+	Results            json.RawMessage `json:"results"`
+	Metrics            json.RawMessage `json:"metrics"`
+	Timeline           json.RawMessage `json:"timeline"`
 }
 
 type EnrichmentReq struct {
@@ -66,6 +73,10 @@ func (h *ProjectAdminHandler) UpdateProjectEnrichment(c echo.Context) error {
 	var req EnrichmentReq
 	if err := c.Bind(&req); err != nil {
 		return response.ContractError(400, "validation_error", "Datos de entrada inválidos")
+	}
+
+	if err := normalizeEnrichmentProfile(&req.Profile); err != nil {
+		return response.ContractError(400, "validation_error", err.Error())
 	}
 
 	ctx := c.Request().Context()
@@ -117,14 +128,21 @@ func (h *ProjectAdminHandler) executeEnrichmentTx(ctx context.Context, tx projec
 	upsertQuery := `
 		INSERT INTO project_profiles (
 			project_id, business_goal, problem_statement, solution_summary,
-			architecture, ai_usage, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, EXTRACT(EPOCH FROM NOW())::int)
+			architecture, integrations, ai_usage, technical_decisions,
+			challenges, results, metrics, timeline, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
 		ON CONFLICT (project_id) DO UPDATE SET
 			business_goal = EXCLUDED.business_goal,
 			problem_statement = EXCLUDED.problem_statement,
 			solution_summary = EXCLUDED.solution_summary,
 			architecture = EXCLUDED.architecture,
+			integrations = EXCLUDED.integrations,
 			ai_usage = EXCLUDED.ai_usage,
+			technical_decisions = EXCLUDED.technical_decisions,
+			challenges = EXCLUDED.challenges,
+			results = EXCLUDED.results,
+			metrics = EXCLUDED.metrics,
+			timeline = EXCLUDED.timeline,
 			updated_at = EXCLUDED.updated_at
 	`
 	_, err = tx.Exec(ctx, upsertQuery,
@@ -133,7 +151,13 @@ func (h *ProjectAdminHandler) executeEnrichmentTx(ctx context.Context, tx projec
 		req.Profile.ProblemStatement,
 		req.Profile.SolutionSummary,
 		req.Profile.Architecture,
+		req.Profile.Integrations,
 		req.Profile.AIUsage,
+		req.Profile.TechnicalDecisions,
+		req.Profile.Challenges,
+		req.Profile.Results,
+		req.Profile.Metrics,
+		req.Profile.Timeline,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert profile: %w", err)
@@ -170,4 +194,78 @@ func (h *ProjectAdminHandler) executeEnrichmentTx(ctx context.Context, tx projec
 	}
 
 	return nil
+}
+
+func normalizeEnrichmentProfile(profile *EnrichmentProfileReq) error {
+	var err error
+
+	profile.Integrations, err = normalizeJSONArray(profile.Integrations, "integrations")
+	if err != nil {
+		return err
+	}
+
+	profile.TechnicalDecisions, err = normalizeJSONArray(profile.TechnicalDecisions, "technical_decisions")
+	if err != nil {
+		return err
+	}
+
+	profile.Challenges, err = normalizeJSONArray(profile.Challenges, "challenges")
+	if err != nil {
+		return err
+	}
+
+	profile.Results, err = normalizeJSONArray(profile.Results, "results")
+	if err != nil {
+		return err
+	}
+
+	profile.Timeline, err = normalizeJSONArray(profile.Timeline, "timeline")
+	if err != nil {
+		return err
+	}
+
+	profile.Metrics, err = normalizeJSONObject(profile.Metrics, "metrics")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func normalizeJSONArray(raw json.RawMessage, field string) (json.RawMessage, error) {
+	trimmed := strings.TrimSpace(string(raw))
+	if trimmed == "" || trimmed == "null" {
+		return json.RawMessage("[]"), nil
+	}
+
+	var value []interface{}
+	if err := json.Unmarshal([]byte(trimmed), &value); err != nil {
+		return nil, fmt.Errorf("El campo %s debe ser un array JSON válido", field)
+	}
+
+	normalized, err := json.Marshal(value)
+	if err != nil {
+		return nil, fmt.Errorf("No se pudo normalizar el campo %s", field)
+	}
+
+	return normalized, nil
+}
+
+func normalizeJSONObject(raw json.RawMessage, field string) (json.RawMessage, error) {
+	trimmed := strings.TrimSpace(string(raw))
+	if trimmed == "" || trimmed == "null" {
+		return json.RawMessage("{}"), nil
+	}
+
+	var value map[string]interface{}
+	if err := json.Unmarshal([]byte(trimmed), &value); err != nil {
+		return nil, fmt.Errorf("El campo %s debe ser un objeto JSON válido", field)
+	}
+
+	normalized, err := json.Marshal(value)
+	if err != nil {
+		return nil, fmt.Errorf("No se pudo normalizar el campo %s", field)
+	}
+
+	return normalized, nil
 }

@@ -6,7 +6,7 @@ import { useSession } from '../providers/SessionProvider';
 export function StoreLayout() {
   const { user, logout } = useSession();
   const location = useLocation();
-  const isLanding = location.pathname === '/';
+  const isLanding = location.pathname === '/' || location.pathname.startsWith('/projects/');
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/labstack/echo/v4"
 
 	"github.com/marlonlyb/portfolioforge/domain/ports/product"
@@ -52,6 +53,13 @@ func (h *Product) Create(c echo.Context) error {
 	if name == "" {
 		name = req.ProductName
 	}
+	name = strings.TrimSpace(name)
+	req.Category = strings.TrimSpace(req.Category)
+	req.Brand = strings.TrimSpace(req.Brand)
+
+	if contractErr := validateCreateProductRequest(name, req.Category, req.Brand); contractErr != nil {
+		return contractErr
+	}
 
 	active := true
 	if req.Active != nil {
@@ -77,7 +85,7 @@ func (h *Product) Create(c echo.Context) error {
 
 	err := h.service.Create(m)
 	if err != nil {
-		return h.responser.Error(c, "handlers-Product-Create-h.service.Create()", err)
+		return mapCreateProductError(err)
 	}
 
 	// Create variants if provided
@@ -96,7 +104,7 @@ func (h *Product) Create(c echo.Context) error {
 		}
 		err = h.service.CreateVariants(m.ID, variants)
 		if err != nil {
-			return h.responser.Error(c, "handlers-Product-Create-h.service.CreateVariants()", err)
+			return mapCreateProductError(err)
 		}
 	}
 
@@ -107,6 +115,120 @@ func (h *Product) Create(c echo.Context) error {
 	}
 
 	return c.JSON(response.ContractCreated(productData))
+}
+
+func validateCreateProductRequest(name, category, brand string) *model.ContractError {
+	if name == "" {
+		return response.ContractError(400, "validation_error", "El nombre del proyecto es requerido", model.APIErrorDetail{Field: "name", Issue: "required"})
+	}
+
+	if len([]rune(name)) > 128 {
+		return response.ContractError(400, "validation_error", "El nombre del proyecto no puede exceder 128 caracteres", model.APIErrorDetail{Field: "name", Issue: "max_length:128"})
+	}
+
+	if len([]rune(category)) > 80 {
+		return response.ContractError(400, "validation_error", "La categoría no puede exceder 80 caracteres", model.APIErrorDetail{Field: "category", Issue: "max_length:80"})
+	}
+
+	if len([]rune(brand)) > 80 {
+		return response.ContractError(400, "validation_error", "La marca no puede exceder 80 caracteres", model.APIErrorDetail{Field: "brand", Issue: "max_length:80"})
+	}
+
+	return nil
+}
+
+func mapCreateProductError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	lowerErr := strings.ToLower(err.Error())
+	if strings.Contains(lowerErr, "product name is empty") {
+		return response.ContractError(400, "validation_error", "El nombre del proyecto es requerido", model.APIErrorDetail{Field: "name", Issue: "required"})
+	}
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "22001":
+			field, message := productLengthViolationMessage(pgErr.ColumnName)
+			if field != "" {
+				return response.ContractError(400, "validation_error", message, model.APIErrorDetail{Field: field, Issue: "max_length"})
+			}
+			return response.ContractError(400, "validation_error", "Uno de los textos enviados excede la longitud permitida")
+		case "23502":
+			field, message := productRequiredFieldMessage(pgErr.ColumnName)
+			if field != "" {
+				return response.ContractError(400, "validation_error", message, model.APIErrorDetail{Field: field, Issue: "required"})
+			}
+			return response.ContractError(400, "validation_error", "Faltan datos requeridos para crear el proyecto")
+		case "23505":
+			field, message := productUniqueViolationMessage(pgErr.ConstraintName)
+			if field != "" {
+				return response.ContractError(409, "validation_error", message, model.APIErrorDetail{Field: field, Issue: "unique"})
+			}
+			return response.ContractError(409, "validation_error", "Ya existe un registro con uno de los valores enviados")
+		case "23503":
+			return response.ContractError(400, "validation_error", "Uno de los datos relacionados no existe o ya no está disponible")
+		case "23514":
+			return response.ContractError(400, "validation_error", "Uno de los valores enviados no cumple las restricciones permitidas")
+		case "22P02":
+			return response.ContractError(400, "validation_error", "Uno de los valores enviados tiene un formato inválido")
+		}
+	}
+
+	return response.ContractError(500, "unexpected_error", "No fue posible crear el proyecto")
+}
+
+func productLengthViolationMessage(column string) (field string, message string) {
+	switch column {
+	case "product_name", "name":
+		return "name", "El nombre del proyecto no puede exceder 128 caracteres"
+	case "category":
+		return "category", "La categoría no puede exceder 80 caracteres"
+	case "brand":
+		return "brand", "La marca no puede exceder 80 caracteres"
+	case "slug":
+		return "name", "El nombre del proyecto genera un slug demasiado largo"
+	case "sku":
+		return "variants", "El SKU de una variante no puede exceder 120 caracteres"
+	case "color":
+		return "variants", "El color de una variante no puede exceder 60 caracteres"
+	case "size":
+		return "variants", "La talla de una variante no puede exceder 30 caracteres"
+	default:
+		return "", ""
+	}
+}
+
+func productRequiredFieldMessage(column string) (field string, message string) {
+	switch column {
+	case "product_name", "name":
+		return "name", "El nombre del proyecto es requerido"
+	case "description":
+		return "description", "La descripción del proyecto es requerida"
+	case "images":
+		return "images", "Debes enviar una lista válida de imágenes"
+	case "features":
+		return "features", "Debes enviar una lista válida de features"
+	case "category":
+		return "category", "La categoría del proyecto es requerida"
+	default:
+		return "", ""
+	}
+}
+
+func productUniqueViolationMessage(constraint string) (field string, message string) {
+	switch constraint {
+	case "ix_products_slug", "products_slug_uk":
+		return "name", "Ya existe un proyecto con un slug equivalente. Usa un nombre distinto"
+	case "product_variants_sku_uk":
+		return "variants", "El SKU de una de las variantes ya existe"
+	case "product_variants_product_color_size_uk":
+		return "variants", "Ya existe una variante con la misma combinación de color y talla"
+	default:
+		return "", ""
+	}
 }
 
 func (h *Product) Update(c echo.Context) error {

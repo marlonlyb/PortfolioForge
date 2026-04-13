@@ -2,9 +2,13 @@ package model
 
 import (
 	"encoding/json"
+	"regexp"
+	"strings"
 
 	"github.com/google/uuid"
 )
+
+var slugRegex = regexp.MustCompile(`[^a-z0-9]+`)
 
 type Product struct {
 	ID          uuid.UUID       `json:"id"`
@@ -28,6 +32,13 @@ func (p *Product) SetStoreFields(name, category, brand string, active bool) {
 	p.Category = category
 	p.Brand = brand
 	p.Active = active
+
+	lowerName := strings.ToLower(strings.TrimSpace(name))
+	if lowerName == "" {
+		lowerName = strings.ToLower(strings.TrimSpace(p.ProductName))
+	}
+	p.Slug = slugRegex.ReplaceAllString(lowerName, "-")
+	p.Slug = strings.Trim(p.Slug, "-")
 }
 
 func (p Product) HasID() bool {

@@ -25,19 +25,26 @@ export interface TechnologySummary {
 
 // ─── Project Profile ──────────────────────────────────────────────────
 
+export type ProjectProfilePrimitive = string | number | boolean;
+export type ProjectProfileStructuredItem =
+  | ProjectProfilePrimitive
+  | Record<string, ProjectProfilePrimitive>;
+export type ProjectProfileStructuredList = ProjectProfileStructuredItem[];
+export type ProjectProfileMetrics = Record<string, ProjectProfilePrimitive>;
+
 export interface ProjectProfile {
   project_id: string;
   business_goal?: string;
   problem_statement?: string;
   solution_summary?: string;
   architecture?: string;
-  integrations: unknown[];
+  integrations: ProjectProfileStructuredList;
   ai_usage?: string;
-  technical_decisions: unknown[];
-  challenges: unknown[];
-  results: unknown[];
-  metrics: Record<string, unknown>;
-  timeline: unknown[];
+  technical_decisions: ProjectProfileStructuredList;
+  challenges: ProjectProfileStructuredList;
+  results: ProjectProfileStructuredList;
+  metrics: ProjectProfileMetrics;
+  timeline: ProjectProfileStructuredList;
   updated_at: number;
 }
 
@@ -66,4 +73,8 @@ export interface Project {
   updated_at: number;
   profile?: ProjectProfile;
   technologies?: Technology[];
+}
+
+export interface ProjectListResponse {
+  items: Project[];
 }

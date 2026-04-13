@@ -38,7 +38,7 @@ func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (model.Pr
 			COALESCE(pp.integrations, 'null'), COALESCE(pp.ai_usage, ''),
 			COALESCE(pp.technical_decisions, 'null'), COALESCE(pp.challenges, 'null'),
 			COALESCE(pp.results, 'null'), COALESCE(pp.metrics, 'null'),
-			COALESCE(pp.timeline, 'null'), COALESCE(pp.updated_at, 0)
+			COALESCE(pp.timeline, 'null'), COALESCE(EXTRACT(EPOCH FROM pp.updated_at)::bigint, 0)
 		FROM products p
 		LEFT JOIN project_profiles pp ON pp.project_id = p.id
 		WHERE p.id = $1`, id).Scan(
@@ -90,7 +90,7 @@ func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (model.P
 			COALESCE(pp.integrations, 'null'), COALESCE(pp.ai_usage, ''),
 			COALESCE(pp.technical_decisions, 'null'), COALESCE(pp.challenges, 'null'),
 			COALESCE(pp.results, 'null'), COALESCE(pp.metrics, 'null'),
-			COALESCE(pp.timeline, 'null'), COALESCE(pp.updated_at, 0)
+			COALESCE(pp.timeline, 'null'), COALESCE(EXTRACT(EPOCH FROM pp.updated_at)::bigint, 0)
 		FROM products p
 		LEFT JOIN project_profiles pp ON pp.project_id = p.id
 		WHERE p.slug = $1 AND p.active = TRUE`, slug).Scan(
@@ -183,7 +183,7 @@ func (r *ProjectRepository) fetchProfile(ctx context.Context, p *model.Project) 
 			COALESCE(integrations, 'null'), COALESCE(ai_usage, ''),
 			COALESCE(technical_decisions, 'null'), COALESCE(challenges, 'null'),
 			COALESCE(results, 'null'), COALESCE(metrics, 'null'),
-			COALESCE(timeline, 'null'), COALESCE(updated_at, 0)
+			COALESCE(timeline, 'null'), COALESCE(EXTRACT(EPOCH FROM updated_at)::bigint, 0)
 		FROM project_profiles
 		WHERE project_id = $1`, p.ID).Scan(
 		&profile.BusinessGoal, &profile.ProblemStatement,

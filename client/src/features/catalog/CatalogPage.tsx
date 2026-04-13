@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { fetchProducts } from './api';
+import { fetchProjects } from './api';
 import { searchProjects } from '../search/api';
-import type { ProductSummary } from '../../shared/types/product';
+import type { Project } from '../../shared/types/project';
 import type { SearchResult } from '../../shared/types/search';
 import { AppError } from '../../shared/api/errors';
 
@@ -54,7 +54,7 @@ function uniqueSorted(values: (string | undefined)[]): string[] {
 }
 
 function summarize(text?: string): string {
-  if (!text) return 'Interactive case study coming soon.';
+  if (!text) return 'No summary available.';
   return text.length > 140 ? `${text.slice(0, 137)}...` : text;
 }
 
@@ -72,12 +72,12 @@ function splitKeywords(value?: string): string[] {
     .filter((token) => token.length >= 2 && !STOP_WORDS.has(token));
 }
 
-function getProjectSearchCorpus(project: ProductSummary): string[] {
+function getProjectSearchCorpus(project: Project): string[] {
   return [
     project.name,
     project.slug,
     project.category,
-    project.brand,
+    project.client_name,
     project.description,
     project.profile?.business_goal,
     project.profile?.problem_statement,
@@ -88,14 +88,14 @@ function getProjectSearchCorpus(project: ProductSummary): string[] {
   ].filter((value): value is string => Boolean(value?.trim()));
 }
 
-function matchesProject(project: ProductSummary, query: string): boolean {
+function matchesProject(project: Project, query: string): boolean {
   const normalizedQuery = normalizeText(query);
   if (!normalizedQuery) return true;
 
   return getProjectSearchCorpus(project).some((value) => normalizeText(value).includes(normalizedQuery));
 }
 
-function buildSuggestions(projects: ProductSummary[], category: string, query: string): string[] {
+function buildSuggestions(projects: Project[], category: string, query: string): string[] {
   const normalizedQuery = normalizeText(query);
   if (!normalizedQuery) return [];
 
@@ -107,7 +107,7 @@ function buildSuggestions(projects: ProductSummary[], category: string, query: s
     const keywords = [
       project.name,
       project.category,
-      project.brand,
+      project.client_name,
       ...(project.technologies?.map((technology) => technology.name) ?? []),
       ...splitKeywords(project.description),
       ...splitKeywords(project.profile?.business_goal),
@@ -148,11 +148,11 @@ function buildSuggestions(projects: ProductSummary[], category: string, query: s
     .map((entry) => entry.value);
 }
 
-function renderProductCard(project: ProductSummary) {
-  const image = project.images[0] || project.variants?.[0]?.image_url;
+function renderProductCard(project: Project) {
+  const image = project.images[0];
 
   return (
-    <Link key={project.id} className="catalog__card" to={`/projects/${project.id}`}>
+    <Link key={project.id} className="catalog__card" to={`/projects/${project.slug}`}>
       {image ? (
         <img className="catalog__card-img" src={image} alt={project.name} loading="lazy" />
       ) : (
@@ -162,7 +162,7 @@ function renderProductCard(project: ProductSummary) {
       <div className="catalog__card-body">
         {project.category ? <p className="eyebrow">{project.category}</p> : null}
         <h3>{project.name}</h3>
-        {project.brand ? <p className="detail__brand">{project.brand}</p> : null}
+        {project.client_name ? <p className="detail__brand">{project.client_name}</p> : null}
         <p>{summarize(project.description)}</p>
       </div>
     </Link>
@@ -171,7 +171,7 @@ function renderProductCard(project: ProductSummary) {
 
 function renderSearchCard(result: SearchResult) {
   return (
-    <Link key={result.id} className="catalog__card" to={`/projects/${result.id}`}>
+    <Link key={result.id} className="catalog__card" to={`/projects/${result.slug}`}>
       {result.hero_image ? (
         <img className="catalog__card-img" src={result.hero_image} alt={result.title} loading="lazy" />
       ) : (
@@ -193,7 +193,7 @@ export function CatalogPage({
   onSuggestionsChange,
   renderSearchControls = true,
 }: CatalogPageProps) {
-  const [projects, setProjects] = useState<ProductSummary[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
@@ -205,7 +205,7 @@ export function CatalogPage({
   useEffect(() => {
     let cancelled = false;
 
-    fetchProducts()
+    fetchProjects()
       .then((response) => {
         if (!cancelled) {
           setProjects(response.items);

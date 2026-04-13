@@ -9,10 +9,21 @@ import {
   reembedProject,
   updateProjectEnrichment,
 } from './api';
-import type { CreateProductPayload, UpdateProductPayload, ProjectReadiness } from './api';
+import type {
+  CreateProductPayload,
+  UpdateProductPayload,
+  ProjectReadiness,
+  UpdateProjectEnrichmentProfilePayload,
+} from './api';
 import { fetchAdminTechnologies } from '../admin-technologies/api';
 import type { Technology } from '../../shared/types/project';
 import { AppError } from '../../shared/api/errors';
+import {
+  parseProfileList,
+  parseProfileMetrics,
+  serializeProfileList,
+  serializeProfileMetrics,
+} from './profileFormSerializers';
 
 // ─── Readiness badge helpers ──────────────────────────────────────────
 
@@ -33,6 +44,8 @@ const MISSING_FIELD_PROMPTS: Record<string, string> = {
 function ReadinessBadge({ readiness }: { readiness: ProjectReadiness | null }) {
   if (!readiness) return null;
 
+  const missingFields = readiness.missing_fields ?? [];
+
   const levelClass =
     readiness.level === 'complete'
       ? 'readiness-badge--complete'
@@ -46,9 +59,9 @@ function ReadinessBadge({ readiness }: { readiness: ProjectReadiness | null }) {
       <span className="readiness-badge__label">
         Disponibilidad de búsqueda: <strong>{READINESS_LABELS[readiness.level]}</strong>
       </span>
-      {readiness.missing_fields.length > 0 && (
+      {missingFields.length > 0 && (
         <ul className="readiness-badge__missing">
-          {readiness.missing_fields.map((field) => (
+          {missingFields.map((field) => (
             <li key={field}>{MISSING_FIELD_PROMPTS[field] ?? `Agrega ${field} para mejorar la búsqueda.`}</li>
           ))}
         </ul>
@@ -59,7 +72,9 @@ function ReadinessBadge({ readiness }: { readiness: ProjectReadiness | null }) {
 
 function MissingFieldHint({ fieldName, readiness }: { fieldName: string; readiness: ProjectReadiness | null }) {
   if (!readiness) return null;
-  if (!readiness.missing_fields.includes(fieldName)) return null;
+
+  const missingFields = readiness.missing_fields ?? [];
+  if (!missingFields.includes(fieldName)) return null;
 
   return (
     <p className="admin__field-hint">{MISSING_FIELD_PROMPTS[fieldName] ?? `Agrega ${fieldName} para mejorar la búsqueda.`}</p>
@@ -92,6 +107,12 @@ export function AdminProductFormPage() {
   const [solutionSummary, setSolutionSummary] = useState('');
   const [architecture, setArchitecture] = useState('');
   const [aiUsage, setAiUsage] = useState('');
+  const [integrations, setIntegrations] = useState('');
+  const [technicalDecisions, setTechnicalDecisions] = useState('');
+  const [challenges, setChallenges] = useState('');
+  const [results, setResults] = useState('');
+  const [metrics, setMetrics] = useState('');
+  const [timeline, setTimeline] = useState('');
 
   // Search readiness
   const [readiness, setReadiness] = useState<ProjectReadiness | null>(null);
@@ -132,6 +153,12 @@ export function AdminProductFormPage() {
             setSolutionSummary(project.profile.solution_summary ?? '');
             setArchitecture(project.profile.architecture ?? '');
             setAiUsage(project.profile.ai_usage ?? '');
+            setIntegrations(serializeProfileList(project.profile.integrations));
+            setTechnicalDecisions(serializeProfileList(project.profile.technical_decisions));
+            setChallenges(serializeProfileList(project.profile.challenges));
+            setResults(serializeProfileList(project.profile.results));
+            setMetrics(serializeProfileMetrics(project.profile.metrics));
+            setTimeline(serializeProfileList(project.profile.timeline));
           }
 
           if (project.technologies) {
@@ -202,6 +229,20 @@ export function AdminProductFormPage() {
       .filter((item) => item.length > 0);
 
     try {
+      const enrichmentProfile: UpdateProjectEnrichmentProfilePayload = {
+        business_goal: businessGoal || undefined,
+        problem_statement: problemStatement || undefined,
+        solution_summary: solutionSummary || undefined,
+        architecture: architecture || undefined,
+        ai_usage: aiUsage || undefined,
+        integrations: parseProfileList(integrations),
+        technical_decisions: parseProfileList(technicalDecisions),
+        challenges: parseProfileList(challenges),
+        results: parseProfileList(results),
+        metrics: parseProfileMetrics(metrics),
+        timeline: parseProfileList(timeline),
+      };
+
       let projectId = id;
 
       if (isEdit && id) {
@@ -229,13 +270,7 @@ export function AdminProductFormPage() {
 
       if (projectId) {
         await updateProjectEnrichment(projectId, {
-          profile: {
-            business_goal: businessGoal || undefined,
-            problem_statement: problemStatement || undefined,
-            solution_summary: solutionSummary || undefined,
-            architecture: architecture || undefined,
-            ai_usage: aiUsage || undefined,
-          },
+          profile: enrichmentProfile,
           technology_ids: selectedTechIds,
         });
       }
@@ -246,7 +281,7 @@ export function AdminProductFormPage() {
 
       navigate('/admin/projects');
     } catch (err: unknown) {
-      setError(err instanceof AppError ? err.message : 'Failed to save project.');
+      setError(err instanceof AppError || err instanceof Error ? err.message : 'Failed to save project.');
     } finally {
       setSubmitting(false);
     }
@@ -417,6 +452,78 @@ export function AdminProductFormPage() {
                 value={aiUsage}
                 onChange={(e) => setAiUsage(e.target.value)}
               />
+            </label>
+
+            <label className="admin__label">
+              Integrations
+              <textarea
+                className="admin__textarea"
+                rows={4}
+                placeholder={'Stripe\nHubSpot\nOpenAI API'}
+                value={integrations}
+                onChange={(e) => setIntegrations(e.target.value)}
+              />
+              <span className="admin__field-hint">Una línea por integración.</span>
+            </label>
+
+            <label className="admin__label">
+              Technical Decisions
+              <textarea
+                className="admin__textarea"
+                rows={4}
+                placeholder={'Microservicios para checkout\nWorkers asíncronos para webhooks'}
+                value={technicalDecisions}
+                onChange={(e) => setTechnicalDecisions(e.target.value)}
+              />
+              <span className="admin__field-hint">Una línea por decisión técnica.</span>
+            </label>
+
+            <label className="admin__label">
+              Challenges
+              <textarea
+                className="admin__textarea"
+                rows={4}
+                placeholder={'Latencia en integraciones externas\nNormalización de datos legacy'}
+                value={challenges}
+                onChange={(e) => setChallenges(e.target.value)}
+              />
+              <span className="admin__field-hint">Una línea por desafío.</span>
+            </label>
+
+            <label className="admin__label">
+              Results
+              <textarea
+                className="admin__textarea"
+                rows={4}
+                placeholder={'Menor tiempo de respuesta\nMayor conversión en checkout'}
+                value={results}
+                onChange={(e) => setResults(e.target.value)}
+              />
+              <span className="admin__field-hint">Una línea por resultado.</span>
+            </label>
+
+            <label className="admin__label">
+              Metrics
+              <textarea
+                className="admin__textarea"
+                rows={5}
+                placeholder={'conversion_rate: +18%\nresponse_time: -42%\nusers_impacted: 1200'}
+                value={metrics}
+                onChange={(e) => setMetrics(e.target.value)}
+              />
+              <span className="admin__field-hint">Formato: clave: valor, una métrica por línea.</span>
+            </label>
+
+            <label className="admin__label">
+              Timeline
+              <textarea
+                className="admin__textarea"
+                rows={4}
+                placeholder={'Discovery\nMVP\nRollout\nOptimización'}
+                value={timeline}
+                onChange={(e) => setTimeline(e.target.value)}
+              />
+              <span className="admin__field-hint">Una línea por hito o etapa.</span>
             </label>
           </div>
 

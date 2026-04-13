@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 
 import { CatalogPage } from '../catalog/CatalogPage';
 import { SearchBar } from '../search/SearchBar';
@@ -39,9 +38,6 @@ export function LandingPage() {
           <button className="btn btn--ghost" type="button" onClick={scrollToProjects}>
             Explore projects
           </button>
-          <Link className="btn btn--ghost" to="/login">
-            Admin access
-          </Link>
         </div>
       </article>
 

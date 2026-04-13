@@ -1,5 +1,6 @@
 import { httpGet, httpPost, httpPut, httpPatch } from '../../shared/api/http';
 import type { ProductDetail } from '../../shared/types/product';
+import type { ProjectProfileMetrics } from '../../shared/types/project';
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -66,14 +67,22 @@ export interface UpdateProductStatusPayload {
   active: boolean;
 }
 
+export interface UpdateProjectEnrichmentProfilePayload {
+  solution_summary?: string;
+  architecture?: string;
+  business_goal?: string;
+  problem_statement?: string;
+  ai_usage?: string;
+  integrations?: string[];
+  technical_decisions?: string[];
+  challenges?: string[];
+  results?: string[];
+  metrics?: ProjectProfileMetrics;
+  timeline?: string[];
+}
+
 export interface UpdateProjectEnrichmentPayload {
-  profile: {
-    solution_summary?: string;
-    architecture?: string;
-    business_goal?: string;
-    problem_statement?: string;
-    ai_usage?: string;
-  };
+  profile: UpdateProjectEnrichmentProfilePayload;
   technology_ids: string[];
 }
 
