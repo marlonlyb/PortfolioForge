@@ -2,22 +2,22 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
-  createProduct,
+  createAdminProject,
+  fetchAdminProjectById,
   fetchProjectLocalizations,
-  fetchAdminProductById,
-  updateProduct,
   fetchProjectReadiness,
   reembedProject,
   saveProjectLocalizations,
+  updateAdminProject,
   updateProjectEnrichment,
-} from './api';
+} from '../admin-projects/api';
 import type {
   AdminProjectLocalizationsResponse,
-  CreateProductPayload,
-  UpdateProductPayload,
+  CreateAdminProjectPayload,
   ProjectReadiness,
+  UpdateAdminProjectPayload,
   UpdateProjectEnrichmentProfilePayload,
-} from './api';
+} from '../admin-projects/api';
 import { fetchAdminTechnologies } from '../admin-technologies/api';
 import type { ProjectMedia, Technology } from '../../shared/types/project';
 import { AppError } from '../../shared/api/errors';
@@ -318,7 +318,7 @@ export function AdminProductFormPage() {
       };
     }
 
-    fetchAdminProductById(id)
+    fetchAdminProjectById(id)
       .then((project) => {
         if (!cancelled) {
           setName(project.name);
@@ -449,7 +449,7 @@ export function AdminProductFormPage() {
       let projectId = id;
 
       if (isEdit && id) {
-        const payload: UpdateProductPayload = {
+        const payload: UpdateAdminProjectPayload = {
           name,
           description,
           category,
@@ -458,9 +458,9 @@ export function AdminProductFormPage() {
           media: normalizedMedia,
           active,
         };
-        await updateProduct(id, payload);
+        await updateAdminProject(id, payload);
       } else {
-        const payload: CreateProductPayload = {
+        const payload: CreateAdminProjectPayload = {
           name,
           description,
           category,
@@ -469,7 +469,7 @@ export function AdminProductFormPage() {
           media: normalizedMedia,
           active,
         };
-        const created = await createProduct(payload);
+        const created = await createAdminProject(payload);
         projectId = created.id;
       }
 
@@ -831,7 +831,7 @@ export function AdminProductFormPage() {
               <textarea
                 className="admin__textarea"
                 rows={4}
-                placeholder={'Microservicios para checkout\nWorkers asíncronos para webhooks'}
+                placeholder={'Arquitectura orientada a eventos\nWorkers asíncronos para integraciones'}
                 value={technicalDecisions}
                 onChange={(e) => setTechnicalDecisions(e.target.value)}
               />
@@ -855,7 +855,7 @@ export function AdminProductFormPage() {
               <textarea
                 className="admin__textarea"
                 rows={4}
-                placeholder={'Menor tiempo de respuesta\nMayor conversión en checkout'}
+                placeholder={'Menor tiempo de respuesta\nMayor activación de usuarios'}
                 value={results}
                 onChange={(e) => setResults(e.target.value)}
               />

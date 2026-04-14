@@ -10,6 +10,8 @@ import (
 
 var slugRegex = regexp.MustCompile(`[^a-z0-9]+`)
 
+// Product is the legacy persistence model backed by the `products` table.
+// Prefer Project/AdminProject contracts outside the compat layer.
 type Product struct {
 	ID          uuid.UUID       `json:"id"`
 	ProductName string          `json:"product_name"`

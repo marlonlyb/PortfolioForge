@@ -10,144 +10,81 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/labstack/echo/v4"
 
-	"github.com/marlonlyb/portfolioforge/domain/ports/product"
+	project "github.com/marlonlyb/portfolioforge/domain/ports/project"
 	"github.com/marlonlyb/portfolioforge/infrastructure/handlers/response"
 	"github.com/marlonlyb/portfolioforge/infrastructure/localization"
 	"github.com/marlonlyb/portfolioforge/model"
 )
 
-type Product struct {
-	service      product.Service
+// ProjectCatalog is the canonical admin handler for portfolio projects.
+// Legacy product routes can still reuse it during the compatibility window.
+type ProjectCatalog struct {
+	service      project.AdminCatalogService
 	responser    response.API
 	localization *localization.Service
 }
 
-func NewProduct(ps product.Service, localizationService *localization.Service) *Product {
-	return &Product{service: ps, localization: localizationService}
+func NewProjectCatalog(ps project.AdminCatalogService, localizationService *localization.Service) *ProjectCatalog {
+	return &ProjectCatalog{service: ps, localization: localizationService}
 }
 
-func (h *Product) Create(c echo.Context) error {
-	var req struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Category    string `json:"category"`
-		Brand       string `json:"brand"`
-		Active      *bool  `json:"active"`
-		// Legacy fields still accepted for backward compat
-		ProductName string          `json:"product_name"`
-		Price       float64         `json:"price"`
-		Images      json.RawMessage `json:"images"`
-		Media       []struct {
-			ID           string `json:"id"`
-			MediaType    string `json:"media_type"`
-			URL          string `json:"url"`
-			ThumbnailURL string `json:"thumbnail_url"`
-			MediumURL    string `json:"medium_url"`
-			FullURL      string `json:"full_url"`
-			Caption      string `json:"caption"`
-			AltText      string `json:"alt_text"`
-			SortOrder    int    `json:"sort_order"`
-			Featured     bool   `json:"featured"`
-		} `json:"media"`
-		Features json.RawMessage `json:"features"`
-		Variants []struct {
-			SKU      string  `json:"sku"`
-			Color    string  `json:"color"`
-			Size     string  `json:"size"`
-			Price    float64 `json:"price"`
-			Stock    int     `json:"stock"`
-			ImageURL string  `json:"image_url"`
-		} `json:"variants"`
-	}
+func (h *ProjectCatalog) Create(c echo.Context) error {
+	var req model.AdminProjectWrite
 
 	if err := c.Bind(&req); err != nil {
 		return h.responser.BindFailed(c, "handlers-Product-Create-c.Bind()", err)
 	}
 
-	name := req.Name
-	if name == "" {
-		name = req.ProductName
-	}
-	name = strings.TrimSpace(name)
-	req.Category = strings.TrimSpace(req.Category)
-	req.Brand = strings.TrimSpace(req.Brand)
+	req.Normalize()
 
-	if contractErr := validateCreateProductRequest(name, req.Category, req.Brand); contractErr != nil {
+	if contractErr := validateCreateProductRequest(req.Name, req.Category, req.ClientName); contractErr != nil {
 		return contractErr
 	}
 
-	active := true
-	if req.Active != nil {
-		active = *req.Active
-	}
-
-	m := &model.Product{
-		ProductName: name,
-		Description: req.Description,
-		Features:    req.Features,
-	}
-
-	projectMedia := buildProjectMediaPayload(m.ID, req.Media, req.Images)
+	projectMedia := buildProjectMediaPayload(uuid.Nil, req.Media, req.Images)
 	legacyImages, err := marshalProjectLegacyImages(projectMedia, req.Images)
 	if err != nil {
 		return response.ContractError(400, "validation_error", "Debes enviar una lista válida de imágenes")
 	}
-	m.Images = legacyImages
+	req.Images = legacyImages
 
-	if len(m.Images) == 0 {
-		m.Images = []byte(`[]`)
+	if len(req.Images) == 0 {
+		req.Images = []byte(`[]`)
 	}
-	if len(m.Features) == 0 {
-		m.Features = []byte(`[]`)
+	if len(req.Features) == 0 {
+		req.Features = []byte(`[]`)
 	}
 
-	// Set extended fields via the service
-	m.SetStoreFields(name, req.Category, req.Brand, active)
-
-	err = h.service.Create(m)
+	err = h.service.Create(&req)
 	if err != nil {
 		return mapCreateProductError(err)
 	}
 
-	projectMedia = assignProjectMediaProjectID(m.ID, projectMedia)
-	if err = h.service.ReplaceMedia(m.ID, projectMedia); err != nil {
+	projectMedia = assignProjectMediaProjectID(req.ID, projectMedia)
+	if err = h.service.ReplaceMedia(req.ID, projectMedia); err != nil {
 		return response.ContractError(500, "unexpected_error", "No fue posible guardar la galería del proyecto")
 	}
 
-	// Create variants if provided
 	if len(req.Variants) > 0 {
-		variants := make([]model.StoreProductVariant, 0, len(req.Variants))
-		for _, v := range req.Variants {
-			variants = append(variants, model.StoreProductVariant{
-				ProductID: m.ID,
-				SKU:       v.SKU,
-				Color:     v.Color,
-				Size:      v.Size,
-				Price:     v.Price,
-				Stock:     v.Stock,
-				ImageURL:  v.ImageURL,
-			})
-		}
-		err = h.service.CreateVariants(m.ID, variants)
+		err = h.service.CreateVariants(req.ID, req.Variants)
 		if err != nil {
 			return mapCreateProductError(err)
 		}
 	}
 
-	if syncErr := h.syncSpanishProjectFields(c.Request().Context(), uuid.Nil, m.ID); syncErr != nil {
+	if syncErr := h.syncSpanishProjectFields(c.Request().Context(), uuid.Nil, req.ID); syncErr != nil {
 		return response.ContractError(500, "unexpected_error", "No fue posible generar las traducciones automáticas")
 	}
 
-	// Return the full StoreProduct
-	productData, err := h.service.GetStoreByIDAdmin(m.ID)
+	projectData, err := h.service.GetAdminByID(req.ID)
 	if err != nil {
-		return c.JSON(h.responser.Created(m))
+		return c.JSON(h.responser.Created(req))
 	}
 
-	return c.JSON(response.ContractCreated(productData))
+	return c.JSON(response.ContractCreated(projectData))
 }
 
-func validateCreateProductRequest(name, category, brand string) *model.ContractError {
+func validateCreateProductRequest(name, category, clientName string) *model.ContractError {
 	if name == "" {
 		return response.ContractError(400, "validation_error", "El nombre del proyecto es requerido", model.APIErrorDetail{Field: "name", Issue: "required"})
 	}
@@ -160,8 +97,8 @@ func validateCreateProductRequest(name, category, brand string) *model.ContractE
 		return response.ContractError(400, "validation_error", "La categoría no puede exceder 80 caracteres", model.APIErrorDetail{Field: "category", Issue: "max_length:80"})
 	}
 
-	if len([]rune(brand)) > 80 {
-		return response.ContractError(400, "validation_error", "La marca no puede exceder 80 caracteres", model.APIErrorDetail{Field: "brand", Issue: "max_length:80"})
+	if len([]rune(clientName)) > 80 {
+		return response.ContractError(400, "validation_error", "El cliente/contexto no puede exceder 80 caracteres", model.APIErrorDetail{Field: "client_name", Issue: "max_length:80"})
 	}
 
 	return nil
@@ -217,7 +154,7 @@ func productLengthViolationMessage(column string) (field string, message string)
 	case "category":
 		return "category", "La categoría no puede exceder 80 caracteres"
 	case "brand":
-		return "brand", "La marca no puede exceder 80 caracteres"
+		return "client_name", "El cliente/contexto no puede exceder 80 caracteres"
 	case "slug":
 		return "name", "El nombre del proyecto genera un slug demasiado largo"
 	case "sku":
@@ -261,88 +198,40 @@ func productUniqueViolationMessage(constraint string) (field string, message str
 	}
 }
 
-func (h *Product) Update(c echo.Context) error {
+func (h *ProjectCatalog) Update(c echo.Context) error {
 	ID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		return response.ContractError(400, "validation_error", "El identificador del producto no es válido")
+		return response.ContractError(400, "validation_error", "El identificador del proyecto no es válido")
 	}
 
 	previousProjectID := ID
-	previousProject, _ := h.service.GetStoreByIDAdmin(previousProjectID)
-	previousLocalized := storeProductToLocalizedProject(previousProject)
+	previousProject, _ := h.service.GetAdminByID(previousProjectID)
+	previousLocalized := adminProjectToLocalizedProject(previousProject)
 
-	var req struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Category    string `json:"category"`
-		Brand       string `json:"brand"`
-		Active      *bool  `json:"active"`
-		// Legacy fields still accepted for backward compat
-		ProductName string          `json:"product_name"`
-		Price       float64         `json:"price"`
-		Images      json.RawMessage `json:"images"`
-		Media       []struct {
-			ID           string `json:"id"`
-			MediaType    string `json:"media_type"`
-			URL          string `json:"url"`
-			ThumbnailURL string `json:"thumbnail_url"`
-			MediumURL    string `json:"medium_url"`
-			FullURL      string `json:"full_url"`
-			Caption      string `json:"caption"`
-			AltText      string `json:"alt_text"`
-			SortOrder    int    `json:"sort_order"`
-			Featured     bool   `json:"featured"`
-		} `json:"media"`
-		Features json.RawMessage `json:"features"`
-		Variants []struct {
-			ID       string  `json:"id"`
-			SKU      string  `json:"sku"`
-			Color    string  `json:"color"`
-			Size     string  `json:"size"`
-			Price    float64 `json:"price"`
-			Stock    int     `json:"stock"`
-			ImageURL string  `json:"image_url"`
-		} `json:"variants"`
-	}
+	var req model.AdminProjectWrite
 
 	if err = c.Bind(&req); err != nil {
 		return h.responser.BindFailed(c, "handlers-Product-Update-c.Bind()", err)
 	}
 
-	name := req.Name
-	if name == "" {
-		name = req.ProductName
-	}
-
-	active := true
-	if req.Active != nil {
-		active = *req.Active
-	}
-
-	m := &model.Product{
-		ID:          ID,
-		ProductName: name,
-		Description: req.Description,
-		Features:    req.Features,
-	}
+	req.ID = ID
+	req.Normalize()
 
 	projectMedia := buildProjectMediaPayload(ID, req.Media, req.Images)
 	legacyImages, marshalErr := marshalProjectLegacyImages(projectMedia, req.Images)
 	if marshalErr != nil {
 		return response.ContractError(400, "validation_error", "Debes enviar una lista válida de imágenes")
 	}
-	m.Images = legacyImages
+	req.Images = legacyImages
 
-	if len(m.Images) == 0 {
-		m.Images = []byte(`[]`)
+	if len(req.Images) == 0 {
+		req.Images = []byte(`[]`)
 	}
-	if len(m.Features) == 0 {
-		m.Features = []byte(`[]`)
+	if len(req.Features) == 0 {
+		req.Features = []byte(`[]`)
 	}
 
-	m.SetStoreFields(name, req.Category, req.Brand, active)
-
-	err = h.service.Update(m)
+	err = h.service.Update(&req)
 	if err != nil {
 		return h.responser.Error(c, "handlers-Product-Update-h.service.Update()", err)
 	}
@@ -351,85 +240,53 @@ func (h *Product) Update(c echo.Context) error {
 		return response.ContractError(500, "unexpected_error", "No fue posible guardar la galería del proyecto")
 	}
 
-	// Replace variants if provided
 	if req.Variants != nil {
-		variants := make([]model.StoreProductVariant, 0, len(req.Variants))
-		for _, v := range req.Variants {
-			variantID, _ := uuid.Parse(v.ID)
-			variants = append(variants, model.StoreProductVariant{
-				ID:        variantID,
-				ProductID: ID,
-				SKU:       v.SKU,
-				Color:     v.Color,
-				Size:      v.Size,
-				Price:     v.Price,
-				Stock:     v.Stock,
-				ImageURL:  v.ImageURL,
-			})
-		}
-		err = h.service.ReplaceVariants(ID, variants)
+		err = h.service.ReplaceVariants(ID, req.Variants)
 		if err != nil {
 			return h.responser.Error(c, "handlers-Product-Update-h.service.ReplaceVariants()", err)
 		}
 	}
 
-	currentProject, syncErr := h.service.GetStoreByIDAdmin(ID)
+	currentProject, syncErr := h.service.GetAdminByID(ID)
 	if syncErr == nil {
-		if err := h.localization.SyncFromSpanish(c.Request().Context(), ID, localization.BuildProjectFieldMap(previousLocalized), localization.BuildProjectFieldMap(storeProductToLocalizedProject(currentProject))); err != nil {
+		if err := h.localization.SyncFromSpanish(c.Request().Context(), ID, localization.BuildProjectFieldMap(previousLocalized), localization.BuildProjectFieldMap(adminProjectToLocalizedProject(currentProject))); err != nil {
 			return response.ContractError(500, "unexpected_error", "No fue posible actualizar las traducciones automáticas")
 		}
 	}
 
-	// Return the full StoreProduct
-	productData, err := h.service.GetStoreByIDAdmin(ID)
+	projectData, err := h.service.GetAdminByID(ID)
 	if err != nil {
-		return c.JSON(h.responser.Updated(m))
+		return c.JSON(h.responser.Updated(req))
 	}
 
-	return c.JSON(response.ContractOK(productData))
+	return c.JSON(response.ContractOK(projectData))
 }
 
-func (h *Product) syncSpanishProjectFields(ctx context.Context, previousProjectID uuid.UUID, currentProjectID uuid.UUID) error {
+func (h *ProjectCatalog) syncSpanishProjectFields(ctx context.Context, previousProjectID uuid.UUID, currentProjectID uuid.UUID) error {
 	if h.localization == nil {
 		return nil
 	}
 
 	previous := model.Project{}
 	if previousProjectID != uuid.Nil {
-		if previousStore, err := h.service.GetStoreByIDAdmin(previousProjectID); err == nil {
-			previous = storeProductToLocalizedProject(previousStore)
+		if previousAdmin, err := h.service.GetAdminByID(previousProjectID); err == nil {
+			previous = adminProjectToLocalizedProject(previousAdmin)
 		}
 	}
 
-	currentStore, err := h.service.GetStoreByIDAdmin(currentProjectID)
+	currentProject, err := h.service.GetAdminByID(currentProjectID)
 	if err != nil {
 		return err
 	}
 
-	return h.localization.SyncFromSpanish(ctx, currentProjectID, localization.BuildProjectFieldMap(previous), localization.BuildProjectFieldMap(storeProductToLocalizedProject(currentStore)))
+	return h.localization.SyncFromSpanish(ctx, currentProjectID, localization.BuildProjectFieldMap(previous), localization.BuildProjectFieldMap(adminProjectToLocalizedProject(currentProject)))
 }
 
-func storeProductToLocalizedProject(storeProduct model.StoreProduct) model.Project {
-	return model.Project{
-		ID:          storeProduct.ID,
-		Name:        storeProduct.Name,
-		Description: storeProduct.Description,
-		Category:    storeProduct.Category,
-	}
+func adminProjectToLocalizedProject(project model.AdminProject) model.Project {
+	return project.ToProject()
 }
 
-func buildProjectMediaPayload(projectID uuid.UUID, rawMedia []struct {
-	ID           string `json:"id"`
-	MediaType    string `json:"media_type"`
-	URL          string `json:"url"`
-	ThumbnailURL string `json:"thumbnail_url"`
-	MediumURL    string `json:"medium_url"`
-	FullURL      string `json:"full_url"`
-	Caption      string `json:"caption"`
-	AltText      string `json:"alt_text"`
-	SortOrder    int    `json:"sort_order"`
-	Featured     bool   `json:"featured"`
-}, fallbackImages json.RawMessage) []model.ProjectMedia {
+func buildProjectMediaPayload(projectID uuid.UUID, rawMedia []model.AdminProjectMediaInput, fallbackImages json.RawMessage) []model.ProjectMedia {
 	if len(rawMedia) == 0 {
 		var legacyImages []string
 		if len(fallbackImages) > 0 {
@@ -500,7 +357,7 @@ func assignProjectMediaProjectID(projectID uuid.UUID, media []model.ProjectMedia
 	return media
 }
 
-func (h *Product) Delete(c echo.Context) error {
+func (h *ProjectCatalog) Delete(c echo.Context) error {
 	ID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return h.responser.Error(c, "handlers-Product-Delete-uuid.Parse(c.Param('id'))", err)
@@ -514,70 +371,28 @@ func (h *Product) Delete(c echo.Context) error {
 	return c.JSON(h.responser.Deleted(nil))
 }
 
-func (h *Product) GetByID(c echo.Context) error {
+func (h *ProjectCatalog) GetByID(c echo.Context) error {
 	ID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		return response.ContractError(400, "validation_error", "El identificador del producto no es válido")
+		return response.ContractError(400, "validation_error", "El identificador del proyecto no es válido")
 	}
 
-	productData, err := h.service.GetStoreByIDAdmin(ID)
+	projectData, err := h.service.GetAdminByID(ID)
 	if err != nil {
 		if errors.Is(err, model.ErrInvalidID) || strings.Contains(err.Error(), "no rows") {
-			return response.ContractError(404, "not_found", "Producto no encontrado")
+			return response.ContractError(404, "not_found", "Proyecto no encontrado")
 		}
-		return response.ContractError(500, "unexpected_error", "No fue posible obtener el producto")
+		return response.ContractError(500, "unexpected_error", "No fue posible obtener el proyecto")
 	}
 
-	return c.JSON(response.ContractOK(productData))
-}
-
-func (h *Product) GetStoreByID(c echo.Context) error {
-	ID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		return response.ContractError(400, "validation_error", "El identificador del producto no es válido")
-	}
-
-	productData, err := h.service.GetStoreByID(ID)
-	if err != nil {
-		if errors.Is(err, model.ErrInvalidID) || strings.Contains(err.Error(), "no rows") {
-			return response.ContractError(404, "not_found", "Producto no encontrado")
-		}
-		if strings.Contains(strings.ToLower(err.Error()), "inactive") {
-			return response.ContractError(404, "not_found", "Producto no encontrado")
-		}
-		return response.ContractError(500, "unexpected_error", "No fue posible obtener el producto")
-	}
-
-	return c.JSON(response.ContractOK(productData))
-}
-
-/* Paginar el GETALL, en el query param del endpoint recibimos:
-limit(cuantos registros quieren recibir) y page (en que páquina quieren mostrar)
-offset: se genera limit*pag -limit */
-
-func (h *Product) GetAll(c echo.Context) error {
-	products, err := h.service.GetAll()
-	if err != nil {
-		return h.responser.Error(c, "handlers-Product-GetAll-h.service.GetAll()", err)
-	}
-
-	return c.JSON(h.responser.OK(products))
-}
-
-func (h *Product) GetStoreAll(c echo.Context) error {
-	products, err := h.service.GetStoreAll()
-	if err != nil {
-		return response.ContractError(500, "unexpected_error", "No fue posible obtener el catálogo")
-	}
-
-	return c.JSON(response.ContractOK(map[string]interface{}{"items": products}))
+	return c.JSON(response.ContractOK(projectData))
 }
 
 // UpdateStatus changes the active status of a product (admin only).
-func (h *Product) UpdateStatus(c echo.Context) error {
+func (h *ProjectCatalog) UpdateStatus(c echo.Context) error {
 	ID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		return response.ContractError(400, "validation_error", "El identificador del producto no es válido")
+		return response.ContractError(400, "validation_error", "El identificador del proyecto no es válido")
 	}
 
 	var body struct {
@@ -594,20 +409,20 @@ func (h *Product) UpdateStatus(c echo.Context) error {
 	productData, err := h.service.UpdateStatus(ID, *body.Active)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
-			return response.ContractError(404, "not_found", "Producto no encontrado")
+			return response.ContractError(404, "not_found", "Proyecto no encontrado")
 		}
-		return response.ContractError(500, "unexpected_error", "No fue posible actualizar el estado del producto")
+		return response.ContractError(500, "unexpected_error", "No fue posible actualizar el estado del proyecto")
 	}
 
 	return c.JSON(response.ContractOK(productData))
 }
 
 // GetAllStore returns all products including inactive ones (admin only).
-func (h *Product) GetAllStore(c echo.Context) error {
-	products, err := h.service.GetStoreAllAdmin()
+func (h *ProjectCatalog) GetAllStore(c echo.Context) error {
+	projects, err := h.service.GetAdminAll()
 	if err != nil {
-		return response.ContractError(500, "unexpected_error", "No fue posible obtener los productos")
+		return response.ContractError(500, "unexpected_error", "No fue posible obtener los proyectos")
 	}
 
-	return c.JSON(response.ContractOK(map[string]interface{}{"items": products}))
+	return c.JSON(response.ContractOK(map[string]interface{}{"items": projects}))
 }

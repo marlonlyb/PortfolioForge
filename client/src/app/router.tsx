@@ -6,8 +6,8 @@ import { LandingPage } from '../features/landing/LandingPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { ProductDetailPage } from '../features/catalog/ProductDetailPage';
 import { SearchResultsPage } from '../features/search/SearchResultsPage';
-import { AdminProductListPage } from '../features/admin-products/AdminProductListPage';
-import { AdminProductFormPage } from '../features/admin-products/AdminProductFormPage';
+import { AdminProjectListPage } from '../features/admin-projects/AdminProjectListPage';
+import { AdminProjectFormPage } from '../features/admin-projects/AdminProjectFormPage';
 import { AdminSiteSettingsPage } from '../features/admin-settings/AdminSiteSettingsPage';
 import { AdminTechnologyListPage } from '../features/admin-technologies/AdminTechnologyListPage';
 import { AdminTechnologyFormPage } from '../features/admin-technologies/AdminTechnologyFormPage';
@@ -34,9 +34,9 @@ export const router = createBrowserRouter([
         element: <AdminLayout />,
         children: [
           { index: true, element: <Navigate replace to="/admin/projects" /> },
-          { path: 'projects', element: <AdminProductListPage /> },
-          { path: 'projects/new', element: <AdminProductFormPage /> },
-          { path: 'projects/:id', element: <AdminProductFormPage /> },
+          { path: 'projects', element: <AdminProjectListPage /> },
+          { path: 'projects/new', element: <AdminProjectFormPage /> },
+          { path: 'projects/:id', element: <AdminProjectFormPage /> },
           { path: 'settings', element: <AdminSiteSettingsPage /> },
           { path: 'technologies', element: <AdminTechnologyListPage /> },
           { path: 'technologies/new', element: <AdminTechnologyFormPage /> },

@@ -36,34 +36,36 @@ var (
 	pPsqlInsert = BuildSQLInsert(pTable, pFields)
 	pPsqlUpdate = BuildSQLUpdatedByID(pTable, pFields)
 	pPsqlDelete = BuildSQLDelete(pTable)
-	pPsqlGetAll = BuildSQLSelect(pTable, pFields)
 )
 
-type Product struct {
+// ProjectCatalogRepository is the canonical write/admin repository for projects.
+// It still persists against the legacy `products` table and related product_* tables.
+type ProjectCatalogRepository struct {
 	db *pgxpool.Pool
 }
 
-func NewProduct(db *pgxpool.Pool) Product {
-	return Product{db: db}
+func NewProjectCatalogRepository(db *pgxpool.Pool) ProjectCatalogRepository {
+	return ProjectCatalogRepository{db: db}
 }
 
-func (p Product) Create(m *model.Product) error {
+func (p ProjectCatalogRepository) Create(m *model.AdminProjectWrite) error {
+	legacy := m.ToLegacyProduct(true)
 	_, err := p.db.Exec(
 		context.Background(),
 		pPsqlInsert,
-		m.ID,
-		m.ProductName,
-		m.Price,
-		m.Images,
-		m.Description,
-		m.Features,
-		NullIfEmpty(m.Name),
-		NullIfEmpty(m.Slug),
-		NullIfEmpty(m.Category),
-		NullIfEmpty(m.Brand),
-		m.Active,
-		m.CreatedAt,
-		Int64ToNull(m.UpdatedAt),
+		legacy.ID,
+		legacy.ProductName,
+		legacy.Price,
+		legacy.Images,
+		legacy.Description,
+		legacy.Features,
+		NullIfEmpty(legacy.Name),
+		NullIfEmpty(legacy.Slug),
+		NullIfEmpty(legacy.Category),
+		NullIfEmpty(legacy.Brand),
+		legacy.Active,
+		legacy.CreatedAt,
+		Int64ToNull(legacy.UpdatedAt),
 	)
 
 	if err != nil {
@@ -72,22 +74,23 @@ func (p Product) Create(m *model.Product) error {
 	return nil
 }
 
-func (p Product) Update(m *model.Product) error {
+func (p ProjectCatalogRepository) Update(m *model.AdminProjectWrite) error {
+	legacy := m.ToLegacyProduct(true)
 	_, err := p.db.Exec(
 		context.Background(),
 		pPsqlUpdate,
-		m.ProductName,
-		m.Price,
-		m.Images,
-		m.Description,
-		m.Features,
-		NullIfEmpty(m.Name),
-		NullIfEmpty(m.Slug),
-		NullIfEmpty(m.Category),
-		NullIfEmpty(m.Brand),
-		m.Active,
-		m.UpdatedAt,
-		m.ID,
+		legacy.ProductName,
+		legacy.Price,
+		legacy.Images,
+		legacy.Description,
+		legacy.Features,
+		NullIfEmpty(legacy.Name),
+		NullIfEmpty(legacy.Slug),
+		NullIfEmpty(legacy.Category),
+		NullIfEmpty(legacy.Brand),
+		legacy.Active,
+		legacy.UpdatedAt,
+		legacy.ID,
 	)
 	if err != nil {
 		return err
@@ -96,7 +99,7 @@ func (p Product) Update(m *model.Product) error {
 	return nil
 }
 
-func (p Product) Delete(ID uuid.UUID) error {
+func (p ProjectCatalogRepository) Delete(ID uuid.UUID) error {
 	_, err := p.db.Exec(
 		context.Background(),
 		pPsqlDelete,
@@ -109,7 +112,7 @@ func (p Product) Delete(ID uuid.UUID) error {
 	return nil
 }
 
-func (p Product) UpdateActive(ID uuid.UUID, active bool) error {
+func (p ProjectCatalogRepository) UpdateActive(ID uuid.UUID, active bool) error {
 	_, err := p.db.Exec(
 		context.Background(),
 		"UPDATE products SET active = $1, updated_at = EXTRACT(EPOCH FROM NOW())::int WHERE id = $2",
@@ -123,7 +126,7 @@ func (p Product) UpdateActive(ID uuid.UUID, active bool) error {
 	return nil
 }
 
-func (p Product) CreateVariants(productID uuid.UUID, variants []model.StoreProductVariant) error {
+func (p ProjectCatalogRepository) CreateVariants(projectID uuid.UUID, variants []model.AdminProjectVariantInput) error {
 	if len(variants) == 0 {
 		return nil
 	}
@@ -132,7 +135,8 @@ func (p Product) CreateVariants(productID uuid.UUID, variants []model.StoreProdu
 		INSERT INTO product_variants (id, product_id, sku, color, size, price, stock, image_url, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())`
 
-	for _, v := range variants {
+	for _, variant := range variants {
+		v := variant.ToLegacy(projectID)
 		variantID := v.ID
 		if variantID == uuid.Nil {
 			var err error
@@ -152,7 +156,7 @@ func (p Product) CreateVariants(productID uuid.UUID, variants []model.StoreProdu
 			context.Background(),
 			query,
 			variantID,
-			productID,
+			projectID,
 			v.SKU,
 			v.Color,
 			v.Size,
@@ -168,7 +172,7 @@ func (p Product) CreateVariants(productID uuid.UUID, variants []model.StoreProdu
 	return nil
 }
 
-func (p Product) DeleteVariantsByProductID(productID uuid.UUID) error {
+func (p ProjectCatalogRepository) DeleteVariantsByProductID(productID uuid.UUID) error {
 	_, err := p.db.Exec(
 		context.Background(),
 		"DELETE FROM product_variants WHERE product_id = $1",
@@ -181,11 +185,11 @@ func (p Product) DeleteVariantsByProductID(productID uuid.UUID) error {
 	return nil
 }
 
-func (p Product) ReplaceMedia(productID uuid.UUID, media []model.ProjectMedia) error {
+func (p ProjectCatalogRepository) ReplaceMedia(productID uuid.UUID, media []model.ProjectMedia) error {
 	return replaceProjectMedia(context.Background(), p.db, productID, media)
 }
 
-func (p Product) DeleteVariantByID(ID uuid.UUID) error {
+func (p ProjectCatalogRepository) DeleteVariantByID(ID uuid.UUID) error {
 	_, err := p.db.Exec(
 		context.Background(),
 		"DELETE FROM product_variants WHERE id = $1",
@@ -198,7 +202,8 @@ func (p Product) DeleteVariantByID(ID uuid.UUID) error {
 	return nil
 }
 
-func (p Product) UpdateVariant(v model.StoreProductVariant) error {
+func (p ProjectCatalogRepository) UpdateVariant(variant model.AdminProjectVariantInput, projectID uuid.UUID) error {
+	v := variant.ToLegacy(projectID)
 	imageURL := sql.NullString{}
 	if v.ImageURL != "" {
 		imageURL.String = v.ImageURL
@@ -232,77 +237,46 @@ func (p Product) UpdateVariant(v model.StoreProductVariant) error {
 	return nil
 }
 
-func (p Product) GetByID(ID uuid.UUID) (model.Product, error) {
-	query := pPsqlGetAll + " WHERE id = $1"
-	row := p.db.QueryRow(
-		context.Background(),
-		query,
-		ID,
-	)
-	return p.scanRow(row)
+func (p ProjectCatalogRepository) GetStoreByID(ID uuid.UUID) (model.StoreProduct, error) {
+	products, err := p.getStoreProducts("WHERE p.id = $1", ID)
+	if err != nil {
+		return model.StoreProduct{}, err
+	}
+
+	if len(products) == 0 {
+		return model.StoreProduct{}, pgx.ErrNoRows
+	}
+
+	return products[0], nil
 }
 
-func (p Product) GetAll() (model.Products, error) {
-	rows, err := p.db.Query(
-		context.Background(),
-		pPsqlGetAll,
-	)
+func (p ProjectCatalogRepository) GetAdminByID(ID uuid.UUID) (model.AdminProject, error) {
+	products, err := p.getStoreProducts("WHERE p.id = $1", ID)
+	if err != nil {
+		return model.AdminProject{}, err
+	}
 
+	if len(products) == 0 {
+		return model.AdminProject{}, pgx.ErrNoRows
+	}
+
+	return model.AdminProjectFromStoreProduct(products[0]), nil
+}
+
+func (p ProjectCatalogRepository) GetStoreAll() ([]model.StoreProduct, error) {
+	return p.getStoreProducts("WHERE p.active = TRUE", nil)
+}
+
+func (p ProjectCatalogRepository) GetAdminAll() ([]model.AdminProject, error) {
+	products, err := p.getStoreProducts("", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	defer rows.Close()
-
-	var ms model.Products
-
-	for rows.Next() {
-		m, err := p.scanRow(rows)
-		if err != nil {
-			return nil, err
-		}
-
-		ms = append(ms, m)
-	}
-
-	return ms, nil
+	return model.AdminProjectsFromStoreProducts(products), nil
 }
 
-func (p Product) GetStoreByID(ID uuid.UUID) (model.StoreProduct, error) {
-	products, err := p.getStoreProducts("WHERE p.id = $1", ID)
-	if err != nil {
-		return model.StoreProduct{}, err
-	}
-
-	if len(products) == 0 {
-		return model.StoreProduct{}, pgx.ErrNoRows
-	}
-
-	return products[0], nil
-}
-
-func (p Product) GetStoreByIDAdmin(ID uuid.UUID) (model.StoreProduct, error) {
-	products, err := p.getStoreProducts("WHERE p.id = $1", ID)
-	if err != nil {
-		return model.StoreProduct{}, err
-	}
-
-	if len(products) == 0 {
-		return model.StoreProduct{}, pgx.ErrNoRows
-	}
-
-	return products[0], nil
-}
-
-func (p Product) GetStoreAll() ([]model.StoreProduct, error) {
-	return p.getStoreProducts("WHERE p.active = TRUE", nil)
-}
-
-func (p Product) GetStoreAllAdmin() ([]model.StoreProduct, error) {
-	return p.getStoreProducts("", nil)
-}
-
-func (p Product) getStoreProducts(whereClause string, arg interface{}) ([]model.StoreProduct, error) {
+func (p ProjectCatalogRepository) getStoreProducts(whereClause string, arg interface{}) ([]model.StoreProduct, error) {
 	query := `
 		SELECT
 			p.id,
@@ -471,39 +445,4 @@ func slugify(value string) string {
 		value = strings.ReplaceAll(value, "--", "-")
 	}
 	return strings.Trim(value, "-")
-}
-
-func (p Product) scanRow(s pgx.Row) (model.Product, error) {
-
-	var m model.Product
-
-	updateAtNull := sql.NullInt64{}
-	nameNull := sql.NullString{}
-	categoryNull := sql.NullString{}
-	brandNull := sql.NullString{}
-
-	err := s.Scan(
-		&m.ID,
-		&m.ProductName,
-		&m.Price,
-		&m.Images,
-		&m.Description,
-		&m.Features,
-		&nameNull,
-		&categoryNull,
-		&brandNull,
-		&m.Active,
-		&m.CreatedAt,
-		&updateAtNull,
-	)
-	if err != nil {
-		return m, err
-	}
-
-	m.UpdatedAt = updateAtNull.Int64
-	m.Name = nameNull.String
-	m.Category = categoryNull.String
-	m.Brand = brandNull.String
-
-	return m, nil
 }

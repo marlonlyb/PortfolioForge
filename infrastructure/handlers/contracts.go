@@ -9,16 +9,20 @@ type UserHandler interface {
 	Me(c echo.Context) error
 }
 
-type ProductHandler interface {
+// ProjectAdminCatalogHandler defines canonical admin project catalog operations.
+type ProjectAdminCatalogHandler interface {
 	Create(c echo.Context) error
 	Update(c echo.Context) error
 	Delete(c echo.Context) error
 	GetByID(c echo.Context) error
-	GetAll(c echo.Context) error
-	GetStoreByID(c echo.Context) error
-	GetStoreAll(c echo.Context) error
 	GetAllStore(c echo.Context) error
 	UpdateStatus(c echo.Context) error
+}
+
+// ProductPublicCompatHandler isolates legacy `/public/products` reads.
+type ProductPublicCompatHandler interface {
+	GetStoreByID(c echo.Context) error
+	GetStoreAll(c echo.Context) error
 }
 
 type LoginHandler interface {

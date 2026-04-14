@@ -12,6 +12,7 @@ interface SearchBarProps {
   showSubmit?: boolean;
   suggestions?: string[];
   onSuggestionSelect?: (query: string) => void;
+  contextHint?: string;
 }
 
 export function SearchBar({
@@ -23,6 +24,7 @@ export function SearchBar({
   showSubmit = true,
   suggestions = [],
   onSuggestionSelect,
+  contextHint,
 }: SearchBarProps) {
   const [internalQuery, setInternalQuery] = useState(initialQuery);
   const navigate = useNavigate();
@@ -94,6 +96,8 @@ export function SearchBar({
         />
 
         <div className="search-bar__actions">
+          {contextHint ? <span className="search-bar__context-hint">{contextHint}</span> : null}
+
           {query && !loading && (
             <button
               className="search-bar__clear"

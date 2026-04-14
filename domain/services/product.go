@@ -7,33 +7,42 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/marlonlyb/portfolioforge/domain/ports/product"
+	project "github.com/marlonlyb/portfolioforge/domain/ports/project"
 	"github.com/marlonlyb/portfolioforge/model"
 )
 
-type Product struct {
-	Repository product.Repository
+// ProjectCatalog is the canonical admin service for portfolio projects.
+// It still operates on the legacy products storage model for compatibility.
+type ProjectCatalog struct {
+	Repository project.AdminCatalogRepository
 }
 
-func NewProduct(pr product.Repository) Product {
-	return Product{Repository: pr}
+func NewProjectCatalog(pr project.AdminCatalogRepository) ProjectCatalog {
+	return ProjectCatalog{Repository: pr}
 }
 
-func (p Product) Create(m *model.Product) error {
+// PublicProductCompat isolates the legacy `/public/products` read flow.
+type PublicProductCompat struct {
+	Repository project.PublicProductCompatRepository
+}
+
+func NewPublicProductCompat(pr project.PublicProductCompatRepository) PublicProductCompat {
+	return PublicProductCompat{Repository: pr}
+}
+
+func (p ProjectCatalog) Create(m *model.AdminProjectWrite) error {
 
 	ID, err := uuid.NewUUID()
 	if err != nil {
 		return fmt.Errorf("%s %w", "uuid.NewUUID()", err)
 	}
 	m.ID = ID
+	m.Normalize()
 
-	if m.ProductName == "" {
+	if m.Name == "" {
 		return fmt.Errorf("%s", "product name is empty!")
 	}
 
-	//Price could be 0 for free
-
-	//Images could be empty?
 	if len(m.Images) == 0 {
 		m.Images = []byte(`[]`)
 	}
@@ -52,8 +61,9 @@ func (p Product) Create(m *model.Product) error {
 	return nil
 }
 
-func (p Product) Update(m *model.Product) error {
-	if !m.HasID() {
+func (p ProjectCatalog) Update(m *model.AdminProjectWrite) error {
+	m.Normalize()
+	if m.ID == uuid.Nil {
 		return fmt.Errorf("product: %w", model.ErrInvalidID)
 	}
 
@@ -73,7 +83,7 @@ func (p Product) Update(m *model.Product) error {
 	return nil
 }
 
-func (p Product) Delete(ID uuid.UUID) error {
+func (p ProjectCatalog) Delete(ID uuid.UUID) error {
 	err := p.Repository.Delete(ID)
 	if err != nil {
 		return fmt.Errorf("%s %w", "Repository.Delete(ID)", err)
@@ -81,105 +91,67 @@ func (p Product) Delete(ID uuid.UUID) error {
 	return nil
 }
 
-func (p Product) UpdateStatus(ID uuid.UUID, active bool) (model.StoreProduct, error) {
+func (p ProjectCatalog) UpdateStatus(ID uuid.UUID, active bool) (model.AdminProject, error) {
 	err := p.Repository.UpdateActive(ID, active)
 	if err != nil {
-		return model.StoreProduct{}, fmt.Errorf("%s %w", "Repository.UpdateActive(ID, active)", err)
+		return model.AdminProject{}, fmt.Errorf("%s %w", "Repository.UpdateActive(ID, active)", err)
 	}
 
-	productData, err := p.Repository.GetStoreByIDAdmin(ID)
+	projectData, err := p.Repository.GetAdminByID(ID)
 	if err != nil {
-		return model.StoreProduct{}, fmt.Errorf("%s %w", "Repository.GetStoreByIDAdmin(ID)", err)
+		return model.AdminProject{}, fmt.Errorf("%s %w", "Repository.GetAdminByID(ID)", err)
 	}
 
-	return productData, nil
+	return projectData, nil
 }
 
-func (p Product) GetByID(ID uuid.UUID) (model.Product, error) {
-	product, err := p.Repository.GetByID(ID)
+func (p ProjectCatalog) GetAdminByID(ID uuid.UUID) (model.AdminProject, error) {
+	adminProject, err := p.Repository.GetAdminByID(ID)
 	if err != nil {
-		return model.Product{}, fmt.Errorf("%s %w", "Repository.GetByID(ID)", err)
+		return model.AdminProject{}, fmt.Errorf("%s %w", "Repository.GetAdminByID(ID)", err)
 	}
-	return product, nil
+
+	return adminProject, nil
 }
 
-func (p Product) GetStoreByID(ID uuid.UUID) (model.StoreProduct, error) {
-	storeProduct, err := p.Repository.GetStoreByID(ID)
+func (p ProjectCatalog) GetAdminAll() ([]model.AdminProject, error) {
+	products, err := p.Repository.GetAdminAll()
 	if err != nil {
-		return model.StoreProduct{}, fmt.Errorf("%s %w", "Repository.GetStoreByID(ID)", err)
-	}
-
-	if !storeProduct.Active {
-		return model.StoreProduct{}, errors.New("product inactive")
-	}
-
-	return storeProduct, nil
-}
-
-func (p Product) GetStoreByIDAdmin(ID uuid.UUID) (model.StoreProduct, error) {
-	storeProduct, err := p.Repository.GetStoreByIDAdmin(ID)
-	if err != nil {
-		return model.StoreProduct{}, fmt.Errorf("%s %w", "Repository.GetStoreByIDAdmin(ID)", err)
-	}
-
-	return storeProduct, nil
-}
-
-func (p Product) GetAll() (model.Products, error) {
-	products, err := p.Repository.GetAll()
-	if err != nil {
-		return model.Products{}, fmt.Errorf("%s %w", "Repository.GetAll()", err)
-	}
-	return products, nil
-}
-
-func (p Product) GetStoreAll() ([]model.StoreProduct, error) {
-	products, err := p.Repository.GetStoreAll()
-	if err != nil {
-		return nil, fmt.Errorf("%s %w", "Repository.GetStoreAll()", err)
+		return nil, fmt.Errorf("%s %w", "Repository.GetAdminAll()", err)
 	}
 
 	return products, nil
 }
 
-func (p Product) GetStoreAllAdmin() ([]model.StoreProduct, error) {
-	products, err := p.Repository.GetStoreAllAdmin()
-	if err != nil {
-		return nil, fmt.Errorf("%s %w", "Repository.GetStoreAllAdmin()", err)
-	}
-
-	return products, nil
-}
-
-func (p Product) CreateVariants(productID uuid.UUID, variants []model.StoreProductVariant) error {
-	err := p.Repository.CreateVariants(productID, variants)
+func (p ProjectCatalog) CreateVariants(projectID uuid.UUID, variants []model.AdminProjectVariantInput) error {
+	err := p.Repository.CreateVariants(projectID, variants)
 	if err != nil {
 		return fmt.Errorf("%s %w", "Repository.CreateVariants()", err)
 	}
 	return nil
 }
 
-func (p Product) ReplaceVariants(productID uuid.UUID, variants []model.StoreProductVariant) error {
-	existingProduct, err := p.Repository.GetStoreByIDAdmin(productID)
+func (p ProjectCatalog) ReplaceVariants(projectID uuid.UUID, variants []model.AdminProjectVariantInput) error {
+	existingProject, err := p.Repository.GetAdminByID(projectID)
 	if err != nil {
-		return fmt.Errorf("%s %w", "Repository.GetStoreByIDAdmin(productID)", err)
+		return fmt.Errorf("%s %w", "Repository.GetAdminByID(projectID)", err)
 	}
 
-	existingByID := make(map[uuid.UUID]model.StoreProductVariant, len(existingProduct.Variants))
-	for _, existing := range existingProduct.Variants {
+	existingByID := make(map[uuid.UUID]model.AdminProjectVariant, len(existingProject.Variants))
+	for _, existing := range existingProject.Variants {
 		existingByID[existing.ID] = existing
 	}
 
 	incomingIDs := make(map[uuid.UUID]struct{}, len(variants))
-	newVariants := make([]model.StoreProductVariant, 0)
+	newVariants := make([]model.AdminProjectVariantInput, 0)
 
 	for _, variant := range variants {
-		variant.ProductID = productID
+		variantID, _ := uuid.Parse(variant.ID)
 
-		if variant.ID != uuid.Nil {
-			incomingIDs[variant.ID] = struct{}{}
-			if _, exists := existingByID[variant.ID]; exists {
-				err = p.Repository.UpdateVariant(variant)
+		if variantID != uuid.Nil {
+			incomingIDs[variantID] = struct{}{}
+			if _, exists := existingByID[variantID]; exists {
+				err = p.Repository.UpdateVariant(variant, projectID)
 				if err != nil {
 					return fmt.Errorf("%s %w", "Repository.UpdateVariant()", err)
 				}
@@ -202,7 +174,7 @@ func (p Product) ReplaceVariants(productID uuid.UUID, variants []model.StoreProd
 	}
 
 	if len(newVariants) > 0 {
-		err = p.Repository.CreateVariants(productID, newVariants)
+		err = p.Repository.CreateVariants(projectID, newVariants)
 		if err != nil {
 			return fmt.Errorf("%s %w", "Repository.CreateVariants()", err)
 		}
@@ -211,8 +183,30 @@ func (p Product) ReplaceVariants(productID uuid.UUID, variants []model.StoreProd
 	return nil
 }
 
-func (p Product) ReplaceMedia(productID uuid.UUID, media []model.ProjectMedia) error {
-	err := p.Repository.ReplaceMedia(productID, media)
+func (p PublicProductCompat) GetStoreByID(ID uuid.UUID) (model.StoreProduct, error) {
+	storeProduct, err := p.Repository.GetStoreByID(ID)
+	if err != nil {
+		return model.StoreProduct{}, fmt.Errorf("%s %w", "Repository.GetStoreByID(ID)", err)
+	}
+
+	if !storeProduct.Active {
+		return model.StoreProduct{}, errors.New("product inactive")
+	}
+
+	return storeProduct, nil
+}
+
+func (p PublicProductCompat) GetStoreAll() ([]model.StoreProduct, error) {
+	products, err := p.Repository.GetStoreAll()
+	if err != nil {
+		return nil, fmt.Errorf("%s %w", "Repository.GetStoreAll()", err)
+	}
+
+	return products, nil
+}
+
+func (p ProjectCatalog) ReplaceMedia(projectID uuid.UUID, media []model.ProjectMedia) error {
+	err := p.Repository.ReplaceMedia(projectID, media)
 	if err != nil {
 		return fmt.Errorf("%s %w", "Repository.ReplaceMedia()", err)
 	}

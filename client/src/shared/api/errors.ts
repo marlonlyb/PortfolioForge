@@ -40,8 +40,6 @@ export const API_ERROR_CODES = {
   NOT_FOUND: 'not_found',
   PRODUCT_INACTIVE: 'product_inactive',
   STOCK_INSUFFICIENT: 'stock_insufficient',
-  ORDER_STATE_INVALID: 'order_state_invalid',
-  PAYPAL_CAPTURE_FAILED: 'paypal_capture_failed',
   UNEXPECTED_ERROR: 'unexpected_error',
 } as const;
 

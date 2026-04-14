@@ -1,198 +1,31 @@
-import { httpGet, httpPost, httpPut, httpPatch } from '../../shared/api/http';
-import type { PublicContentFieldKey, PublicLocale, TranslationMode } from '../../shared/i18n/config';
-import type { ProductDetail } from '../../shared/types/product';
-import type { ProjectMedia, ProjectProfileMetrics } from '../../shared/types/project';
+export {
+  createAdminProject as createProduct,
+  fetchAdminProjectById,
+  fetchAdminProjects as fetchAdminProducts,
+  fetchProjectLocalizations,
+  fetchProjectReadiness,
+  reembedProject,
+  reembedStale,
+  saveProjectLocalizations,
+  updateAdminProject as updateProduct,
+  updateAdminProjectStatus as updateProductStatus,
+  updateProjectEnrichment,
+} from '../admin-projects/api';
 
-// ─── Types ────────────────────────────────────────────────────────────
+export type {
+  AdminProjectLocalizationLocale,
+  AdminProjectLocalizationsResponse,
+  CreateAdminProjectPayload as CreateProductPayload,
+  CreateAdminProjectVariantPayload as CreateVariantPayload,
+  LocalizedAdminField,
+  ProjectReadiness,
+  ReembedResponse,
+  SaveProjectLocalizationsPayload,
+  UpdateAdminProjectPayload as UpdateProductPayload,
+  UpdateAdminProjectStatusPayload as UpdateProductStatusPayload,
+  UpdateAdminProjectVariantPayload as UpdateVariantPayload,
+  UpdateProjectEnrichmentPayload,
+  UpdateProjectEnrichmentProfilePayload,
+} from '../admin-projects/api';
 
-export interface AdminProductListResponse {
-  items: ProductDetail[];
-}
-
-export interface ProjectReadiness {
-  project_id: string;
-  level: 'incomplete' | 'basic' | 'complete';
-  missing_fields: string[];
-  has_name: boolean;
-  has_description: boolean;
-  has_category: boolean;
-  has_technologies: boolean;
-  has_solution_summary: boolean;
-}
-
-export interface ReembedResponse {
-  message: string;
-  project_id?: string;
-}
-
-export interface CreateProductPayload {
-  name: string;
-  description: string;
-  category: string;
-  brand?: string;
-  images: string[];
-  media?: ProjectMedia[];
-  active: boolean;
-  variants?: CreateVariantPayload[];
-}
-
-export interface CreateVariantPayload {
-  sku: string;
-  color: string;
-  size: string;
-  price: number;
-  stock: number;
-  image_url?: string;
-}
-
-export interface UpdateProductPayload {
-  name: string;
-  description: string;
-  category: string;
-  brand?: string;
-  images: string[];
-  media?: ProjectMedia[];
-  active: boolean;
-  variants?: UpdateVariantPayload[];
-}
-
-export interface UpdateVariantPayload {
-  id?: string;
-  sku: string;
-  color: string;
-  size: string;
-  price: number;
-  stock: number;
-  image_url?: string;
-}
-
-export interface UpdateProductStatusPayload {
-  active: boolean;
-}
-
-export interface UpdateProjectEnrichmentProfilePayload {
-  solution_summary?: string;
-  architecture?: string;
-  business_goal?: string;
-  problem_statement?: string;
-  ai_usage?: string;
-  integrations?: string[];
-  technical_decisions?: string[];
-  challenges?: string[];
-  results?: string[];
-  metrics?: ProjectProfileMetrics;
-  timeline?: string[];
-}
-
-export interface UpdateProjectEnrichmentPayload {
-  profile: UpdateProjectEnrichmentProfilePayload;
-  technology_ids: string[];
-}
-
-export interface LocalizedAdminField {
-  value: unknown;
-  mode: TranslationMode;
-}
-
-export interface AdminProjectLocalizationLocale {
-  locale: PublicLocale;
-  fields: Record<PublicContentFieldKey, LocalizedAdminField>;
-}
-
-export interface AdminProjectLocalizationsResponse {
-  project_id: string;
-  base: Record<PublicContentFieldKey, unknown>;
-  locales: Record<string, AdminProjectLocalizationLocale>;
-}
-
-export interface SaveProjectLocalizationsPayload {
-  fields: Partial<Record<PublicContentFieldKey, unknown>>;
-}
-
-export function updateProjectEnrichment(
-  id: string,
-  payload: UpdateProjectEnrichmentPayload,
-): Promise<void> {
-  return httpPut<void>(`/api/v1/admin/projects/${id}/enrichment`, payload);
-}
-
-export function fetchProjectLocalizations(id: string): Promise<AdminProjectLocalizationsResponse> {
-  return httpGet<AdminProjectLocalizationsResponse>(`/api/v1/admin/projects/${id}/localizations`);
-}
-
-export function saveProjectLocalizations(
-  id: string,
-  locale: PublicLocale,
-  payload: SaveProjectLocalizationsPayload,
-): Promise<void> {
-  return httpPut<void>(`/api/v1/admin/projects/${id}/localizations/${locale}`, payload);
-}
-
-// ─── API functions ────────────────────────────────────────────────────
-
-/**
- * Fetch all products (admin view — includes inactive, with variants).
- * GET /api/v1/admin/products → { data: { items: ProductDetail[] } }
- */
-export function fetchAdminProducts(): Promise<AdminProductListResponse> {
-  return httpGet<AdminProductListResponse>('/api/v1/admin/products');
-}
-
-/**
- * Fetch a single product by ID (admin view, with variants).
- * GET /api/v1/admin/products/:id → { data: ProductDetail }
- */
-export function fetchAdminProductById(id: string): Promise<ProductDetail> {
-  return httpGet<ProductDetail>(`/api/v1/admin/products/${id}`);
-}
-
-/**
- * Create a new product with variants.
- * POST /api/v1/admin/products → { data: ProductDetail }
- */
-export function createProduct(payload: CreateProductPayload): Promise<ProductDetail> {
-  return httpPost<ProductDetail>('/api/v1/admin/products', payload);
-}
-
-/**
- * Update an existing product and its variants.
- * PUT /api/v1/admin/products/:id → { data: ProductDetail }
- */
-export function updateProduct(id: string, payload: UpdateProductPayload): Promise<ProductDetail> {
-  return httpPut<ProductDetail>(`/api/v1/admin/products/${id}`, payload);
-}
-
-/**
- * Toggle product active status.
- * PATCH /api/v1/admin/products/:id/status → { data: ProductDetail }
- */
-export function updateProductStatus(
-  id: string,
-  payload: UpdateProductStatusPayload,
-): Promise<ProductDetail> {
-  return httpPatch<ProductDetail>(`/api/v1/admin/products/${id}/status`, payload);
-}
-
-/**
- * Fetch search readiness for a project.
- * GET /api/v1/admin/projects/:id/readiness → { data: ProjectReadiness }
- */
-export function fetchProjectReadiness(id: string): Promise<ProjectReadiness> {
-  return httpGet<ProjectReadiness>(`/api/v1/admin/projects/${id}/readiness`);
-}
-
-/**
- * Re-embed a single project's search document.
- * POST /api/v1/admin/projects/:id/reembed → { data: ReembedResponse }
- */
-export function reembedProject(id: string): Promise<ReembedResponse> {
-  return httpPost<ReembedResponse>(`/api/v1/admin/projects/${id}/reembed`, {});
-}
-
-/**
- * Batch re-embed all stale search documents.
- * POST /api/v1/admin/projects/reembed-stale → { data: ReembedResponse }
- */
-export function reembedStale(): Promise<ReembedResponse> {
-  return httpPost<ReembedResponse>('/api/v1/admin/projects/reembed-stale', {});
-}
+export type { AdminProjectListResponse as AdminProductListResponse } from '../../shared/types/admin-project';

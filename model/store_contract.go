@@ -29,6 +29,8 @@ type StoreUser struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// StoreProductVariant is the legacy storage-shaped variant contract.
+// Prefer AdminProjectVariant/AdminProjectVariantInput in admin flows.
 type StoreProductVariant struct {
 	ID        uuid.UUID `json:"id"`
 	ProductID uuid.UUID `json:"product_id"`
@@ -40,6 +42,8 @@ type StoreProductVariant struct {
 	ImageURL  string    `json:"image_url,omitempty"`
 }
 
+// StoreProduct is the legacy storage-shaped read contract used by compat routes.
+// Prefer Project/AdminProject contracts outside the compat layer.
 type StoreProduct struct {
 	ID              uuid.UUID             `json:"id"`
 	Name            string                `json:"name"`

@@ -6,7 +6,6 @@ import { useLocale } from '../providers/LocaleProvider';
 import { PUBLIC_LOCALE_LABELS, type PublicLocale } from '../../shared/i18n/config';
 import { fetchPublicSiteSettings } from '../../shared/api/siteSettings';
 import type { SiteSettings } from '../../shared/types/siteSettings';
-import { LandingPage } from '../../features/landing/LandingPage';
 
 export function StoreLayout() {
   const { user, logout } = useSession();
@@ -133,7 +132,7 @@ export function StoreLayout() {
             </div>
           </aside>
 
-          <LandingPage />
+          <Outlet />
         </div>
       ) : (
         <>

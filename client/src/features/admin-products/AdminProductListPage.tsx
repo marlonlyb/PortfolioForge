@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { fetchAdminProducts, updateProductStatus, reembedStale } from './api';
-import type { ProductDetail } from '../../shared/types/product';
+import { fetchAdminProjects, reembedStale, updateAdminProjectStatus } from '../admin-projects/api';
+import type { AdminProjectDetail } from '../../shared/types/admin-project';
 import { AppError } from '../../shared/api/errors';
 
 export function AdminProductListPage() {
-  const [projects, setProjects] = useState<ProductDetail[]>([]);
+  const [projects, setProjects] = useState<AdminProjectDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export function AdminProductListPage() {
     setLoading(true);
     setError(null);
 
-    fetchAdminProducts()
+    fetchAdminProjects()
       .then((response) => {
         if (!cancelled) {
           setProjects(response.items);
@@ -39,11 +39,11 @@ export function AdminProductListPage() {
 
   useEffect(loadProjects, []);
 
-  async function handleToggleStatus(project: ProductDetail) {
+  async function handleToggleStatus(project: AdminProjectDetail) {
     setTogglingId(project.id);
 
     try {
-      await updateProductStatus(project.id, { active: !project.active });
+      await updateAdminProjectStatus(project.id, { active: !project.active });
       setProjects((prev) =>
         prev.map((item) => (item.id === project.id ? { ...item, active: !item.active } : item)),
       );

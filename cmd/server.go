@@ -15,20 +15,22 @@ import (
 )
 
 type Server struct {
-	uHandler     handlers.UserHandler
-	pHandler     handlers.ProductHandler
-	lHandler     handlers.LoginHandler
-	projHandler  handlers.ProjectPublicHandler
-	sHandler     handlers.SearchHandler
-	searchAdminH handlers.SearchAdminHandler
-	techHandler  *handlers.TechnologyHandler
-	projAdminH   *handlers.ProjectAdminHandler
-	siteConfigH  *handlers.SiteSettingsHandler
+	uHandler       handlers.UserHandler
+	projectCatH    handlers.ProjectAdminCatalogHandler
+	productCompatH handlers.ProductPublicCompatHandler
+	lHandler       handlers.LoginHandler
+	projHandler    handlers.ProjectPublicHandler
+	sHandler       handlers.SearchHandler
+	searchAdminH   handlers.SearchAdminHandler
+	techHandler    *handlers.TechnologyHandler
+	projAdminH     *handlers.ProjectAdminHandler
+	siteConfigH    *handlers.SiteSettingsHandler
 }
 
 func NewServer(
 	uHandler handlers.UserHandler,
-	pHandler handlers.ProductHandler,
+	projectCatH handlers.ProjectAdminCatalogHandler,
+	productCompatH handlers.ProductPublicCompatHandler,
 	lHandler handlers.LoginHandler,
 	projHandler handlers.ProjectPublicHandler,
 	sHandler handlers.SearchHandler,
@@ -39,15 +41,16 @@ func NewServer(
 ) *Server {
 
 	return &Server{
-		uHandler:     uHandler,
-		pHandler:     pHandler,
-		lHandler:     lHandler,
-		projHandler:  projHandler,
-		sHandler:     sHandler,
-		searchAdminH: searchAdminH,
-		techHandler:  techHandler,
-		projAdminH:   projAdminH,
-		siteConfigH:  siteConfigH,
+		uHandler:       uHandler,
+		projectCatH:    projectCatH,
+		productCompatH: productCompatH,
+		lHandler:       lHandler,
+		projHandler:    projHandler,
+		sHandler:       sHandler,
+		searchAdminH:   searchAdminH,
+		techHandler:    techHandler,
+		projAdminH:     projAdminH,
+		siteConfigH:    siteConfigH,
 	}
 }
 
@@ -63,8 +66,9 @@ func (s *Server) Initialize() {
 	routes.UserPublic(e, s.uHandler)
 	routes.UserPrivate(e, s.uHandler, authMiddleware.IsValid)
 
-	routes.ProductAdmin(e, s.pHandler, authMiddleware.IsValid, authMiddleware.IsAdmin)
-	routes.ProductPublic(e, s.pHandler)
+	routes.ProductAdmin(e, s.projectCatH, authMiddleware.IsValid, authMiddleware.IsAdmin)
+	routes.ProjectAdminCatalog(e, s.projectCatH, authMiddleware.IsValid, authMiddleware.IsAdmin)
+	routes.ProductPublicCompat(e, s.productCompatH)
 
 	routes.TechnologyAdmin(e, s.techHandler, authMiddleware.IsValid, authMiddleware.IsAdmin)
 	routes.TechnologyPublic(e, s.techHandler)

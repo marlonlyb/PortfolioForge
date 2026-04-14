@@ -35,8 +35,9 @@ func main() {
 	uService := services.NewUser(uRepository)
 	uHandlers := handlers.NewUser(uService)
 
-	pRepository := postgres.NewProduct(dbPool)
-	pService := services.NewProduct(pRepository)
+	projectCatalogRepository := postgres.NewProjectCatalogRepository(dbPool)
+	projectCatalogService := services.NewProjectCatalog(projectCatalogRepository)
+	productPublicCompatService := services.NewPublicProductCompat(projectCatalogRepository)
 
 	lService := services.NewLogin(uService)
 	lHandlers := handlers.NewLogin(lService)
@@ -55,7 +56,8 @@ func main() {
 	openAIKey := os.Getenv("OPENAI_API_KEY")
 	projectLocalizationRepo := postgres.NewProjectLocalizationRepository(dbPool)
 	projectLocalizationService := localization.NewService(projectLocalizationRepo, localization.NewOpenAITranslator(openAIKey))
-	pHandlers := handlers.NewProduct(pService, projectLocalizationService)
+	projectCatalogHandlers := handlers.NewProjectCatalog(projectCatalogService, projectLocalizationService)
+	productPublicCompatHandlers := handlers.NewProductPublicCompat(productPublicCompatService)
 	projHandlers := handlers.NewProjectPublic(projService, projectLocalizationService)
 
 	var embeddingProv embedding.EmbeddingProvider = infraEmbedding.NewNoOpEmbeddingProvider()
@@ -82,7 +84,7 @@ func main() {
 	projAdminHandlers := handlers.NewProjectAdminHandler(dbPool, embeddingProv, semanticEnabled, projRepository, projectLocalizationService)
 	siteSettingsHandlers := handlers.NewSiteSettingsHandler(siteSettingsRepository)
 
-	httpServer := NewServer(uHandlers, pHandlers, lHandlers, projHandlers, searchHandlers, searchAdminHandlers, techHandlers, projAdminHandlers, siteSettingsHandlers)
+	httpServer := NewServer(uHandlers, projectCatalogHandlers, productPublicCompatHandlers, lHandlers, projHandlers, searchHandlers, searchAdminHandlers, techHandlers, projAdminHandlers, siteSettingsHandlers)
 	httpServer.Initialize()
 
 }

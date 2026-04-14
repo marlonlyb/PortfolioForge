@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import useEmblaCarousel from 'embla-carousel-react';
 
 import { useLocale } from '../../app/providers/LocaleProvider';
 import { fetchProjectBySlug } from './api';
@@ -42,6 +43,15 @@ interface DetailListSectionData {
   title: string;
   items: string[];
   accent?: 'default' | 'highlight';
+}
+
+interface GalleryImage {
+  id: string;
+  preview: string;
+  full: string;
+  alt: string;
+  caption?: string;
+  featured: boolean;
 }
 
 function hasText(value?: string | null): value is string {
@@ -138,12 +148,21 @@ export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const { locale, t } = useLocale();
+  const [galleryViewportRef, galleryViewportApi] = useEmblaCarousel({
+    align: 'start',
+    loop: false,
+    dragFree: false,
+    containScroll: 'trimSnaps',
+  });
 
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [failedImage, setFailedImage] = useState<string | null>(null);
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [selectedGalleryIndex, setSelectedGalleryIndex] = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [canScrollGalleryPrev, setCanScrollGalleryPrev] = useState(false);
+  const [canScrollGalleryNext, setCanScrollGalleryNext] = useState(false);
   const locationState = (location.state as ProjectDetailLocationState | null) ?? null;
   const activeSearchQuery = locationState?.activeSearchQuery?.trim() ?? '';
   const activeSearchCategory = locationState?.activeSearchCategory?.trim() ?? '';
@@ -164,7 +183,8 @@ export function ProductDetailPage() {
     setError(null);
     setProject(null);
     setFailedImage(null);
-    setLightboxImage(null);
+    setSelectedGalleryIndex(0);
+    setLightboxIndex(null);
 
     fetchProjectBySlug(slug, locale)
       .then((data) => {
@@ -227,18 +247,125 @@ export function ProductDetailPage() {
     };
   }, [activeSearchCategory, activeSearchQuery, locale, locationMatchContext, project, slug]);
 
+  const projectName = project?.name ?? '';
+  const technologies = project?.technologies ?? [];
+  const galleryMedia = project ? getOrderedProjectMedia(project) : [];
+  const mainImage = project ? getProjectHeroImage(project) ?? null : null;
+  const galleryImages: GalleryImage[] = galleryMedia
+    .map((media) => ({
+      id: media.id,
+      preview: getProjectMediaMedium(media),
+      full: getProjectMediaFull(media),
+      alt: media.alt_text?.trim() || media.caption?.trim() || projectName,
+      caption: media.caption?.trim(),
+      featured: media.featured,
+    }))
+    .filter((item): item is { id: string; preview: string; full: string; alt: string; caption?: string; featured: boolean } =>
+      Boolean(item.preview && item.full),
+    );
+  const visibleMainImage = failedImage && mainImage === failedImage
+    ? galleryImages.find((item) => item.preview !== failedImage)?.preview ?? null
+    : mainImage;
+  const selectedGalleryImage = galleryImages[selectedGalleryIndex] ?? null;
+  const activeLightboxImage = lightboxIndex !== null ? galleryImages[lightboxIndex] ?? null : null;
+  const businessGoal = project?.profile?.business_goal?.trim();
+  const problemStatement = project?.profile?.problem_statement?.trim();
+  const solutionSummary = project?.profile?.solution_summary?.trim();
+  const architecture = project?.profile?.architecture?.trim();
+  const aiUsage = project?.profile?.ai_usage?.trim();
+  const integrations = getRenderableList(project?.profile?.integrations);
+  const technicalDecisions = getRenderableList(project?.profile?.technical_decisions);
+  const challenges = getRenderableList(project?.profile?.challenges);
+  const results = getRenderableList(project?.profile?.results);
+  const timeline = getRenderableList(project?.profile?.timeline);
+  const metrics = getRenderableEntries(project?.profile?.metrics);
+  const searchMatchContext = resolvedSearchMatchContext;
+  const searchEvidence = searchMatchContext?.evidence ?? [];
+  const hasExplanation = Boolean(searchMatchContext?.explanation?.trim());
+  const hasEvidence = searchEvidence.length > 0;
+  const showSearchMatchContext = hasExplanation || hasEvidence;
+  const lastUpdated = formatTimestamp(project?.updated_at);
+  const technologySummary = formatTechnologySummary(technologies);
+  const overviewItems = [
+    { label: t.detailCategory, value: project?.category ?? '' },
+    { label: t.detailClient, value: project?.client_name ?? t.detailIndependent },
+    { label: t.detailUpdated, value: lastUpdated ?? t.detailRecentlyCurated },
+    { label: t.detailTechnologies, value: technologySummary ?? t.detailNotSpecified },
+  ].filter((item) => item.value.trim().length > 0);
+  const narrativeSections: DetailSectionData[] = [
+    hasText(businessGoal) ? { title: t.detailBusinessGoal, content: businessGoal } : null,
+    hasText(problemStatement) ? { title: t.detailProblem, content: problemStatement } : null,
+    hasText(solutionSummary) ? { title: t.detailSolution, content: solutionSummary } : null,
+    hasText(architecture) ? { title: t.detailArchitecture, content: architecture } : null,
+    hasText(aiUsage) ? { title: t.detailAIUsage, content: aiUsage } : null,
+  ].filter((section): section is DetailSectionData => Boolean(section));
+  const sidebarSections: DetailListSectionData[] = [
+    integrations.length > 0 ? { title: t.detailIntegrations, items: integrations } : null,
+    technicalDecisions.length > 0 ? { title: t.detailTechnicalDecisions, items: technicalDecisions } : null,
+    challenges.length > 0 ? { title: t.detailChallenges, items: challenges } : null,
+    results.length > 0 ? { title: t.detailResults, items: results, accent: 'highlight' } : null,
+    timeline.length > 0 ? { title: t.detailTimeline, items: timeline } : null,
+  ].filter((section): section is DetailListSectionData => Boolean(section));
+
   useEffect(() => {
-    if (!lightboxImage) return undefined;
+    if (!galleryViewportApi) return undefined;
+
+    function syncGalleryState() {
+      setSelectedGalleryIndex(galleryViewportApi.selectedScrollSnap());
+      setCanScrollGalleryPrev(galleryViewportApi.canScrollPrev());
+      setCanScrollGalleryNext(galleryViewportApi.canScrollNext());
+    }
+
+    syncGalleryState();
+    galleryViewportApi.on('select', syncGalleryState);
+    galleryViewportApi.on('reInit', syncGalleryState);
+
+    return () => {
+      galleryViewportApi.off('select', syncGalleryState);
+      galleryViewportApi.off('reInit', syncGalleryState);
+    };
+  }, [galleryViewportApi]);
+
+  useEffect(() => {
+    if (!galleryViewportApi || galleryImages.length === 0) return;
+
+    galleryViewportApi.reInit();
+    galleryViewportApi.scrollTo(0, true);
+    setSelectedGalleryIndex(0);
+  }, [galleryImages.length, galleryViewportApi, project?.id]);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    if (lightboxIndex < galleryImages.length) return;
+    setLightboxIndex(galleryImages.length > 0 ? galleryImages.length - 1 : null);
+  }, [galleryImages.length, lightboxIndex]);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return undefined;
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        setLightboxImage(null);
+        setLightboxIndex(null);
+      }
+
+      if (event.key === 'ArrowRight') {
+        setLightboxIndex((current) => {
+          if (current === null) return current;
+          return Math.min(current + 1, galleryImages.length - 1);
+        });
+      }
+
+      if (event.key === 'ArrowLeft') {
+        setLightboxIndex((current) => {
+          if (current === null) return current;
+          return Math.max(current - 1, 0);
+        });
       }
     }
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lightboxImage]);
+  }, [galleryImages.length, lightboxIndex]);
 
   if (loading) {
     return (
@@ -259,63 +386,6 @@ export function ProductDetailPage() {
       </section>
     );
   }
-
-  const technologies = project.technologies ?? [];
-  const galleryMedia = getOrderedProjectMedia(project);
-  const mainImage = getProjectHeroImage(project) ?? null;
-  const galleryImages = galleryMedia
-    .map((media) => ({
-      id: media.id,
-      preview: getProjectMediaMedium(media),
-      full: getProjectMediaFull(media),
-      alt: media.alt_text?.trim() || media.caption?.trim() || project.name,
-      caption: media.caption?.trim(),
-      featured: media.featured,
-    }))
-    .filter((item): item is { id: string; preview: string; full: string; alt: string; caption?: string; featured: boolean } =>
-      Boolean(item.preview && item.full),
-    );
-  const visibleMainImage = failedImage && mainImage === failedImage
-    ? galleryImages.find((item) => item.preview !== failedImage)?.preview ?? null
-    : mainImage;
-  const businessGoal = project.profile?.business_goal?.trim();
-  const problemStatement = project.profile?.problem_statement?.trim();
-  const solutionSummary = project.profile?.solution_summary?.trim();
-  const architecture = project.profile?.architecture?.trim();
-  const aiUsage = project.profile?.ai_usage?.trim();
-  const integrations = getRenderableList(project.profile?.integrations);
-  const technicalDecisions = getRenderableList(project.profile?.technical_decisions);
-  const challenges = getRenderableList(project.profile?.challenges);
-  const results = getRenderableList(project.profile?.results);
-  const timeline = getRenderableList(project.profile?.timeline);
-  const metrics = getRenderableEntries(project.profile?.metrics);
-  const searchMatchContext = resolvedSearchMatchContext;
-  const searchEvidence = searchMatchContext?.evidence ?? [];
-  const hasExplanation = Boolean(searchMatchContext?.explanation?.trim());
-  const hasEvidence = searchEvidence.length > 0;
-  const showSearchMatchContext = hasExplanation || hasEvidence;
-  const lastUpdated = formatTimestamp(project.updated_at);
-  const technologySummary = formatTechnologySummary(technologies);
-  const overviewItems = [
-    { label: t.detailCategory, value: project.category },
-    { label: t.detailClient, value: project.client_name ?? t.detailIndependent },
-    { label: t.detailUpdated, value: lastUpdated ?? t.detailRecentlyCurated },
-    { label: t.detailTechnologies, value: technologySummary ?? t.detailNotSpecified },
-  ].filter((item) => item.value.trim().length > 0);
-  const narrativeSections: DetailSectionData[] = [
-    hasText(businessGoal) ? { title: t.detailBusinessGoal, content: businessGoal } : null,
-    hasText(problemStatement) ? { title: t.detailProblem, content: problemStatement } : null,
-    hasText(solutionSummary) ? { title: t.detailSolution, content: solutionSummary } : null,
-    hasText(architecture) ? { title: t.detailArchitecture, content: architecture } : null,
-    hasText(aiUsage) ? { title: t.detailAIUsage, content: aiUsage } : null,
-  ].filter((section): section is DetailSectionData => Boolean(section));
-  const sidebarSections: DetailListSectionData[] = [
-    integrations.length > 0 ? { title: t.detailIntegrations, items: integrations } : null,
-    technicalDecisions.length > 0 ? { title: t.detailTechnicalDecisions, items: technicalDecisions } : null,
-    challenges.length > 0 ? { title: t.detailChallenges, items: challenges } : null,
-    results.length > 0 ? { title: t.detailResults, items: results, accent: 'highlight' } : null,
-    timeline.length > 0 ? { title: t.detailTimeline, items: timeline } : null,
-  ].filter((section): section is DetailListSectionData => Boolean(section));
 
   return (
     <>
@@ -367,20 +437,100 @@ export function ProductDetailPage() {
                 <p className="eyebrow">Gallery</p>
                 <h3 className="detail__gallery-title">Project visuals</h3>
               </div>
+
+              {selectedGalleryImage ? (
+                <div className="detail__gallery-toolbar">
+                  <p className="detail__gallery-counter">
+                    {selectedGalleryIndex + 1} / {galleryImages.length}
+                  </p>
+
+                  {selectedGalleryImage.featured ? <span className="detail__gallery-toolbar-badge">Destacada</span> : null}
+                </div>
+              ) : null}
             </div>
 
-            <div className="detail__gallery-grid">
-              {galleryImages.map((image) => (
-                <button
-                  key={image.id}
-                  type="button"
-                  className={image.featured ? 'detail__gallery-item detail__gallery-item--featured' : 'detail__gallery-item'}
-                  onClick={() => setLightboxImage(image.full)}
-                >
-                  <img className="detail__gallery-image" src={image.preview} alt={image.alt} loading="lazy" />
-                  {image.caption ? <span className="detail__gallery-caption">{image.caption}</span> : null}
-                </button>
-              ))}
+            <div className="detail__gallery-carousel">
+              <div className="detail__gallery-stage-shell">
+                <div className="detail__gallery-viewport" ref={galleryViewportRef}>
+                  <div className="detail__gallery-track">
+                    {galleryImages.map((image, index) => (
+                      <div key={image.id} className="detail__gallery-slide">
+                        <button
+                          type="button"
+                          className="detail__gallery-stage"
+                          onClick={() => setLightboxIndex(index)}
+                          aria-label={`Abrir imagen ${index + 1}`}
+                        >
+                          <img className="detail__gallery-stage-image" src={image.preview} alt={image.alt} loading="lazy" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="detail__gallery-nav" aria-label="Controles de galería">
+                  <button
+                    type="button"
+                    className="detail__gallery-nav-button detail__gallery-nav-button--prev"
+                    onClick={() => galleryViewportApi?.scrollPrev()}
+                    disabled={!canScrollGalleryPrev}
+                    aria-label="Imagen anterior"
+                  >
+                    <span aria-hidden="true">←</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="detail__gallery-nav-button detail__gallery-nav-button--next"
+                    onClick={() => galleryViewportApi?.scrollNext()}
+                    disabled={!canScrollGalleryNext}
+                    aria-label="Imagen siguiente"
+                  >
+                    <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+
+                {selectedGalleryImage ? (
+                  <div className="detail__gallery-stage-meta">
+                    <div className="detail__gallery-stage-copy">
+                      {selectedGalleryImage.featured ? <span className="detail__gallery-stage-badge">Destacada</span> : null}
+                      {selectedGalleryImage.caption ? (
+                        <p className="detail__gallery-stage-caption">{selectedGalleryImage.caption}</p>
+                      ) : (
+                        <p className="detail__gallery-stage-caption detail__gallery-stage-caption--muted">
+                          Visual {selectedGalleryIndex + 1} del proyecto
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="detail__gallery-stage-cta"
+                      onClick={() => setLightboxIndex(selectedGalleryIndex)}
+                    >
+                      Ver completa
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="detail__gallery-thumbs-rail">
+                <div className="detail__gallery-thumbs" role="tablist" aria-label="Miniaturas del proyecto">
+                  {galleryImages.map((image, index) => (
+                    <button
+                      key={`${image.id}-thumb`}
+                      type="button"
+                      className={selectedGalleryIndex === index ? 'detail__gallery-thumb detail__gallery-thumb--active' : 'detail__gallery-thumb'}
+                      onClick={() => galleryViewportApi?.scrollTo(index)}
+                      aria-label={`Ir a imagen ${index + 1}`}
+                      aria-current={selectedGalleryIndex === index}
+                    >
+                      <span className="detail__gallery-thumb-index">{index + 1}</span>
+                      <img className="detail__gallery-thumb-image" src={image.preview} alt={image.alt} loading="lazy" />
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </article>
         ) : null}
@@ -487,12 +637,58 @@ export function ProductDetailPage() {
           </aside>
         </div>
         </section>
-      {lightboxImage ? (
-        <div className="detail__lightbox" role="dialog" aria-modal="true" aria-label="Image preview" onClick={() => setLightboxImage(null)}>
-          <button type="button" className="detail__lightbox-close" aria-label="Close image preview" onClick={() => setLightboxImage(null)}>
+      {activeLightboxImage ? (
+        <div className="detail__lightbox" role="dialog" aria-modal="true" aria-label="Image preview" onClick={() => setLightboxIndex(null)}>
+          <button type="button" className="detail__lightbox-close" aria-label="Close image preview" onClick={() => setLightboxIndex(null)}>
             ×
           </button>
-          <img className="detail__lightbox-image" src={lightboxImage} alt={project.name} onClick={(event) => event.stopPropagation()} />
+
+          {galleryImages.length > 1 ? (
+            <>
+              <button
+                type="button"
+                className="detail__lightbox-nav detail__lightbox-nav--prev"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setLightboxIndex((current) => {
+                    if (current === null) return current;
+                    return Math.max(current - 1, 0);
+                  });
+                }}
+                disabled={lightboxIndex === 0}
+                aria-label="Imagen anterior"
+              >
+                <span aria-hidden="true">←</span>
+              </button>
+
+              <button
+                type="button"
+                className="detail__lightbox-nav detail__lightbox-nav--next"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setLightboxIndex((current) => {
+                    if (current === null) return current;
+                    return Math.min(current + 1, galleryImages.length - 1);
+                  });
+                }}
+                disabled={lightboxIndex === galleryImages.length - 1}
+                aria-label="Imagen siguiente"
+              >
+                <span aria-hidden="true">→</span>
+              </button>
+            </>
+          ) : null}
+
+          <div className="detail__lightbox-content" onClick={(event) => event.stopPropagation()}>
+            <img className="detail__lightbox-image" src={activeLightboxImage.full} alt={activeLightboxImage.alt} />
+
+            <div className="detail__lightbox-meta">
+              <span className="detail__lightbox-counter">
+                {(lightboxIndex ?? 0) + 1} / {galleryImages.length}
+              </span>
+              {activeLightboxImage.caption ? <p>{activeLightboxImage.caption}</p> : null}
+            </div>
+          </div>
         </div>
       ) : null}
     </>
