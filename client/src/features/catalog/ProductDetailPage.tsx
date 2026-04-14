@@ -19,7 +19,6 @@ import {
 } from '../search/matchContext';
 import {
   getOrderedProjectMedia,
-  getProjectHeroImage,
   getProjectMediaFull,
   getProjectMediaMedium,
 } from '../../shared/lib/projectMedia';
@@ -158,7 +157,6 @@ export function ProductDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [failedImage, setFailedImage] = useState<string | null>(null);
   const [selectedGalleryIndex, setSelectedGalleryIndex] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [canScrollGalleryPrev, setCanScrollGalleryPrev] = useState(false);
@@ -182,7 +180,6 @@ export function ProductDetailPage() {
     setLoading(true);
     setError(null);
     setProject(null);
-    setFailedImage(null);
     setSelectedGalleryIndex(0);
     setLightboxIndex(null);
 
@@ -250,7 +247,6 @@ export function ProductDetailPage() {
   const projectName = project?.name ?? '';
   const technologies = project?.technologies ?? [];
   const galleryMedia = project ? getOrderedProjectMedia(project) : [];
-  const mainImage = project ? getProjectHeroImage(project) ?? null : null;
   const galleryImages: GalleryImage[] = galleryMedia
     .map((media) => ({
       id: media.id,
@@ -263,9 +259,6 @@ export function ProductDetailPage() {
     .filter((item): item is { id: string; preview: string; full: string; alt: string; caption?: string; featured: boolean } =>
       Boolean(item.preview && item.full),
     );
-  const visibleMainImage = failedImage && mainImage === failedImage
-    ? galleryImages.find((item) => item.preview !== failedImage)?.preview ?? null
-    : mainImage;
   const selectedGalleryImage = galleryImages[selectedGalleryIndex] ?? null;
   const activeLightboxImage = lightboxIndex !== null ? galleryImages[lightboxIndex] ?? null : null;
   const businessGoal = project?.profile?.business_goal?.trim();
@@ -286,6 +279,13 @@ export function ProductDetailPage() {
   const showSearchMatchContext = hasExplanation || hasEvidence;
   const lastUpdated = formatTimestamp(project?.updated_at);
   const technologySummary = formatTechnologySummary(technologies);
+  const visibleHeroTechnologies = technologies.slice(0, 4);
+  const remainingHeroTechnologies = Math.max(technologies.length - visibleHeroTechnologies.length, 0);
+  const heroFacts = [
+    hasText(project?.client_name) ? { label: t.detailClient, value: project.client_name.trim() } : null,
+    lastUpdated ? { label: t.detailUpdated, value: lastUpdated } : null,
+    technologySummary ? { label: t.detailTechnologies, value: technologySummary } : null,
+  ].filter((item): item is KeyValueEntry => Boolean(item));
   const overviewItems = [
     { label: t.detailCategory, value: project?.category ?? '' },
     { label: t.detailClient, value: project?.client_name ?? t.detailIndependent },
@@ -396,144 +396,132 @@ export function ProductDetailPage() {
 
         <article className="detail__hero card">
           <div className="detail__hero-content">
-            {project.category ? <p className="eyebrow">{project.category}</p> : null}
-            <h2 className="detail__title">{project.name}</h2>
-            {hasText(project.client_name) ? (
-              <p className="detail__context">{t.detailClientContext} · {project.client_name}</p>
-            ) : null}
-            <p className="detail__summary">{project.description}</p>
+            <div className="detail__hero-intro">
+              <div className="detail__hero-heading">
+                {project.category ? <p className="eyebrow detail__hero-eyebrow">{project.category}</p> : null}
+                {hasText(project.client_name) ? <p className="detail__context detail__context--hero">{t.detailClientContext}</p> : null}
+              </div>
 
-            {technologies.length > 0 ? (
-              <div className="detail__chips" aria-label="Technologies used">
-                {technologies.map((technology) => (
-                  <span key={technology.id} className="detail__chip">
-                    {technology.name}
-                  </span>
-                ))}
+              <h2 className="detail__title">{project.name}</h2>
+
+              {heroFacts.length > 0 ? (
+                <dl className="detail__hero-facts" aria-label="Project highlights">
+                  {heroFacts.map((item) => (
+                    <div key={item.label} className="detail__hero-fact">
+                      <dt>{item.label}</dt>
+                      <dd>{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : null}
+            </div>
+
+            <p className="detail__summary detail__summary--hero">{project.description}</p>
+
+            {visibleHeroTechnologies.length > 0 ? (
+              <div className="detail__hero-tech">
+                <p className="detail__hero-tech-label">{t.detailTechnologies}</p>
+                <div className="detail__chips detail__chips--hero" aria-label="Technologies used">
+                  {visibleHeroTechnologies.map((technology) => (
+                    <span key={technology.id} className="detail__chip">
+                      {technology.name}
+                    </span>
+                  ))}
+
+                  {remainingHeroTechnologies > 0 ? (
+                    <span className="detail__chip detail__chip--muted">+{remainingHeroTechnologies}</span>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </div>
 
           <div className="detail__hero-media">
-            {visibleMainImage ? (
-              <img
-                className="detail__hero-image"
-                src={visibleMainImage}
-                alt={project.name}
-                onError={() => setFailedImage(visibleMainImage)}
-              />
+            {galleryImages.length > 0 ? (
+              <div className="detail__gallery-panel detail__gallery-panel--hero" aria-label="Galería principal del proyecto">
+                {selectedGalleryImage ? (
+                  <div className="detail__gallery-toolbar detail__gallery-toolbar--hero">
+                    <p className="detail__gallery-counter">
+                      {selectedGalleryIndex + 1} / {galleryImages.length}
+                    </p>
+
+                    {selectedGalleryImage.featured ? <span className="detail__gallery-toolbar-badge">Destacada</span> : null}
+                  </div>
+                ) : null}
+
+                <div className="detail__gallery-carousel">
+                  <div className="detail__gallery-stage-shell detail__gallery-stage-shell--hero">
+                    <div className="detail__gallery-viewport" ref={galleryViewportRef}>
+                      <div className="detail__gallery-track">
+                        {galleryImages.map((image, index) => (
+                          <div key={image.id} className="detail__gallery-slide">
+                            <button
+                              type="button"
+                              className="detail__gallery-stage"
+                              onClick={() => setLightboxIndex(index)}
+                              aria-label={`Abrir imagen ${index + 1}`}
+                            >
+                              <img className="detail__gallery-stage-image" src={image.preview} alt={image.alt} loading="lazy" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="detail__gallery-nav" aria-label="Controles de galería">
+                      <button
+                        type="button"
+                        className="detail__gallery-nav-button detail__gallery-nav-button--prev"
+                        onClick={() => galleryViewportApi?.scrollPrev()}
+                        disabled={!canScrollGalleryPrev}
+                        aria-label="Imagen anterior"
+                      >
+                        <span aria-hidden="true">←</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="detail__gallery-nav-button detail__gallery-nav-button--next"
+                        onClick={() => galleryViewportApi?.scrollNext()}
+                        disabled={!canScrollGalleryNext}
+                        aria-label="Imagen siguiente"
+                      >
+                        <span aria-hidden="true">→</span>
+                      </button>
+                    </div>
+
+                    {selectedGalleryImage ? (
+                      <div className="detail__gallery-stage-meta">
+                        <div className="detail__gallery-stage-copy">
+                          {selectedGalleryImage.caption ? (
+                            <p className="detail__gallery-stage-caption">{selectedGalleryImage.caption}</p>
+                          ) : (
+                            <p className="detail__gallery-stage-caption detail__gallery-stage-caption--muted">
+                              Visual {selectedGalleryIndex + 1} del proyecto
+                            </p>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          className="detail__gallery-stage-cta"
+                          onClick={() => setLightboxIndex(selectedGalleryIndex)}
+                        >
+                          Ver completa
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+
+                </div>
+              </div>
             ) : (
-              <div className="detail__hero-image detail__hero-image--placeholder">
+              <div className="detail__gallery-empty detail__hero-image--placeholder">
                 {t.detailVisualUnavailable}
               </div>
             )}
           </div>
         </article>
-
-        {galleryImages.length > 0 ? (
-          <article className="detail__section card detail__gallery-section">
-            <div className="detail__gallery-header">
-              <div>
-                <p className="eyebrow">Gallery</p>
-                <h3 className="detail__gallery-title">Project visuals</h3>
-              </div>
-
-              {selectedGalleryImage ? (
-                <div className="detail__gallery-toolbar">
-                  <p className="detail__gallery-counter">
-                    {selectedGalleryIndex + 1} / {galleryImages.length}
-                  </p>
-
-                  {selectedGalleryImage.featured ? <span className="detail__gallery-toolbar-badge">Destacada</span> : null}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="detail__gallery-carousel">
-              <div className="detail__gallery-stage-shell">
-                <div className="detail__gallery-viewport" ref={galleryViewportRef}>
-                  <div className="detail__gallery-track">
-                    {galleryImages.map((image, index) => (
-                      <div key={image.id} className="detail__gallery-slide">
-                        <button
-                          type="button"
-                          className="detail__gallery-stage"
-                          onClick={() => setLightboxIndex(index)}
-                          aria-label={`Abrir imagen ${index + 1}`}
-                        >
-                          <img className="detail__gallery-stage-image" src={image.preview} alt={image.alt} loading="lazy" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="detail__gallery-nav" aria-label="Controles de galería">
-                  <button
-                    type="button"
-                    className="detail__gallery-nav-button detail__gallery-nav-button--prev"
-                    onClick={() => galleryViewportApi?.scrollPrev()}
-                    disabled={!canScrollGalleryPrev}
-                    aria-label="Imagen anterior"
-                  >
-                    <span aria-hidden="true">←</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="detail__gallery-nav-button detail__gallery-nav-button--next"
-                    onClick={() => galleryViewportApi?.scrollNext()}
-                    disabled={!canScrollGalleryNext}
-                    aria-label="Imagen siguiente"
-                  >
-                    <span aria-hidden="true">→</span>
-                  </button>
-                </div>
-
-                {selectedGalleryImage ? (
-                  <div className="detail__gallery-stage-meta">
-                    <div className="detail__gallery-stage-copy">
-                      {selectedGalleryImage.featured ? <span className="detail__gallery-stage-badge">Destacada</span> : null}
-                      {selectedGalleryImage.caption ? (
-                        <p className="detail__gallery-stage-caption">{selectedGalleryImage.caption}</p>
-                      ) : (
-                        <p className="detail__gallery-stage-caption detail__gallery-stage-caption--muted">
-                          Visual {selectedGalleryIndex + 1} del proyecto
-                        </p>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      className="detail__gallery-stage-cta"
-                      onClick={() => setLightboxIndex(selectedGalleryIndex)}
-                    >
-                      Ver completa
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="detail__gallery-thumbs-rail">
-                <div className="detail__gallery-thumbs" role="tablist" aria-label="Miniaturas del proyecto">
-                  {galleryImages.map((image, index) => (
-                    <button
-                      key={`${image.id}-thumb`}
-                      type="button"
-                      className={selectedGalleryIndex === index ? 'detail__gallery-thumb detail__gallery-thumb--active' : 'detail__gallery-thumb'}
-                      onClick={() => galleryViewportApi?.scrollTo(index)}
-                      aria-label={`Ir a imagen ${index + 1}`}
-                      aria-current={selectedGalleryIndex === index}
-                    >
-                      <span className="detail__gallery-thumb-index">{index + 1}</span>
-                      <img className="detail__gallery-thumb-image" src={image.preview} alt={image.alt} loading="lazy" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </article>
-        ) : null}
 
         <article className="detail__overview-strip card">
           <div className="detail__overview-strip-header">
