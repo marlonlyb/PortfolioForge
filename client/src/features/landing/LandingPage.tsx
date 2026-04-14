@@ -12,36 +12,29 @@ export function LandingPage() {
   }
 
   return (
-    <section className="card-stack landing-page">
-      <article className="card">
-        <p className="eyebrow">PortfolioForge</p>
-        <h2>AI-assisted portfolio platform</h2>
-        <p>
-          Public landing + interactive project catalog + private admin console to curate case
-          studies, technical decisions, media, and future contact leads.
-        </p>
-        <SearchBar
-          value={searchQuery}
-          onQueryChange={setSearchQuery}
-          onSearch={(query) => {
-            setSearchQuery(query);
-            scrollToProjects();
-          }}
-          showSubmit={false}
-          suggestions={suggestions}
-          onSuggestionSelect={(suggestion) => {
-            setSearchQuery(suggestion);
-            scrollToProjects();
-          }}
-        />
-        <div className="landing__sub-actions">
-          <button className="btn btn--ghost" type="button" onClick={scrollToProjects}>
-            Explore projects
-          </button>
+    <>
+      <article className="card landing-hero landing-hero--search landing-page">
+        <div className="landing-hero__content">
+          <div className="landing-hero__search-focus">
+            <SearchBar
+              value={searchQuery}
+              onQueryChange={setSearchQuery}
+              onSearch={(query) => {
+                setSearchQuery(query);
+                scrollToProjects();
+              }}
+              showSubmit={false}
+              suggestions={suggestions}
+              onSuggestionSelect={(suggestion) => {
+                setSearchQuery(suggestion);
+                scrollToProjects();
+              }}
+            />
+          </div>
         </div>
       </article>
 
-      <div id="projects">
+      <div id="projects" className="landing-catalog landing-page">
         <CatalogPage
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
@@ -49,6 +42,6 @@ export function LandingPage() {
           renderSearchControls={false}
         />
       </div>
-    </section>
+    </>
   );
 }

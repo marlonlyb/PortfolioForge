@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { useLocale } from '../../app/providers/LocaleProvider';
 import { searchProjects } from './api';
 import { SearchBar } from './SearchBar';
 import { SearchResultCard } from './SearchResultCard';
@@ -12,6 +13,7 @@ const PAGE_SIZE = 10;
 
 export function SearchResultsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { locale, t } = useLocale();
 
   const query = searchParams.get('q') ?? '';
   const categoryParam = searchParams.get('category') ?? null;
@@ -30,55 +32,53 @@ export function SearchResultsPage() {
     technologies: techParam ? techParam.split(',').filter(Boolean) : [],
   };
 
-  const doSearch = useCallback(
-    async (q: string, f: SearchFiltersType, nextCursor?: string) => {
-      const trimmed = q.trim();
-      if (trimmed.length < 2) {
-        setResults([]);
-        setTotal(0);
-        setCursor(null);
-        return;
-      }
+  async function doSearch(q: string, f: SearchFiltersType, nextCursor?: string) {
+    const trimmed = q.trim();
+    if (trimmed.length < 2) {
+      setResults([]);
+      setTotal(0);
+      setCursor(null);
+      return;
+    }
 
-      const isLoadMore = Boolean(nextCursor);
+    const isLoadMore = Boolean(nextCursor);
+    if (isLoadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+    setError(null);
+
+    try {
+      const response = await searchProjects({
+        q: trimmed,
+        category: f.category ?? undefined,
+        technologies: f.technologies.length > 0 ? f.technologies.join(',') : undefined,
+        pageSize: PAGE_SIZE,
+        cursor: nextCursor ?? undefined,
+        lang: locale,
+      });
+
       if (isLoadMore) {
-        setLoadingMore(true);
+        setResults((prev) => [...prev, ...response.data]);
       } else {
-        setLoading(true);
+        setResults(response.data);
       }
-      setError(null);
-
-      try {
-        const response = await searchProjects({
-          q: trimmed,
-          category: f.category ?? undefined,
-          technologies: f.technologies.length > 0 ? f.technologies.join(',') : undefined,
-          pageSize: PAGE_SIZE,
-          cursor: nextCursor ?? undefined,
-        });
-
-        if (isLoadMore) {
-          setResults((prev) => [...prev, ...response.data]);
-        } else {
-          setResults(response.data);
-        }
-        setTotal(response.meta.total);
-        setCursor(response.meta.cursor);
-      } catch (err: unknown) {
-        setError(err instanceof AppError ? err.message : 'Error al buscar proyectos.');
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    },
-    [],
-  );
+      setTotal(response.meta.total);
+      setCursor(response.meta.cursor);
+    } catch (err: unknown) {
+      setError(err instanceof AppError ? err.message : 'Error al buscar proyectos.');
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }
 
   // Search when query or filters change
   useEffect(() => {
     doSearch(query, filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, categoryParam, techParam]);
+  }, [categoryParam, locale, query, techParam]);
 
   function handleSearch(newQuery: string) {
     setSearchParams((prev) => {
@@ -113,14 +113,24 @@ export function SearchResultsPage() {
 
   return (
     <section className="search-results">
-      <div className="search-results__header">
-        <SearchBar initialQuery={query} onSearch={handleSearch} loading={loading} />
+      <article className="card search-results__hero">
+        <div className="search-results__header">
+          <div>
+            <p className="eyebrow">Public search</p>
+            <h2>Busca proyectos por tecnología, cliente o concepto.</h2>
+            <p className="search-results__intro">
+              La búsqueda pública ahora comparte el mismo lenguaje editorial del catálogo y del
+              detalle para que la exploración se sienta consistente.
+            </p>
+          </div>
+          <SearchBar initialQuery={query} onSearch={handleSearch} loading={loading} />
+        </div>
         {query.trim().length >= 2 && !loading && (
           <p className="search-results__count">
             {total} proyecto{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
           </p>
         )}
-      </div>
+      </article>
 
       {error && (
         <div className="card card--muted" style={{ borderColor: '#e8c4c4', marginBottom: '1rem' }}>
@@ -131,7 +141,7 @@ export function SearchResultsPage() {
       {loading && (
         <div className="search-results__empty">
           <span className="search-bar__spinner" style={{ position: 'static', transform: 'none', margin: '0 auto 1rem' }} />
-          <p>Buscando…</p>
+          <p>{t.searchButton}…</p>
         </div>
       )}
 

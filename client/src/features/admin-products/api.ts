@@ -1,6 +1,7 @@
 import { httpGet, httpPost, httpPut, httpPatch } from '../../shared/api/http';
+import type { PublicContentFieldKey, PublicLocale, TranslationMode } from '../../shared/i18n/config';
 import type { ProductDetail } from '../../shared/types/product';
-import type { ProjectProfileMetrics } from '../../shared/types/project';
+import type { ProjectMedia, ProjectProfileMetrics } from '../../shared/types/project';
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ export interface CreateProductPayload {
   category: string;
   brand?: string;
   images: string[];
+  media?: ProjectMedia[];
   active: boolean;
   variants?: CreateVariantPayload[];
 }
@@ -49,6 +51,7 @@ export interface UpdateProductPayload {
   category: string;
   brand?: string;
   images: string[];
+  media?: ProjectMedia[];
   active: boolean;
   variants?: UpdateVariantPayload[];
 }
@@ -86,11 +89,43 @@ export interface UpdateProjectEnrichmentPayload {
   technology_ids: string[];
 }
 
+export interface LocalizedAdminField {
+  value: unknown;
+  mode: TranslationMode;
+}
+
+export interface AdminProjectLocalizationLocale {
+  locale: PublicLocale;
+  fields: Record<PublicContentFieldKey, LocalizedAdminField>;
+}
+
+export interface AdminProjectLocalizationsResponse {
+  project_id: string;
+  base: Record<PublicContentFieldKey, unknown>;
+  locales: Record<string, AdminProjectLocalizationLocale>;
+}
+
+export interface SaveProjectLocalizationsPayload {
+  fields: Partial<Record<PublicContentFieldKey, unknown>>;
+}
+
 export function updateProjectEnrichment(
   id: string,
   payload: UpdateProjectEnrichmentPayload,
 ): Promise<void> {
   return httpPut<void>(`/api/v1/admin/projects/${id}/enrichment`, payload);
+}
+
+export function fetchProjectLocalizations(id: string): Promise<AdminProjectLocalizationsResponse> {
+  return httpGet<AdminProjectLocalizationsResponse>(`/api/v1/admin/projects/${id}/localizations`);
+}
+
+export function saveProjectLocalizations(
+  id: string,
+  locale: PublicLocale,
+  payload: SaveProjectLocalizationsPayload,
+): Promise<void> {
+  return httpPut<void>(`/api/v1/admin/projects/${id}/localizations/${locale}`, payload);
 }
 
 // ─── API functions ────────────────────────────────────────────────────

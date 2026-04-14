@@ -13,8 +13,11 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/marlonlyb/portfolioforge/domain/ports/embedding"
+	projectPorts "github.com/marlonlyb/portfolioforge/domain/ports/project"
 	"github.com/marlonlyb/portfolioforge/infrastructure/handlers/response"
+	"github.com/marlonlyb/portfolioforge/infrastructure/localization"
 	"github.com/marlonlyb/portfolioforge/infrastructure/postgres"
+	"github.com/marlonlyb/portfolioforge/model"
 )
 
 type projectAdminTx interface {
@@ -28,12 +31,16 @@ type ProjectAdminHandler struct {
 	beginTx         func(context.Context) (projectAdminTx, error)
 	embeddingProv   embedding.EmbeddingProvider
 	semanticEnabled bool
+	projectRepo     projectPorts.ProjectReader
+	localization    *localization.Service
 }
 
 func NewProjectAdminHandler(
 	db *pgxpool.Pool,
 	embeddingProv embedding.EmbeddingProvider,
 	semanticEnabled bool,
+	projectRepo projectPorts.ProjectReader,
+	localizationService *localization.Service,
 ) *ProjectAdminHandler {
 	return &ProjectAdminHandler{
 		beginTx: func(ctx context.Context) (projectAdminTx, error) {
@@ -41,6 +48,8 @@ func NewProjectAdminHandler(
 		},
 		embeddingProv:   embeddingProv,
 		semanticEnabled: semanticEnabled,
+		projectRepo:     projectRepo,
+		localization:    localizationService,
 	}
 }
 
@@ -80,6 +89,11 @@ func (h *ProjectAdminHandler) UpdateProjectEnrichment(c echo.Context) error {
 	}
 
 	ctx := c.Request().Context()
+	previousProject, err := h.projectRepo.GetByID(ctx, projectID)
+	if err != nil {
+		return response.ContractError(500, "unexpected_error", "Error leyendo el estado actual del proyecto: "+err.Error())
+	}
+
 	tx, err := h.beginTx(ctx)
 	if err != nil {
 		return response.ContractError(500, "unexpected_error", "Error actualizando información del proyecto: "+err.Error())
@@ -115,9 +129,73 @@ func (h *ProjectAdminHandler) UpdateProjectEnrichment(c echo.Context) error {
 		return response.ContractError(500, "unexpected_error", "Error confirmando actualización del proyecto: "+err.Error())
 	}
 
+	nextProject := previousProject
+	nextProject.Profile = &model.ProjectProfile{
+		ProjectID:          projectID,
+		BusinessGoal:       req.Profile.BusinessGoal,
+		ProblemStatement:   req.Profile.ProblemStatement,
+		SolutionSummary:    req.Profile.SolutionSummary,
+		Architecture:       req.Profile.Architecture,
+		Integrations:       req.Profile.Integrations,
+		AIUsage:            req.Profile.AIUsage,
+		TechnicalDecisions: req.Profile.TechnicalDecisions,
+		Challenges:         req.Profile.Challenges,
+		Results:            req.Profile.Results,
+		Metrics:            req.Profile.Metrics,
+		Timeline:           req.Profile.Timeline,
+	}
+
+	if err := h.localization.SyncFromSpanish(ctx, projectID, localization.BuildProjectFieldMap(previousProject), localization.BuildProjectFieldMap(nextProject)); err != nil {
+		return response.ContractError(500, "unexpected_error", "Error actualizando traducciones automáticas: "+err.Error())
+	}
+
 	return c.JSON(response.ContractOK(map[string]interface{}{
 		"message": "Proyecto enriquecido exitosamente",
 	}))
+}
+
+func (h *ProjectAdminHandler) GetProjectTranslations(c echo.Context) error {
+	projectID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return response.ContractError(400, "validation_error", "ID de proyecto inválido")
+	}
+
+	project, err := h.projectRepo.GetByID(c.Request().Context(), projectID)
+	if err != nil {
+		return response.ContractError(404, "not_found", "Proyecto no encontrado")
+	}
+
+	payload, err := h.localization.BuildAdminTranslationsResponse(c.Request().Context(), project)
+	if err != nil {
+		return response.ContractError(500, "unexpected_error", "No fue posible obtener las traducciones del proyecto")
+	}
+
+	return c.JSON(response.ContractOK(payload))
+}
+
+func (h *ProjectAdminHandler) SaveProjectTranslations(c echo.Context) error {
+	projectID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return response.ContractError(400, "validation_error", "ID de proyecto inválido")
+	}
+
+	locale := localization.NormalizeLocale(c.Param("locale"))
+	if !model.IsSupportedTranslationLocale(locale) {
+		return response.ContractError(400, "validation_error", "Idioma de traducción inválido")
+	}
+
+	var req struct {
+		Fields map[string]json.RawMessage `json:"fields"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return response.ContractError(400, "validation_error", "Datos de traducción inválidos")
+	}
+
+	if err := h.localization.SaveManualTranslations(c.Request().Context(), projectID, locale, req.Fields); err != nil {
+		return response.ContractError(500, "unexpected_error", "No fue posible guardar las traducciones manuales")
+	}
+
+	return c.JSON(response.ContractOK(map[string]interface{}{"message": "Traducciones guardadas"}))
 }
 
 func (h *ProjectAdminHandler) executeEnrichmentTx(ctx context.Context, tx projectAdminTx, projectID uuid.UUID, req EnrichmentReq) error {

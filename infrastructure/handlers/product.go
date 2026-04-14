@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -11,16 +12,18 @@ import (
 
 	"github.com/marlonlyb/portfolioforge/domain/ports/product"
 	"github.com/marlonlyb/portfolioforge/infrastructure/handlers/response"
+	"github.com/marlonlyb/portfolioforge/infrastructure/localization"
 	"github.com/marlonlyb/portfolioforge/model"
 )
 
 type Product struct {
-	service   product.Service
-	responser response.API
+	service      product.Service
+	responser    response.API
+	localization *localization.Service
 }
 
-func NewProduct(ps product.Service) *Product {
-	return &Product{service: ps}
+func NewProduct(ps product.Service, localizationService *localization.Service) *Product {
+	return &Product{service: ps, localization: localizationService}
 }
 
 func (h *Product) Create(c echo.Context) error {
@@ -34,8 +37,20 @@ func (h *Product) Create(c echo.Context) error {
 		ProductName string          `json:"product_name"`
 		Price       float64         `json:"price"`
 		Images      json.RawMessage `json:"images"`
-		Features    json.RawMessage `json:"features"`
-		Variants    []struct {
+		Media       []struct {
+			ID           string `json:"id"`
+			MediaType    string `json:"media_type"`
+			URL          string `json:"url"`
+			ThumbnailURL string `json:"thumbnail_url"`
+			MediumURL    string `json:"medium_url"`
+			FullURL      string `json:"full_url"`
+			Caption      string `json:"caption"`
+			AltText      string `json:"alt_text"`
+			SortOrder    int    `json:"sort_order"`
+			Featured     bool   `json:"featured"`
+		} `json:"media"`
+		Features json.RawMessage `json:"features"`
+		Variants []struct {
 			SKU      string  `json:"sku"`
 			Color    string  `json:"color"`
 			Size     string  `json:"size"`
@@ -69,9 +84,15 @@ func (h *Product) Create(c echo.Context) error {
 	m := &model.Product{
 		ProductName: name,
 		Description: req.Description,
-		Images:      req.Images,
 		Features:    req.Features,
 	}
+
+	projectMedia := buildProjectMediaPayload(m.ID, req.Media, req.Images)
+	legacyImages, err := marshalProjectLegacyImages(projectMedia, req.Images)
+	if err != nil {
+		return response.ContractError(400, "validation_error", "Debes enviar una lista válida de imágenes")
+	}
+	m.Images = legacyImages
 
 	if len(m.Images) == 0 {
 		m.Images = []byte(`[]`)
@@ -83,9 +104,14 @@ func (h *Product) Create(c echo.Context) error {
 	// Set extended fields via the service
 	m.SetStoreFields(name, req.Category, req.Brand, active)
 
-	err := h.service.Create(m)
+	err = h.service.Create(m)
 	if err != nil {
 		return mapCreateProductError(err)
+	}
+
+	projectMedia = assignProjectMediaProjectID(m.ID, projectMedia)
+	if err = h.service.ReplaceMedia(m.ID, projectMedia); err != nil {
+		return response.ContractError(500, "unexpected_error", "No fue posible guardar la galería del proyecto")
 	}
 
 	// Create variants if provided
@@ -106,6 +132,10 @@ func (h *Product) Create(c echo.Context) error {
 		if err != nil {
 			return mapCreateProductError(err)
 		}
+	}
+
+	if syncErr := h.syncSpanishProjectFields(c.Request().Context(), uuid.Nil, m.ID); syncErr != nil {
+		return response.ContractError(500, "unexpected_error", "No fue posible generar las traducciones automáticas")
 	}
 
 	// Return the full StoreProduct
@@ -237,6 +267,10 @@ func (h *Product) Update(c echo.Context) error {
 		return response.ContractError(400, "validation_error", "El identificador del producto no es válido")
 	}
 
+	previousProjectID := ID
+	previousProject, _ := h.service.GetStoreByIDAdmin(previousProjectID)
+	previousLocalized := storeProductToLocalizedProject(previousProject)
+
 	var req struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
@@ -247,8 +281,20 @@ func (h *Product) Update(c echo.Context) error {
 		ProductName string          `json:"product_name"`
 		Price       float64         `json:"price"`
 		Images      json.RawMessage `json:"images"`
-		Features    json.RawMessage `json:"features"`
-		Variants    []struct {
+		Media       []struct {
+			ID           string `json:"id"`
+			MediaType    string `json:"media_type"`
+			URL          string `json:"url"`
+			ThumbnailURL string `json:"thumbnail_url"`
+			MediumURL    string `json:"medium_url"`
+			FullURL      string `json:"full_url"`
+			Caption      string `json:"caption"`
+			AltText      string `json:"alt_text"`
+			SortOrder    int    `json:"sort_order"`
+			Featured     bool   `json:"featured"`
+		} `json:"media"`
+		Features json.RawMessage `json:"features"`
+		Variants []struct {
 			ID       string  `json:"id"`
 			SKU      string  `json:"sku"`
 			Color    string  `json:"color"`
@@ -277,9 +323,15 @@ func (h *Product) Update(c echo.Context) error {
 		ID:          ID,
 		ProductName: name,
 		Description: req.Description,
-		Images:      req.Images,
 		Features:    req.Features,
 	}
+
+	projectMedia := buildProjectMediaPayload(ID, req.Media, req.Images)
+	legacyImages, marshalErr := marshalProjectLegacyImages(projectMedia, req.Images)
+	if marshalErr != nil {
+		return response.ContractError(400, "validation_error", "Debes enviar una lista válida de imágenes")
+	}
+	m.Images = legacyImages
 
 	if len(m.Images) == 0 {
 		m.Images = []byte(`[]`)
@@ -293,6 +345,10 @@ func (h *Product) Update(c echo.Context) error {
 	err = h.service.Update(m)
 	if err != nil {
 		return h.responser.Error(c, "handlers-Product-Update-h.service.Update()", err)
+	}
+
+	if err = h.service.ReplaceMedia(ID, projectMedia); err != nil {
+		return response.ContractError(500, "unexpected_error", "No fue posible guardar la galería del proyecto")
 	}
 
 	// Replace variants if provided
@@ -317,6 +373,13 @@ func (h *Product) Update(c echo.Context) error {
 		}
 	}
 
+	currentProject, syncErr := h.service.GetStoreByIDAdmin(ID)
+	if syncErr == nil {
+		if err := h.localization.SyncFromSpanish(c.Request().Context(), ID, localization.BuildProjectFieldMap(previousLocalized), localization.BuildProjectFieldMap(storeProductToLocalizedProject(currentProject))); err != nil {
+			return response.ContractError(500, "unexpected_error", "No fue posible actualizar las traducciones automáticas")
+		}
+	}
+
 	// Return the full StoreProduct
 	productData, err := h.service.GetStoreByIDAdmin(ID)
 	if err != nil {
@@ -324,6 +387,117 @@ func (h *Product) Update(c echo.Context) error {
 	}
 
 	return c.JSON(response.ContractOK(productData))
+}
+
+func (h *Product) syncSpanishProjectFields(ctx context.Context, previousProjectID uuid.UUID, currentProjectID uuid.UUID) error {
+	if h.localization == nil {
+		return nil
+	}
+
+	previous := model.Project{}
+	if previousProjectID != uuid.Nil {
+		if previousStore, err := h.service.GetStoreByIDAdmin(previousProjectID); err == nil {
+			previous = storeProductToLocalizedProject(previousStore)
+		}
+	}
+
+	currentStore, err := h.service.GetStoreByIDAdmin(currentProjectID)
+	if err != nil {
+		return err
+	}
+
+	return h.localization.SyncFromSpanish(ctx, currentProjectID, localization.BuildProjectFieldMap(previous), localization.BuildProjectFieldMap(storeProductToLocalizedProject(currentStore)))
+}
+
+func storeProductToLocalizedProject(storeProduct model.StoreProduct) model.Project {
+	return model.Project{
+		ID:          storeProduct.ID,
+		Name:        storeProduct.Name,
+		Description: storeProduct.Description,
+		Category:    storeProduct.Category,
+	}
+}
+
+func buildProjectMediaPayload(projectID uuid.UUID, rawMedia []struct {
+	ID           string `json:"id"`
+	MediaType    string `json:"media_type"`
+	URL          string `json:"url"`
+	ThumbnailURL string `json:"thumbnail_url"`
+	MediumURL    string `json:"medium_url"`
+	FullURL      string `json:"full_url"`
+	Caption      string `json:"caption"`
+	AltText      string `json:"alt_text"`
+	SortOrder    int    `json:"sort_order"`
+	Featured     bool   `json:"featured"`
+}, fallbackImages json.RawMessage) []model.ProjectMedia {
+	if len(rawMedia) == 0 {
+		var legacyImages []string
+		if len(fallbackImages) > 0 {
+			_ = json.Unmarshal(fallbackImages, &legacyImages)
+		}
+		return model.BuildLegacyProjectMedia(projectID, legacyImages)
+	}
+
+	media := make([]model.ProjectMedia, 0, len(rawMedia))
+	for _, item := range rawMedia {
+		if strings.TrimSpace(item.ThumbnailURL) == "" && strings.TrimSpace(item.MediumURL) == "" && strings.TrimSpace(item.FullURL) == "" && strings.TrimSpace(item.URL) == "" {
+			continue
+		}
+
+		mediaID, _ := uuid.Parse(item.ID)
+		media = append(media, model.ProjectMedia{
+			ID:           mediaID,
+			ProjectID:    projectID,
+			MediaType:    item.MediaType,
+			URL:          item.URL,
+			ThumbnailURL: item.ThumbnailURL,
+			MediumURL:    item.MediumURL,
+			FullURL:      item.FullURL,
+			Caption:      item.Caption,
+			AltText:      item.AltText,
+			SortOrder:    item.SortOrder,
+			Featured:     item.Featured,
+		})
+	}
+
+	if len(media) == 0 {
+		var legacyImages []string
+		if len(fallbackImages) > 0 {
+			_ = json.Unmarshal(fallbackImages, &legacyImages)
+		}
+		return model.BuildLegacyProjectMedia(projectID, legacyImages)
+	}
+
+	return media
+}
+
+func marshalProjectLegacyImages(media []model.ProjectMedia, fallback json.RawMessage) (json.RawMessage, error) {
+	var fallbackImages []string
+	if len(fallback) > 0 {
+		if err := json.Unmarshal(fallback, &fallbackImages); err != nil {
+			return nil, err
+		}
+	}
+
+	images := model.BuildProjectImageList(media, fallbackImages)
+	if len(images) == 0 {
+		images = []string{}
+	}
+
+	encoded, err := json.Marshal(images)
+	if err != nil {
+		return nil, err
+	}
+
+	return encoded, nil
+}
+
+func assignProjectMediaProjectID(projectID uuid.UUID, media []model.ProjectMedia) []model.ProjectMedia {
+	for index := range media {
+		media[index].ProjectID = projectID
+	}
+
+	return media
 }
 
 func (h *Product) Delete(c echo.Context) error {

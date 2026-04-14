@@ -1,6 +1,8 @@
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { useLocale } from '../../app/providers/LocaleProvider';
+
 interface SearchBarProps {
   initialQuery?: string;
   value?: string;
@@ -24,6 +26,7 @@ export function SearchBar({
 }: SearchBarProps) {
   const [internalQuery, setInternalQuery] = useState(initialQuery);
   const navigate = useNavigate();
+  const { t } = useLocale();
   const isControlled = value !== undefined;
   const query = isControlled ? value : internalQuery;
 
@@ -71,44 +74,53 @@ export function SearchBar({
         executeSearch(query);
       }}
     >
+      <div className="search-bar__field">
+        <span className="search-bar__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <path d="m16 16 4.5 4.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+          </svg>
+        </span>
+
         <input
           className={showSubmit ? 'search-bar__input' : 'search-bar__input search-bar__input--compact'}
           type="text"
-          placeholder="Busca proyectos por tecnología, cliente o concepto…"
+          placeholder={t.searchPlaceholder}
           value={query}
-        onChange={(e) => updateQuery(e.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={loading}
-        aria-label="Buscar proyectos"
-      />
+          onChange={(e) => updateQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={loading}
+          aria-label={t.searchButton}
+        />
 
-      <div className="search-bar__actions">
-        {query && !loading && (
-          <button
-            className="search-bar__clear"
-            onClick={handleClear}
-            type="button"
-            aria-label="Limpiar búsqueda"
-          >
-            ×
-          </button>
-        )}
+        <div className="search-bar__actions">
+          {query && !loading && (
+            <button
+              className="search-bar__clear"
+              onClick={handleClear}
+              type="button"
+              aria-label={t.searchClear}
+            >
+              ×
+            </button>
+          )}
 
-        {showSubmit && (
-          <button
-            className="btn btn--ghost search-bar__submit"
-            type="submit"
-            disabled={loading || query.trim().length < 2}
-          >
-            Buscar
-          </button>
-        )}
+          {showSubmit && (
+            <button
+              className="btn btn--ghost search-bar__submit"
+              type="submit"
+              disabled={loading || query.trim().length < 2}
+            >
+              {t.searchButton}
+            </button>
+          )}
 
-        {loading && <span className="search-bar__spinner" aria-label="Buscando…" />}
+          {loading && <span className="search-bar__spinner" aria-label="Buscando…" />}
+        </div>
       </div>
 
       {suggestions.length > 0 && query.trim() && (
-        <div className="search-bar__suggestions" aria-label="Sugerencias de búsqueda">
+        <div className="search-bar__suggestions" aria-label={t.searchSuggestionsLabel}>
           {suggestions.map((suggestion) => (
             <button
               key={suggestion}

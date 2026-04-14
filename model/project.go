@@ -22,6 +22,7 @@ type Project struct {
 	// Joined data (not in projects table)
 	Profile      *ProjectProfile `json:"profile,omitempty"`
 	Technologies []Technology    `json:"technologies,omitempty"`
+	Media        []ProjectMedia  `json:"media,omitempty"`
 }
 
 type Projects []Project

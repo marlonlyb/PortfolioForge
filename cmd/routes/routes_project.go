@@ -19,4 +19,6 @@ func ProjectAdmin(e *echo.Echo, h *handlers.ProjectAdminHandler, middlewares ...
 	g := e.Group("/api/v1/admin/projects", middlewares...)
 
 	g.PUT("/:id/enrichment", h.UpdateProjectEnrichment)
+	g.GET("/:id/localizations", h.GetProjectTranslations)
+	g.PUT("/:id/localizations/:locale", h.SaveProjectTranslations)
 }

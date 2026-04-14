@@ -22,6 +22,7 @@ type Repository interface {
 	GetStoreAllAdmin() ([]model.StoreProduct, error)
 
 	CreateVariants(productID uuid.UUID, variants []model.StoreProductVariant) error
+	ReplaceMedia(productID uuid.UUID, media []model.ProjectMedia) error
 	DeleteVariantsByProductID(productID uuid.UUID) error
 }
 
@@ -32,6 +33,7 @@ type Service interface {
 	UpdateStatus(ID uuid.UUID, active bool) (model.StoreProduct, error)
 	CreateVariants(productID uuid.UUID, variants []model.StoreProductVariant) error
 	ReplaceVariants(productID uuid.UUID, variants []model.StoreProductVariant) error
+	ReplaceMedia(productID uuid.UUID, media []model.ProjectMedia) error
 
 	GetByID(ID uuid.UUID) (model.Product, error)
 	GetAll() (model.Products, error)

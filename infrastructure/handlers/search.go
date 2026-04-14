@@ -9,6 +9,7 @@ import (
 
 	"github.com/marlonlyb/portfolioforge/domain/services"
 	"github.com/marlonlyb/portfolioforge/infrastructure/handlers/response"
+	"github.com/marlonlyb/portfolioforge/infrastructure/localization"
 	"github.com/marlonlyb/portfolioforge/model"
 )
 
@@ -16,13 +17,14 @@ import (
 type Search struct {
 	service          *services.Search
 	semanticDegraded bool // true when semantic search is requested but NoOp provider is in use
+	localization     *localization.Service
 }
 
 // NewSearch creates a new Search handler.
 // semanticDegraded should be true when ENABLE_SEMANTIC_SEARCH is true but the
 // embedding provider is a no-op (pgvector unavailable).
-func NewSearch(service *services.Search, semanticDegraded bool) *Search {
-	return &Search{service: service, semanticDegraded: semanticDegraded}
+func NewSearch(service *services.Search, semanticDegraded bool, localizationService *localization.Service) *Search {
+	return &Search{service: service, semanticDegraded: semanticDegraded, localization: localizationService}
 }
 
 // Search handles GET /api/v1/public/search?q=...&category=...&client=...&technologies=...&pageSize=...&cursor=...
@@ -74,6 +76,11 @@ func (h *Search) Search(c echo.Context) error {
 	searchResponse, err := h.service.Search(c.Request().Context(), params)
 	if err != nil {
 		return response.ContractError(500, "unexpected_error", "No fue posible realizar la búsqueda")
+	}
+
+	searchResponse.Data, err = h.localization.LocalizeSearchResults(c.Request().Context(), searchResponse.Data, c.QueryParam("lang"))
+	if err != nil {
+		return response.ContractError(500, "unexpected_error", "No fue posible localizar la búsqueda")
 	}
 
 	// 422: Unprocessable query — after normalization the query is empty (all stop words / special chars stripped)

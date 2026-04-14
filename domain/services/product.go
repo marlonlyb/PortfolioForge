@@ -210,3 +210,12 @@ func (p Product) ReplaceVariants(productID uuid.UUID, variants []model.StoreProd
 
 	return nil
 }
+
+func (p Product) ReplaceMedia(productID uuid.UUID, media []model.ProjectMedia) error {
+	err := p.Repository.ReplaceMedia(productID, media)
+	if err != nil {
+		return fmt.Errorf("%s %w", "Repository.ReplaceMedia()", err)
+	}
+
+	return nil
+}

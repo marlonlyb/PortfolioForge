@@ -42,3 +42,9 @@ type SearchAdminHandler interface {
 	ReembedProject(c echo.Context) error
 	ReembedStale(c echo.Context) error
 }
+
+type SiteSettingsHandlerContract interface {
+	GetPublic(c echo.Context) error
+	GetAdmin(c echo.Context) error
+	SaveAdmin(c echo.Context) error
+}

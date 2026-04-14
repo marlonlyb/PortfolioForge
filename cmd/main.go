@@ -10,6 +10,7 @@ import (
 	infraEmbedding "github.com/marlonlyb/portfolioforge/infrastructure/embedding"
 	"github.com/marlonlyb/portfolioforge/infrastructure/explanation"
 	"github.com/marlonlyb/portfolioforge/infrastructure/handlers"
+	"github.com/marlonlyb/portfolioforge/infrastructure/localization"
 	"github.com/marlonlyb/portfolioforge/infrastructure/postgres"
 )
 
@@ -36,7 +37,6 @@ func main() {
 
 	pRepository := postgres.NewProduct(dbPool)
 	pService := services.NewProduct(pRepository)
-	pHandlers := handlers.NewProduct(pService)
 
 	lService := services.NewLogin(uService)
 	lHandlers := handlers.NewLogin(lService)
@@ -44,7 +44,7 @@ func main() {
 	// Project (public read-side)
 	projRepository := postgres.NewProjectRepository(dbPool)
 	projService := services.NewProject(projRepository)
-	projHandlers := handlers.NewProjectPublic(projService)
+	siteSettingsRepository := postgres.NewSiteSettingsRepository(dbPool)
 
 	// Technology
 	techRepository := postgres.NewTechnologyRepository(dbPool)
@@ -53,6 +53,10 @@ func main() {
 	// Search
 	semanticEnabled := IsSemanticSearchEnabled()
 	openAIKey := os.Getenv("OPENAI_API_KEY")
+	projectLocalizationRepo := postgres.NewProjectLocalizationRepository(dbPool)
+	projectLocalizationService := localization.NewService(projectLocalizationRepo, localization.NewOpenAITranslator(openAIKey))
+	pHandlers := handlers.NewProduct(pService, projectLocalizationService)
+	projHandlers := handlers.NewProjectPublic(projService, projectLocalizationService)
 
 	var embeddingProv embedding.EmbeddingProvider = infraEmbedding.NewNoOpEmbeddingProvider()
 	var explProv searchPorts.ExplanationProvider = explanation.NewTemplateExplanationProvider()
@@ -69,15 +73,16 @@ func main() {
 	searchRepo := postgres.NewSearchRepository(dbPool, semanticEnabled)
 	searchService := services.NewSearch(searchRepo, projRepository, embeddingProv, explProv, semanticEnabled)
 
-	searchHandlers := handlers.NewSearch(searchService, semanticDegraded)
+	searchHandlers := handlers.NewSearch(searchService, semanticDegraded, projectLocalizationService)
 
 	// Search Admin
 	searchAdminHandlers := handlers.NewSearchAdmin(projRepository, searchRepo)
 
 	// Project Admin
-	projAdminHandlers := handlers.NewProjectAdminHandler(dbPool, embeddingProv, semanticEnabled)
+	projAdminHandlers := handlers.NewProjectAdminHandler(dbPool, embeddingProv, semanticEnabled, projRepository, projectLocalizationService)
+	siteSettingsHandlers := handlers.NewSiteSettingsHandler(siteSettingsRepository)
 
-	httpServer := NewServer(uHandlers, pHandlers, lHandlers, projHandlers, searchHandlers, searchAdminHandlers, techHandlers, projAdminHandlers)
+	httpServer := NewServer(uHandlers, pHandlers, lHandlers, projHandlers, searchHandlers, searchAdminHandlers, techHandlers, projAdminHandlers, siteSettingsHandlers)
 	httpServer.Initialize()
 
 }

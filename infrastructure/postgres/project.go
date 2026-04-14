@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -71,6 +72,12 @@ func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (model.Pr
 		p.Technologies = techs
 	}
 
+	media, err := fetchProjectMedia(ctx, r.db, p.ID)
+	if err == nil {
+		p.Media = media
+		rebuildProjectImages(&p)
+	}
+
 	return p, nil
 }
 
@@ -120,6 +127,12 @@ func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (model.P
 		p.Technologies = techs
 	}
 
+	media, err := fetchProjectMedia(ctx, r.db, p.ID)
+	if err == nil {
+		p.Media = media
+		rebuildProjectImages(&p)
+	}
+
 	return p, nil
 }
 
@@ -161,6 +174,11 @@ func (r *ProjectRepository) ListPublished(ctx context.Context) ([]model.Project,
 		techs, err := r.fetchTechnologies(ctx, projects[i].ID)
 		if err == nil {
 			projects[i].Technologies = techs
+		}
+		media, err := fetchProjectMedia(ctx, r.db, projects[i].ID)
+		if err == nil {
+			projects[i].Media = media
+			rebuildProjectImages(&projects[i])
 		}
 	}
 
@@ -232,4 +250,18 @@ func (r *ProjectRepository) fetchTechnologies(ctx context.Context, projectID uui
 	}
 
 	return techs, nil
+}
+
+func rebuildProjectImages(project *model.Project) {
+	legacyImages := make([]string, 0)
+	if len(project.Images) > 0 {
+		_ = json.Unmarshal(project.Images, &legacyImages)
+	}
+
+	rebuilt, err := json.Marshal(model.BuildProjectImageList(project.Media, legacyImages))
+	if err != nil {
+		return
+	}
+
+	project.Images = rebuilt
 }

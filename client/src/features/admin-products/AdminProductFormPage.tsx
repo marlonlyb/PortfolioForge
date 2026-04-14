@@ -3,20 +3,23 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
   createProduct,
+  fetchProjectLocalizations,
   fetchAdminProductById,
   updateProduct,
   fetchProjectReadiness,
   reembedProject,
+  saveProjectLocalizations,
   updateProjectEnrichment,
 } from './api';
 import type {
+  AdminProjectLocalizationsResponse,
   CreateProductPayload,
   UpdateProductPayload,
   ProjectReadiness,
   UpdateProjectEnrichmentProfilePayload,
 } from './api';
 import { fetchAdminTechnologies } from '../admin-technologies/api';
-import type { Technology } from '../../shared/types/project';
+import type { ProjectMedia, Technology } from '../../shared/types/project';
 import { AppError } from '../../shared/api/errors';
 import {
   parseProfileList,
@@ -24,6 +27,168 @@ import {
   serializeProfileList,
   serializeProfileMetrics,
 } from './profileFormSerializers';
+import {
+  PUBLIC_CONTENT_FIELDS,
+  PUBLIC_LOCALE,
+  TRANSLATION_MODE,
+  type PublicContentFieldKey,
+  type PublicLocale,
+} from '../../shared/i18n/config';
+
+const TRANSLATABLE_LOCALES = [PUBLIC_LOCALE.CA, PUBLIC_LOCALE.EN, PUBLIC_LOCALE.DE] as const;
+
+type MediaFormItem = ProjectMedia;
+
+function createEmptyMediaItem(sortOrder = 0): MediaFormItem {
+  return {
+    id: `new-${sortOrder}-${Date.now()}`,
+    project_id: '',
+    media_type: 'image',
+    thumbnail_url: '',
+    medium_url: '',
+    full_url: '',
+    url: '',
+    caption: '',
+    alt_text: '',
+    sort_order: sortOrder,
+    featured: sortOrder === 0,
+  };
+}
+
+function createFallbackMediaItems(images: string[]): MediaFormItem[] {
+  const items = images
+    .filter((image) => image.trim().length > 0)
+    .map((image, index) => ({
+      ...createEmptyMediaItem(index),
+      url: image,
+      thumbnail_url: image,
+      medium_url: image,
+      full_url: image,
+      featured: index === 0,
+    }));
+
+  return items.length > 0 ? items : [createEmptyMediaItem(0)];
+}
+
+function normalizeMediaItems(items: MediaFormItem[]): MediaFormItem[] {
+  const normalized = items
+    .map((item, index) => ({
+      ...item,
+      media_type: item.media_type?.trim() || 'image',
+      url: item.url?.trim() || '',
+      thumbnail_url: item.thumbnail_url?.trim() || '',
+      medium_url: item.medium_url?.trim() || '',
+      full_url: item.full_url?.trim() || '',
+      caption: item.caption?.trim() || '',
+      alt_text: item.alt_text?.trim() || '',
+      sort_order: Number.isFinite(item.sort_order) ? item.sort_order : index,
+    }))
+    .filter((item) => item.thumbnail_url || item.medium_url || item.full_url || item.url);
+
+  if (normalized.length === 0) {
+    return [];
+  }
+
+  const featuredIndex = normalized.findIndex((item) => item.featured);
+
+  return normalized.map((item, index) => ({
+    ...item,
+    featured: featuredIndex >= 0 ? featuredIndex === index : index === 0,
+    sort_order: item.sort_order,
+  }));
+}
+
+function buildLegacyImagesFromMedia(items: MediaFormItem[]): string[] {
+  return normalizeMediaItems(items)
+    .map((item) => item.medium_url || item.full_url || item.thumbnail_url || item.url || '')
+    .filter((item) => item.length > 0);
+}
+
+const TRANSLATION_FIELD_LABELS: Record<PublicContentFieldKey, string> = {
+  name: 'Título',
+  description: 'Descripción',
+  category: 'Categoría',
+  business_goal: 'Business Goal',
+  problem_statement: 'Problem Statement',
+  solution_summary: 'Solution Summary',
+  architecture: 'Architecture',
+  ai_usage: 'AI Usage',
+  integrations: 'Integrations',
+  technical_decisions: 'Technical Decisions',
+  challenges: 'Challenges',
+  results: 'Results',
+  metrics: 'Metrics',
+  timeline: 'Timeline',
+};
+
+const TRANSLATION_LOCALE_LABELS: Record<(typeof TRANSLATABLE_LOCALES)[number], string> = {
+  ca: 'Català',
+  en: 'English',
+  de: 'Deutsch',
+};
+
+type TranslationEditorState = Record<PublicContentFieldKey, string>;
+type TranslationModesState = Record<PublicContentFieldKey, string>;
+
+function createEmptyTranslationEditorState(): TranslationEditorState {
+  return PUBLIC_CONTENT_FIELDS.reduce<TranslationEditorState>((accumulator, fieldKey) => {
+    accumulator[fieldKey] = '';
+    return accumulator;
+  }, {} as TranslationEditorState);
+}
+
+function createEmptyTranslationModesState(): TranslationModesState {
+  return PUBLIC_CONTENT_FIELDS.reduce<TranslationModesState>((accumulator, fieldKey) => {
+    accumulator[fieldKey] = TRANSLATION_MODE.AUTO;
+    return accumulator;
+  }, {} as TranslationModesState);
+}
+
+function serializeTranslationField(fieldKey: PublicContentFieldKey, value: unknown): string {
+  switch (fieldKey) {
+    case 'integrations':
+    case 'technical_decisions':
+    case 'challenges':
+    case 'results':
+    case 'timeline':
+      return serializeProfileList(value);
+    case 'metrics':
+      return serializeProfileMetrics(value);
+    default:
+      return typeof value === 'string' ? value : '';
+  }
+}
+
+function parseTranslationField(fieldKey: PublicContentFieldKey, value: string): unknown {
+  switch (fieldKey) {
+    case 'integrations':
+    case 'technical_decisions':
+    case 'challenges':
+    case 'results':
+    case 'timeline':
+      return parseProfileList(value);
+    case 'metrics':
+      return parseProfileMetrics(value);
+    default:
+      return value.trim();
+  }
+}
+
+function buildTranslationEditorState(response: AdminProjectLocalizationsResponse, locale: PublicLocale): TranslationEditorState {
+  const localeData = response.locales[locale];
+  return PUBLIC_CONTENT_FIELDS.reduce<TranslationEditorState>((accumulator, fieldKey) => {
+    accumulator[fieldKey] = serializeTranslationField(fieldKey, localeData?.fields[fieldKey]?.value ?? response.base[fieldKey]);
+    return accumulator;
+  }, {} as TranslationEditorState);
+}
+
+function buildTranslationModesState(response: AdminProjectLocalizationsResponse, locale: PublicLocale): TranslationModesState {
+  const localeData = response.locales[locale];
+  return PUBLIC_CONTENT_FIELDS.reduce<TranslationModesState>((accumulator, fieldKey) => {
+    accumulator[fieldKey] = localeData?.fields[fieldKey]?.mode ?? TRANSLATION_MODE.AUTO;
+    return accumulator;
+  }, {} as TranslationModesState);
+}
 
 // ─── Readiness badge helpers ──────────────────────────────────────────
 
@@ -96,7 +261,7 @@ export function AdminProductFormPage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [brand, setBrand] = useState('');
-  const [images, setImages] = useState('');
+  const [mediaItems, setMediaItems] = useState<MediaFormItem[]>([createEmptyMediaItem(0)]);
   const [active, setActive] = useState(true);
 
   // Enrichment
@@ -118,6 +283,22 @@ export function AdminProductFormPage() {
   const [readiness, setReadiness] = useState<ProjectReadiness | null>(null);
   const [reembedLoading, setReembedLoading] = useState(false);
   const [reembedMessage, setReembedMessage] = useState<string | null>(null);
+  const [activeTranslationLocale, setActiveTranslationLocale] = useState<(typeof TRANSLATABLE_LOCALES)[number]>(PUBLIC_LOCALE.CA);
+  const [translationEditors, setTranslationEditors] = useState<Record<(typeof TRANSLATABLE_LOCALES)[number], TranslationEditorState>>({
+    ca: createEmptyTranslationEditorState(),
+    en: createEmptyTranslationEditorState(),
+    de: createEmptyTranslationEditorState(),
+  });
+  const [translationModes, setTranslationModes] = useState<Record<(typeof TRANSLATABLE_LOCALES)[number], TranslationModesState>>({
+    ca: createEmptyTranslationModesState(),
+    en: createEmptyTranslationModesState(),
+    de: createEmptyTranslationModesState(),
+  });
+  const [translationSnapshot, setTranslationSnapshot] = useState<Record<(typeof TRANSLATABLE_LOCALES)[number], TranslationEditorState>>({
+    ca: createEmptyTranslationEditorState(),
+    en: createEmptyTranslationEditorState(),
+    de: createEmptyTranslationEditorState(),
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -144,7 +325,7 @@ export function AdminProductFormPage() {
           setDescription(project.description);
           setCategory(project.category);
           setBrand(project.brand ?? '');
-          setImages(project.images.join(', '));
+          setMediaItems(project.media && project.media.length > 0 ? project.media : createFallbackMediaItems(project.images ?? []));
           setActive(project.active);
 
           if (project.profile) {
@@ -173,6 +354,30 @@ export function AdminProductFormPage() {
           setError(err instanceof AppError ? err.message : 'Failed to load project.');
           setLoading(false);
         }
+      });
+
+    fetchProjectLocalizations(id)
+      .then((response) => {
+        if (cancelled) return;
+
+        setTranslationEditors({
+          ca: buildTranslationEditorState(response, PUBLIC_LOCALE.CA),
+          en: buildTranslationEditorState(response, PUBLIC_LOCALE.EN),
+          de: buildTranslationEditorState(response, PUBLIC_LOCALE.DE),
+        });
+        setTranslationModes({
+          ca: buildTranslationModesState(response, PUBLIC_LOCALE.CA),
+          en: buildTranslationModesState(response, PUBLIC_LOCALE.EN),
+          de: buildTranslationModesState(response, PUBLIC_LOCALE.DE),
+        });
+        setTranslationSnapshot({
+          ca: buildTranslationEditorState(response, PUBLIC_LOCALE.CA),
+          en: buildTranslationEditorState(response, PUBLIC_LOCALE.EN),
+          de: buildTranslationEditorState(response, PUBLIC_LOCALE.DE),
+        });
+      })
+      .catch(() => {
+        // ignore translation errors for now
       });
 
     // Fetch readiness in parallel
@@ -223,10 +428,8 @@ export function AdminProductFormPage() {
     setError(null);
     setSubmitting(true);
 
-    const imageList = images
-      .split(',')
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
+    const normalizedMedia = normalizeMediaItems(mediaItems);
+    const imageList = buildLegacyImagesFromMedia(normalizedMedia);
 
     try {
       const enrichmentProfile: UpdateProjectEnrichmentProfilePayload = {
@@ -252,6 +455,7 @@ export function AdminProductFormPage() {
           category,
           brand: brand || undefined,
           images: imageList,
+          media: normalizedMedia,
           active,
         };
         await updateProduct(id, payload);
@@ -262,6 +466,7 @@ export function AdminProductFormPage() {
           category,
           brand: brand || undefined,
           images: imageList,
+          media: normalizedMedia,
           active,
         };
         const created = await createProduct(payload);
@@ -273,13 +478,32 @@ export function AdminProductFormPage() {
           profile: enrichmentProfile,
           technology_ids: selectedTechIds,
         });
+
+        if (isEdit) {
+          for (const locale of TRANSLATABLE_LOCALES) {
+            const fields = translationEditors[locale];
+            const snapshot = translationSnapshot[locale];
+            const changedFields = Object.entries(fields).reduce<Partial<Record<PublicContentFieldKey, unknown>>>((accumulator, [fieldKey, fieldValue]) => {
+              const typedFieldKey = fieldKey as PublicContentFieldKey;
+              if (fieldValue.trim() === snapshot[typedFieldKey].trim()) {
+                return accumulator;
+              }
+              accumulator[typedFieldKey] = parseTranslationField(typedFieldKey, fieldValue);
+              return accumulator;
+            }, {});
+
+            if (Object.keys(changedFields).length > 0) {
+              await saveProjectLocalizations(projectId, locale, { fields: changedFields });
+            }
+          }
+        }
       }
 
       if (isEdit) {
         refreshReadiness();
       }
 
-      navigate('/admin/projects');
+      navigate(isEdit ? '/admin/projects' : `/admin/projects/${projectId}`);
     } catch (err: unknown) {
       setError(err instanceof AppError || err instanceof Error ? err.message : 'Failed to save project.');
     } finally {
@@ -360,16 +584,152 @@ export function AdminProductFormPage() {
               </label>
             </div>
 
-            <label className="admin__label">
-              Main images (comma-separated URLs)
-              <input
-                className="admin__input"
-                type="text"
-                placeholder="https://example.com/hero.jpg, https://example.com/secondary.jpg"
-                value={images}
-                onChange={(e) => setImages(e.target.value)}
-              />
-            </label>
+            <div className="admin__label">
+              <div className="admin__media-header">
+                <span>Optimized media</span>
+                <button
+                  className="btn btn--ghost"
+                  type="button"
+                  onClick={() => setMediaItems((prev) => [...prev, createEmptyMediaItem(prev.length)])}
+                >
+                  Add image
+                </button>
+              </div>
+
+              <span className="admin__field-hint">
+                Usa tres variantes por imagen: _low para catálogo, _medium para galería y _high para vista ampliada. Marca una imagen como principal.
+              </span>
+
+              <div className="admin__media-stack">
+                {mediaItems.map((item, index) => (
+                  <article key={item.id || `media-${index}`} className="admin__media-card">
+                    <div className="admin__media-card-header">
+                      <strong>Image #{index + 1}</strong>
+                      <button
+                        className="btn btn--ghost"
+                        type="button"
+                        disabled={mediaItems.length === 1}
+                        onClick={() =>
+                          setMediaItems((prev) => {
+                            const next = prev.filter((_, currentIndex) => currentIndex !== index);
+                            return next.length > 0 ? next : [createEmptyMediaItem(0)];
+                          })
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
+
+                    <div className="admin__form-row">
+                      <label className="admin__label">
+                        Sort order
+                        <input
+                          className="admin__input"
+                          type="number"
+                          value={item.sort_order}
+                          onChange={(event) => {
+                            const value = Number(event.target.value);
+                            setMediaItems((prev) => prev.map((entry, entryIndex) => (
+                              entryIndex === index ? { ...entry, sort_order: Number.isFinite(value) ? value : index } : entry
+                            )));
+                          }}
+                        />
+                      </label>
+
+                      <label className="admin__label admin__label--checkbox">
+                        <input
+                          type="checkbox"
+                          checked={item.featured}
+                          onChange={() =>
+                            setMediaItems((prev) => prev.map((entry, entryIndex) => ({
+                              ...entry,
+                              featured: entryIndex === index,
+                            })))
+                          }
+                        />
+                        Featured image
+                      </label>
+                    </div>
+
+                    <label className="admin__label">
+                      Low / catálogo URL
+                      <input
+                        className="admin__input"
+                        type="url"
+                        placeholder="https://cdn.example.com/project_low.webp"
+                        value={item.thumbnail_url ?? ''}
+                        onChange={(event) => setMediaItems((prev) => prev.map((entry, entryIndex) => (
+                          entryIndex === index ? { ...entry, thumbnail_url: event.target.value } : entry
+                        )))}
+                      />
+                    </label>
+
+                    <label className="admin__label">
+                      Medium / galería URL
+                      <input
+                        className="admin__input"
+                        type="url"
+                        placeholder="https://cdn.example.com/project_medium.webp"
+                        value={item.medium_url ?? ''}
+                        onChange={(event) => setMediaItems((prev) => prev.map((entry, entryIndex) => (
+                          entryIndex === index ? { ...entry, medium_url: event.target.value } : entry
+                        )))}
+                      />
+                    </label>
+
+                    <label className="admin__label">
+                      High / ampliada URL
+                      <input
+                        className="admin__input"
+                        type="url"
+                        placeholder="https://cdn.example.com/project_high.webp"
+                        value={item.full_url ?? ''}
+                        onChange={(event) => setMediaItems((prev) => prev.map((entry, entryIndex) => (
+                          entryIndex === index ? { ...entry, full_url: event.target.value } : entry
+                        )))}
+                      />
+                    </label>
+
+                    <label className="admin__label">
+                      Legacy / fallback URL (optional)
+                      <input
+                        className="admin__input"
+                        type="url"
+                        placeholder="https://cdn.example.com/project-original.jpg"
+                        value={item.url ?? ''}
+                        onChange={(event) => setMediaItems((prev) => prev.map((entry, entryIndex) => (
+                          entryIndex === index ? { ...entry, url: event.target.value } : entry
+                        )))}
+                      />
+                    </label>
+
+                    <label className="admin__label">
+                      Caption
+                      <input
+                        className="admin__input"
+                        type="text"
+                        value={item.caption ?? ''}
+                        onChange={(event) => setMediaItems((prev) => prev.map((entry, entryIndex) => (
+                          entryIndex === index ? { ...entry, caption: event.target.value } : entry
+                        )))}
+                      />
+                    </label>
+
+                    <label className="admin__label">
+                      Alt text
+                      <input
+                        className="admin__input"
+                        type="text"
+                        value={item.alt_text ?? ''}
+                        onChange={(event) => setMediaItems((prev) => prev.map((entry, entryIndex) => (
+                          entryIndex === index ? { ...entry, alt_text: event.target.value } : entry
+                        )))}
+                      />
+                    </label>
+                  </article>
+                ))}
+              </div>
+            </div>
 
             <label className="admin__label admin__label--checkbox">
               <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
@@ -525,6 +885,85 @@ export function AdminProductFormPage() {
               />
               <span className="admin__field-hint">Una línea por hito o etapa.</span>
             </label>
+          </div>
+
+          <div className="admin__form-section admin__translations-section">
+            <div className="admin__translations-header">
+              <div>
+                <h3>Traducciones persistidas</h3>
+                <p className="admin__field-hint">
+                  Castellano sigue siendo la fuente. Los campos en otros idiomas muestran si están en modo automático o manual.
+                </p>
+              </div>
+              <div className="admin__translation-tabs">
+                {TRANSLATABLE_LOCALES.map((locale) => (
+                  <button
+                    key={locale}
+                    className={activeTranslationLocale === locale ? 'admin__translation-tab admin__translation-tab--active' : 'admin__translation-tab'}
+                    type="button"
+                    onClick={() => setActiveTranslationLocale(locale)}
+                  >
+                    {TRANSLATION_LOCALE_LABELS[locale]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {!isEdit ? (
+              <p className="admin__field-hint">Guarda primero el proyecto en castellano para generar traducciones automáticas.</p>
+            ) : (
+              <div className="admin__translation-grid">
+                {PUBLIC_CONTENT_FIELDS.map((fieldKey) => {
+                  const value = translationEditors[activeTranslationLocale][fieldKey];
+                  const baseMode = translationModes[activeTranslationLocale][fieldKey];
+                  const isDirty = value.trim() !== translationSnapshot[activeTranslationLocale][fieldKey].trim();
+                  const effectiveMode = isDirty ? TRANSLATION_MODE.MANUAL : baseMode;
+                  const isLargeField = !['name', 'category'].includes(fieldKey);
+
+                  return (
+                    <label key={`${activeTranslationLocale}-${fieldKey}`} className="admin__label">
+                      <span className="admin__translation-label-row">
+                        <span>{TRANSLATION_FIELD_LABELS[fieldKey]}</span>
+                        <span className={effectiveMode === TRANSLATION_MODE.MANUAL ? 'admin__translation-mode admin__translation-mode--manual' : 'admin__translation-mode admin__translation-mode--auto'}>
+                          {effectiveMode === TRANSLATION_MODE.MANUAL ? 'manual' : 'auto'}
+                        </span>
+                      </span>
+                      {isLargeField ? (
+                        <textarea
+                          className="admin__textarea"
+                          rows={fieldKey === 'description' ? 5 : 4}
+                          value={value}
+                          onChange={(event) =>
+                            setTranslationEditors((prev) => ({
+                              ...prev,
+                              [activeTranslationLocale]: {
+                                ...prev[activeTranslationLocale],
+                                [fieldKey]: event.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      ) : (
+                        <input
+                          className="admin__input"
+                          type="text"
+                          value={value}
+                          onChange={(event) =>
+                            setTranslationEditors((prev) => ({
+                              ...prev,
+                              [activeTranslationLocale]: {
+                                ...prev[activeTranslationLocale],
+                                [fieldKey]: event.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="admin__form-actions">

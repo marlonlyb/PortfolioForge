@@ -5,7 +5,7 @@
 
 // ─── Variant ──────────────────────────────────────────────────────────
 
-import type { ProjectProfile, Technology } from './project';
+import type { ProjectMedia, ProjectProfile, Technology } from './project';
 
 export interface ProductVariant {
   id: string;
@@ -28,6 +28,7 @@ export interface ProductSummary {
   category: string;
   brand?: string;
   images: string[];
+  media?: ProjectMedia[];
   active: boolean;
   price_from?: number;
   available_colors?: string[];

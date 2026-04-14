@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { useLocale } from '../../app/providers/LocaleProvider';
 import { fetchProjects } from './api';
 import { searchProjects } from '../search/api';
+import {
+  buildSearchMatchContext,
+  type ProjectDetailLocationState,
+  type SearchMatchContext,
+} from '../search/matchContext';
 import type { Project } from '../../shared/types/project';
 import type { SearchResult } from '../../shared/types/search';
 import { AppError } from '../../shared/api/errors';
+import { getProjectCardImage } from '../../shared/lib/projectMedia';
 
 interface CatalogPageProps {
   searchQuery?: string;
@@ -54,7 +61,7 @@ function uniqueSorted(values: (string | undefined)[]): string[] {
 }
 
 function summarize(text?: string): string {
-  if (!text) return 'No summary available.';
+  if (!text) return '';
   return text.length > 140 ? `${text.slice(0, 137)}...` : text;
 }
 
@@ -148,40 +155,75 @@ function buildSuggestions(projects: Project[], category: string, query: string):
     .map((entry) => entry.value);
 }
 
-function renderProductCard(project: Project) {
-  const image = project.images[0];
+function renderProductCard(project: Project, emptySummary: string, linkLabel: string, noImageLabel: string, state?: ProjectDetailLocationState) {
+  const image = getProjectCardImage(project);
 
   return (
-    <Link key={project.id} className="catalog__card" to={`/projects/${project.slug}`}>
-      {image ? (
-        <img className="catalog__card-img" src={image} alt={project.name} loading="lazy" />
-      ) : (
-        <div className="catalog__card-img catalog__card-img--placeholder">No image</div>
-      )}
+    <Link key={project.id} className="catalog__card" to={`/projects/${project.slug}`} state={state}>
+      <div className="catalog__card-media">
+        {image ? (
+          <img className="catalog__card-img" src={image} alt={project.name} loading="lazy" />
+        ) : (
+          <div className="catalog__card-img catalog__card-img--placeholder">{noImageLabel}</div>
+        )}
+      </div>
 
       <div className="catalog__card-body">
-        {project.category ? <p className="eyebrow">{project.category}</p> : null}
+        <div className="catalog__card-meta">
+          {project.category ? <p className="eyebrow">{project.category}</p> : null}
+          {project.client_name ? <p className="catalog__card-client">{project.client_name}</p> : null}
+        </div>
         <h3>{project.name}</h3>
-        {project.client_name ? <p className="detail__brand">{project.client_name}</p> : null}
-        <p>{summarize(project.description)}</p>
+        <p>{summarize(project.description) || emptySummary}</p>
+        <span className="catalog__card-link">{linkLabel}</span>
       </div>
     </Link>
   );
 }
 
-function renderSearchCard(result: SearchResult) {
+function buildProjectDetailLocationState(
+  activeSearchQuery: string,
+  activeSearchCategory: string,
+  searchMatchContext?: SearchMatchContext,
+): ProjectDetailLocationState | undefined {
+  const trimmedQuery = activeSearchQuery.trim();
+
+  if (!searchMatchContext && !trimmedQuery) {
+    return undefined;
+  }
+
+  return {
+    searchMatchContext,
+    activeSearchQuery: trimmedQuery || undefined,
+    activeSearchCategory: activeSearchCategory || undefined,
+  };
+}
+
+function renderSearchCard(result: SearchResult, emptySummary: string, linkLabel: string, noImageLabel: string, state?: ProjectDetailLocationState) {
+  const searchMatchContext = buildSearchMatchContext(result);
+
   return (
-    <Link key={result.id} className="catalog__card" to={`/projects/${result.slug}`}>
-      {result.hero_image ? (
-        <img className="catalog__card-img" src={result.hero_image} alt={result.title} loading="lazy" />
-      ) : (
-        <div className="catalog__card-img catalog__card-img--placeholder">No image</div>
-      )}
+    <Link
+      key={result.id}
+      className="catalog__card"
+      to={`/projects/${result.slug}`}
+      state={state ?? buildProjectDetailLocationState('', '', searchMatchContext)}
+    >
+      <div className="catalog__card-media">
+        {result.hero_image ? (
+          <img className="catalog__card-img" src={result.hero_image} alt={result.title} loading="lazy" />
+        ) : (
+          <div className="catalog__card-img catalog__card-img--placeholder">{noImageLabel}</div>
+        )}
+      </div>
       <div className="catalog__card-body">
-        {result.category ? <p className="eyebrow">{result.category}</p> : null}
+        <div className="catalog__card-meta">
+          {result.category ? <p className="eyebrow">{result.category}</p> : null}
+          {result.client_name ? <p className="catalog__card-client">{result.client_name}</p> : null}
+        </div>
         <h3>{result.title}</h3>
-        {result.client_name ? <p className="detail__brand">{result.client_name}</p> : null}
-        <p>{summarize(result.summary ?? undefined)}</p>
+        <p>{summarize(result.summary ?? undefined) || emptySummary}</p>
+        <span className="catalog__card-link">{linkLabel}</span>
       </div>
     </Link>
   );
@@ -193,6 +235,7 @@ export function CatalogPage({
   onSuggestionsChange,
   renderSearchControls = true,
 }: CatalogPageProps) {
+  const { locale, t } = useLocale();
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -205,7 +248,7 @@ export function CatalogPage({
   useEffect(() => {
     let cancelled = false;
 
-    fetchProjects()
+    fetchProjects(locale)
       .then((response) => {
         if (!cancelled) {
           setProjects(response.items);
@@ -222,7 +265,7 @@ export function CatalogPage({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [locale]);
 
   const isSearchControlled = searchQuery !== undefined;
   const searchDraft = isSearchControlled ? searchQuery : filters.searchDraft;
@@ -263,7 +306,7 @@ export function CatalogPage({
     setSearching(true);
 
     debounceRef.current = setTimeout(() => {
-      searchProjects({ q: trimmedSearchDraft, category: filters.category || undefined })
+        searchProjects({ q: trimmedSearchDraft, category: filters.category || undefined, lang: locale })
         .then((response) => {
           if (searchRequestRef.current !== requestId) return;
           setSearchResults(response.data);
@@ -279,7 +322,7 @@ export function CatalogPage({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [filters.category, trimmedSearchDraft]);
+  }, [filters.category, locale, trimmedSearchDraft]);
 
   const categories = useMemo(
     () => uniqueSorted(projects.map((project) => project.category)),
@@ -320,7 +363,7 @@ export function CatalogPage({
   if (loading) {
     return (
       <section className="catalog">
-        <p className="catalog__loading">Loading projects…</p>
+        <p className="catalog__loading">{t.catalogLoading}</p>
       </section>
     );
   }
@@ -329,7 +372,7 @@ export function CatalogPage({
     return (
       <section className="catalog">
         <div className="card card--muted">
-          <p className="eyebrow">Error</p>
+          <p className="eyebrow">{t.catalogError}</p>
           <p>{error}</p>
         </div>
       </section>
@@ -338,39 +381,53 @@ export function CatalogPage({
 
   return (
     <section className="catalog">
-      <h2>Projects</h2>
+      <div className="catalog__header">
+        <div>
+          <p className="eyebrow">{t.catalogEyebrow}</p>
+          <h2>{t.catalogTitle}</h2>
+        </div>
+        <p className="catalog__intro">{t.catalogIntro}</p>
+      </div>
 
-      <div className="catalog__filters">
-        {renderSearchControls && (
-          <input
-            className="catalog__filter-input"
-            type="text"
-            placeholder="Search by project name…"
-            value={searchDraft}
-            onChange={(event) => updateSearchDraft(event.target.value)}
-            aria-label="Search projects"
-          />
-        )}
+      <div className="catalog__toolbar">
+        <div className="catalog__filters">
+          {renderSearchControls && (
+            <input
+              className="catalog__filter-input"
+              type="text"
+              placeholder={t.catalogSearchPlaceholder}
+              value={searchDraft}
+              onChange={(event) => updateSearchDraft(event.target.value)}
+              aria-label={t.catalogSearchLabel}
+            />
+          )}
 
-        <select
-          className="catalog__filter-select"
-          value={filters.category}
-          onChange={(event) => setFilters((prev) => ({ ...prev, category: event.target.value }))}
-          aria-label="Filter by category"
-        >
-          <option value="">Category</option>
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
+          <select
+            className="catalog__filter-select"
+            value={filters.category}
+            onChange={(event) => setFilters((prev) => ({ ...prev, category: event.target.value }))}
+            aria-label="Filter by category"
+          >
+            <option value="">{t.catalogCategoryPlaceholder}</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
 
-        {(searchDraft || filters.category) && (
-          <button className="catalog__filter-clear" type="button" onClick={clearFilters}>
-            Clear filters
-          </button>
-        )}
+          {(searchDraft || filters.category) && (
+              <button className="catalog__filter-clear" type="button" onClick={clearFilters}>
+                {t.catalogClearFilters}
+              </button>
+          )}
+        </div>
+
+        <p className="catalog__count catalog__count--toolbar">
+          {trimmedSearchDraft
+            ? `${displayedCount} result${displayedCount !== 1 ? 's' : ''}${searching ? ' · refining…' : ''}`
+            : `${filteredProjects.length} project${filteredProjects.length !== 1 ? 's' : ''}`}
+        </p>
       </div>
 
       {renderSearchControls && trimmedSearchDraft && suggestions.length > 0 && (
@@ -390,38 +447,39 @@ export function CatalogPage({
 
       {trimmedSearchDraft ? (
         <>
-          <p className="catalog__count">
-            {displayedCount} resultado{displayedCount !== 1 ? 's' : ''}
-            {searching ? ' · refinando búsqueda…' : ''}
-          </p>
-
           {displayedCount === 0 && !searching && (
             <div className="card card--muted">
-              <p>No projects match your search.</p>
+              <p>{t.catalogNoMatches}</p>
             </div>
           )}
 
           {displayedCount > 0 && (
             <div className="catalog__grid">
               {shouldUseRemoteResults
-                ? searchResults.map((result) => renderSearchCard(result))
-                : localMatches.map((project) => renderProductCard(project))}
+                ? searchResults.map((result) =>
+                    renderSearchCard(
+                      result,
+                      t.catalogNoSummary,
+                      t.catalogOpenProject,
+                      t.catalogNoImage,
+                      buildProjectDetailLocationState(trimmedSearchDraft, filters.category, buildSearchMatchContext(result)),
+                    ),
+                  )
+                : localMatches.map((project) =>
+                    renderProductCard(project, t.catalogNoSummary, t.catalogViewCaseStudy, t.catalogNoImage, buildProjectDetailLocationState(trimmedSearchDraft, filters.category)),
+                  )}
             </div>
           )}
         </>
       ) : (
         <>
-          <p className="catalog__count">
-            {filteredProjects.length} project{filteredProjects.length !== 1 ? 's' : ''}
-          </p>
-
           {filteredProjects.length === 0 ? (
-            <div className="card card--muted">
-              <p>No projects match the current filters.</p>
-            </div>
-          ) : (
-            <div className="catalog__grid">{filteredProjects.map((project) => renderProductCard(project))}</div>
-          )}
+              <div className="card card--muted">
+                <p>{t.catalogNoFilterMatches}</p>
+              </div>
+            ) : (
+              <div className="catalog__grid">{filteredProjects.map((project) => renderProductCard(project, t.catalogNoSummary, t.catalogViewCaseStudy, t.catalogNoImage))}</div>
+            )}
         </>
       )}
     </section>

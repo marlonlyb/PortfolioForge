@@ -181,6 +181,10 @@ func (p Product) DeleteVariantsByProductID(productID uuid.UUID) error {
 	return nil
 }
 
+func (p Product) ReplaceMedia(productID uuid.UUID, media []model.ProjectMedia) error {
+	return replaceProjectMedia(context.Background(), p.db, productID, media)
+}
+
 func (p Product) DeleteVariantByID(ID uuid.UUID) error {
 	_, err := p.db.Exec(
 		context.Background(),
@@ -420,6 +424,11 @@ func (p Product) getStoreProducts(whereClause string, arg interface{}) ([]model.
 	products := make([]model.StoreProduct, 0, len(orderedIDs))
 	for _, id := range orderedIDs {
 		productData := productsMap[id]
+		media, mediaErr := fetchProjectMedia(context.Background(), p.db, id)
+		if mediaErr == nil {
+			productData.Media = media
+			productData.Images = model.BuildProjectImageList(media, productData.Images)
+		}
 		decorateStoreProduct(productData)
 		products = append(products, *productData)
 	}

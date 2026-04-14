@@ -234,10 +234,33 @@ client/src/
 
 - internamente todavía existen nombres heredados como `product` y `brand`
 - el dominio funcional oficial del producto es `project`, `client_name`, `technologies`, `project_profiles`
+- el mapping canónico vigente es: `Client / Context -> brand` (storage/admin legacy, consumo público `client_name`), `Published -> active`, `Technologies -> technology_ids`, `Main images -> media` + lista legacy derivada
+- la carga manual en UI y el workflow automático ya están alineados a nivel lógico, pero todavía no son un contrato 1:1 exacto
+- para proyectos analizados desde repositorio/carpeta, `90. dev_portfolioforge/<Project_Name>.md` pasa a ser la fuente editorial canónica para crear el proyecto en PortfolioForge
+- cuando ese markdown ya existe, la UI debe entenderse como la capa actual de persistencia/ejecución del contenido definido allí, no como la fuente primaria de autoría
+- si el markdown fuente ya existe, volver a analizar el repo completo debe ser secundario y solo justificarse cuando haya evidencia nueva o desactualización real
 - las tablas `orders`, `order_items` y `product_variants` siguen en la base heredada pero no forman parte del portfolio activo
 
 ## Documentación
 
 - `docs/PRD.md` — fuente de verdad del producto
-- `docs/MEMORY-SINCE-SDD-INIT.md` — memoria resumida del trabajo realizado desde `/sdd-init`
-- `docs/PROJECT-CREATION-GUIDE.md` — guía para crear proyectos y entender cómo impactan en el buscador IA
+- `docs/MEMORY-SDD.md` — memoria resumida del trabajo realizado desde `/sdd-init`
+- `docs/MANUAL-PROJECT-INGESTION-WORKFLOW.md` — guía para cargar manualmente proyectos en la UI actual
+- `docs/AUTOMATIC-PROJECT-INGESTION-WORKFLOW.md` — workflow para analizar un repo/carpeta y generar el markdown fuente del proyecto
+
+Regla documental vigente para nuevas altas de proyectos:
+
+- si existe `90. dev_portfolioforge/<Project_Name>.md` dentro del repo/carpeta analizada, ese archivo debe ser el punto de partida preferido para crear el proyecto en PortfolioForge
+- la carga manual en UI debe limitarse a persistir y revisar lo que el markdown fuente ya define, evitando re-redactar o reinventar contenido sin evidencia nueva
+- para nuevos markdowns fuente, la recomendación por defecto ahora es `Published=true`; usar `Published=false` solo cuando exista una decisión explícita de mantener el proyecto interno/no público
+- después de importar o editar un proyecto a partir de ese markdown, hay que verificar el resultado real en payload admin/público o en DB; escribir en la base no alcanza como criterio de éxito
+- la verificación mínima obligatoria es campo por campo contra el `.md`: `title`, `active/published`, `client/context`, tecnologías, narrativa del `profile`, listas enriquecidas, métricas y media principal
+- si el markdown fuente dice `Published=false`, el proyecto no puede quedar activo ni visible públicamente; si el importador cae en fallback, parsea parcialmente o mezcla assets ajenos, eso debe tratarse como fallo y no como import exitoso
+
+### Dirección documental actual
+
+- el estándar editorial ya debe escribir contenido pensando en tres niveles: **search readiness**, **case study readiness** y **assistant readiness**
+- el código actual implementa principalmente **search readiness**; los otros dos niveles hoy son una meta documental/editorial, no una capacidad completa del sistema
+- listas como `Technical Decisions`, `Integrations`, `Results`, `Timeline` y `Challenges` deben redactarse en líneas semi-estructuradas para reforzar recuperación futura y consumo por asistentes
+- `Main images` sigue existiendo por compatibilidad editorial, pero el contrato canónico ya debe pensarse como ítems de media con variantes `low`, `medium`, `high`, más `caption`, `alt_text`, `featured` y `sort_order`
+- la convención pública/canónica por defecto para assets de imagen es `https://mlbautomation.com/dev/portfolioforge/<project-slug>/imagen0<numero>_<low|medium|high>.webp`; `Main images` debe seguir priorizando `_medium` y el mínimo recomendado se mantiene en 5 imágenes cuando haya material suficiente

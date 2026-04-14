@@ -8,6 +8,7 @@ import { ProductDetailPage } from '../features/catalog/ProductDetailPage';
 import { SearchResultsPage } from '../features/search/SearchResultsPage';
 import { AdminProductListPage } from '../features/admin-products/AdminProductListPage';
 import { AdminProductFormPage } from '../features/admin-products/AdminProductFormPage';
+import { AdminSiteSettingsPage } from '../features/admin-settings/AdminSiteSettingsPage';
 import { AdminTechnologyListPage } from '../features/admin-technologies/AdminTechnologyListPage';
 import { AdminTechnologyFormPage } from '../features/admin-technologies/AdminTechnologyFormPage';
 import { RequireAdmin } from '../shared/routing/RequireAdmin';
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
           { path: 'projects', element: <AdminProductListPage /> },
           { path: 'projects/new', element: <AdminProductFormPage /> },
           { path: 'projects/:id', element: <AdminProductFormPage /> },
+          { path: 'settings', element: <AdminSiteSettingsPage /> },
           { path: 'technologies', element: <AdminTechnologyListPage /> },
           { path: 'technologies/new', element: <AdminTechnologyFormPage /> },
           { path: 'technologies/:id', element: <AdminTechnologyFormPage /> },

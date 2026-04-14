@@ -48,6 +48,7 @@ type StoreProduct struct {
 	Category        string                `json:"category"`
 	Brand           string                `json:"brand,omitempty"`
 	Images          []string              `json:"images"`
+	Media           []ProjectMedia        `json:"media,omitempty"`
 	Active          bool                  `json:"active"`
 	PriceFrom       float64               `json:"price_from,omitempty"`
 	AvailableColors []string              `json:"available_colors,omitempty"`

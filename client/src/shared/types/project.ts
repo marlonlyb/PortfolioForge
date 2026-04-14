@@ -58,6 +58,20 @@ export const PROJECT_STATUS = {
 
 export type ProjectStatus = (typeof PROJECT_STATUS)[keyof typeof PROJECT_STATUS];
 
+export interface ProjectMedia {
+  id: string;
+  project_id: string;
+  media_type: string;
+  url?: string;
+  thumbnail_url?: string;
+  medium_url?: string;
+  full_url?: string;
+  caption?: string;
+  alt_text?: string;
+  sort_order: number;
+  featured: boolean;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -69,6 +83,7 @@ export interface Project {
   featured: boolean;
   active: boolean;
   images: string[];
+  media?: ProjectMedia[];
   created_at: number;
   updated_at: number;
   profile?: ProjectProfile;

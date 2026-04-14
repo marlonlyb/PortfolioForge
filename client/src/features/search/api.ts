@@ -1,3 +1,4 @@
+import type { PublicLocale } from '../../shared/i18n/config';
 import { httpGet } from '../../shared/api/http';
 import type { SearchResponse } from '../../shared/types/search';
 
@@ -8,6 +9,7 @@ interface SearchParams {
   technologies?: string;
   pageSize?: number;
   cursor?: string;
+  lang?: PublicLocale;
 }
 
 export function searchProjects(params: SearchParams = {}): Promise<SearchResponse> {
@@ -18,6 +20,7 @@ export function searchProjects(params: SearchParams = {}): Promise<SearchRespons
   if (params.technologies) query.set('technologies', params.technologies);
   if (params.pageSize) query.set('pageSize', String(params.pageSize));
   if (params.cursor) query.set('cursor', params.cursor);
+  if (params.lang) query.set('lang', params.lang);
 
   const qs = query.toString();
   return httpGet<SearchResponse>(`/api/v1/public/search${qs ? `?${qs}` : ''}`);

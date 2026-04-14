@@ -23,6 +23,7 @@ type Server struct {
 	searchAdminH handlers.SearchAdminHandler
 	techHandler  *handlers.TechnologyHandler
 	projAdminH   *handlers.ProjectAdminHandler
+	siteConfigH  *handlers.SiteSettingsHandler
 }
 
 func NewServer(
@@ -34,6 +35,7 @@ func NewServer(
 	searchAdminH handlers.SearchAdminHandler,
 	techHandler *handlers.TechnologyHandler,
 	projAdminH *handlers.ProjectAdminHandler,
+	siteConfigH *handlers.SiteSettingsHandler,
 ) *Server {
 
 	return &Server{
@@ -45,6 +47,7 @@ func NewServer(
 		searchAdminH: searchAdminH,
 		techHandler:  techHandler,
 		projAdminH:   projAdminH,
+		siteConfigH:  siteConfigH,
 	}
 }
 
@@ -70,6 +73,8 @@ func (s *Server) Initialize() {
 
 	routes.ProjectPublic(e, s.projHandler)
 	routes.ProjectAdmin(e, s.projAdminH, authMiddleware.IsValid, authMiddleware.IsAdmin)
+	routes.SiteSettingsPublic(e, s.siteConfigH)
+	routes.SiteSettingsAdmin(e, s.siteConfigH, authMiddleware.IsValid, authMiddleware.IsAdmin)
 
 	routes.SearchPublic(e, s.sHandler)
 	routes.SearchAdmin(e, s.searchAdminH, authMiddleware.IsValid, authMiddleware.IsAdmin)
