@@ -51,6 +51,8 @@ Y además debe producir, aunque sea como secciones de análisis fuente todavía 
 
 Ese archivo debe quedar dentro del repositorio/carpeta analizada y convertirse en la fuente de verdad para la creación del proyecto en PortfolioForge.
 
+Si ese markdown va a alimentar el assistant público del proyecto, además debe existir una URL pública HTTPS estable para servirlo en runtime.
+
 Ruta recomendada dentro del proyecto analizado:
 
 - `90. dev_portfolioforge/<Project_Name>.md`
@@ -228,6 +230,7 @@ Regla operativa:
 
 - ese archivo debe guardarse dentro de la carpeta analizada, idealmente en `90. dev_portfolioforge/`;
 - el archivo generado pasa a ser la fuente editorial canónica del proyecto;
+- cuando el proyecto deba exponer assistant, también debe resolverse cómo publicar ese markdown en una URL HTTPS alcanzable desde el backend;
 - cualquier carga futura a PortfolioForge debe partir de ese `.md`, no de volver a improvisar el contenido desde cero.
 
 ### Paso 9 — Consumir el markdown fuente para crear el proyecto en PortfolioForge
@@ -239,9 +242,10 @@ Orden recomendado:
 1. leer `90. dev_portfolioforge/<Project_Name>.md`;
 2. resolver tecnologías por nombre y mapearlas a `technology_ids` existentes en `/admin/technologies`;
 3. mapear los campos editoriales al contrato real actual del admin/storage;
-4. crear o completar el proyecto en PortfolioForge usando ese archivo como fuente de verdad;
-5. verificar el resultado real en payload admin/público o DB comparándolo contra el markdown fuente;
-6. revisar readiness y publicar cuando corresponda.
+4. si el markdown ya está publicado, escribir esa URL en `source_markdown_url` al crear o actualizar el proyecto;
+5. crear o completar el proyecto en PortfolioForge usando ese archivo como fuente de verdad;
+6. verificar el resultado real en payload admin/público o DB comparándolo contra el markdown fuente;
+7. revisar readiness y publicar cuando corresponda.
 
 Mapping canónico mínimo al momento de cargar:
 
@@ -250,6 +254,7 @@ Mapping canónico mínimo al momento de cargar:
 - `Category` → `category`
 - `Client / Context` → `brand` (legacy) / significado funcional `client/context`
 - `Published` → `active`
+- `Markdown Source URL` → `source_markdown_url` (solo admin/privado; deriva `assistant_available` en público)
 - `Technologies` → resolución de nombres → `technology_ids`
 - `Main images` + `Media items` → `media` + `images` legacy derivado
 - `Business Goal` → `business_goal`
@@ -268,6 +273,12 @@ Regla crítica:
 
 - si el `.md` ya existe en `90. dev_portfolioforge/`, el flujo debe preferir consumir ese archivo antes que reanalizar todo el repositorio;
 - solo se debe volver a analizar la carpeta si el archivo fuente no existe o está desactualizado respecto a la evidencia nueva.
+
+Regla crítica adicional para assistant:
+
+- si existe markdown fuente utilizable para el assistant, el flujo debe establecer una URL pública HTTPS para servirlo;
+- esa URL debe persistirse en `source_markdown_url` durante create/update del proyecto;
+- la ausencia de esa URL implica que el proyecto puede quedar bien importado editorialmente, pero sin assistant público habilitado.
 
 Regla crítica adicional:
 
@@ -413,6 +424,8 @@ Validación mínima obligatoria:
 - `title`;
 - `Published` del markdown contra `active` real;
 - `client/context`;
+- `assistant_available=true` cuando exista `source_markdown_url`;
+- ausencia de `source_markdown_url` en el payload público;
 - tecnologías por cantidad y nombre;
 - campos narrativos principales del profile;
 - listas enriquecidas no vacías cuando la fuente trae contenido;
@@ -423,6 +436,7 @@ Chequeos operativos esperados:
 
 - revisar `GET /api/v1/admin/products/:id` o DB para el estado completo;
 - revisar `GET /api/v1/public/projects/:slug?lang=es` solo si el resultado quedó activo;
+- si existe markdown URL, probar `POST /api/v1/public/projects/:slug/assistant/messages` con una pregunta básica y esperar respuesta útil;
 - si el markdown dice `Published=false`, el chequeo correcto es `404` en el detalle público y ausencia del slug en el listado público.
 
 Reglas duras:
@@ -437,7 +451,13 @@ Además, debe marcar explícitamente el nivel alcanzado de calidad:
 - **case study readiness**: suficiente para sostener una narrativa técnica/delivery sólida;
 - **assistant readiness**: suficiente para extracción y reuso por retrieval/chatbot futuro.
 
-Hoy el producto implementa principalmente el primer nivel; los otros dos son checkpoints editoriales del workflow.
+Hoy el producto implementa principalmente el primer nivel. El assistant ya existe, pero los niveles superiores siguen siendo checkpoints editoriales del workflow.
+
+Caveat operativo importante:
+
+- la calidad runtime del assistant depende de la alcanzabilidad del markdown remoto desde el backend;
+- el sistema actual usa cache local y stale fallback para degradación controlada, pero el source of truth sigue siendo la URL remota configurada;
+- por eso la reachability del host markdown no es opcional: afecta disponibilidad y frescura de respuestas.
 
 ## 7. Ejemplo de referencia metodológica
 
@@ -458,8 +478,9 @@ Hoy el workflow recomendado es:
 3. usar ese archivo como fuente de verdad del proyecto;
 4. crear tecnologías faltantes en `/admin/technologies`;
 5. cargar el proyecto en PortfolioForge a partir del `.md`, siguiendo `docs/MANUAL-PROJECT-INGESTION-WORKFLOW.md` para el mapeo al admin actual;
-6. verificar campo por campo el resultado real de la importación;
-7. revisar readiness y publicar cuando esté listo.
+6. si el markdown debe habilitar assistant, publicar el archivo en una URL HTTPS y persistirla en `source_markdown_url`;
+7. verificar campo por campo el resultado real de la importación, incluyendo assistant;
+8. revisar readiness y publicar cuando esté listo.
 
 ## 9. Prompt operativo recomendado
 
@@ -485,11 +506,12 @@ Reglas:
 - no improvisar contenido fuera de la evidencia real;
 - si el archivo `.md` ya existe, usarlo como entrada principal y solo reanalizar la carpeta si hace falta actualizarlo;
 - mapear los campos editoriales al contrato real actual de PortfolioForge;
+- publicar el markdown fuente en una URL HTTPS y persistirla en `source_markdown_url` cuando se quiera assistant público;
 - resolver tecnologías por nombre hacia `technology_ids`;
 - usar `Main images` como compatibilidad, pero respetar `Media items` como contrato editorial canónico;
 - tratar `Client / Context` como mapping a `brand` legacy;
 - tratar `Published` como mapping a `active`;
-- verificar después de importar el payload admin/público o DB contra el `.md`; si hay fallback parcial o media contaminada, declararlo fallo;
+- verificar después de importar el payload admin/público o DB contra el `.md`; además comprobar `assistant_available`, ausencia pública de `source_markdown_url` y respuesta básica del endpoint assistant cuando aplique; si hay fallback parcial o media contaminada, declararlo fallo;
 - mantener el criterio técnico + gestión + assistant-readiness definido en la documentación.
 ```
 

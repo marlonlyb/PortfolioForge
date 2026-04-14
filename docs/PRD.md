@@ -35,10 +35,12 @@ El sistema ya implementa:
 - sitio público con landing, búsqueda, catálogo y detalle de proyecto;
 - búsqueda híbrida por evidencia real (filtros estructurados + FTS + fuzzy + semántica);
 - explicaciones resumidas por resultado;
+- project assistant por proyecto expuesto en el detalle público cuando existe markdown fuente configurado;
 - admin de proyectos;
 - admin de tecnologías;
 - enriquecimiento de proyectos con `project_profiles`;
-- recomposición del documento de búsqueda y re-embedding.
+- recomposición del documento de búsqueda y re-embedding;
+- revisión visual local basada en Playwright.
 
 ### 4.2 Lo que ahora se está consolidando
 
@@ -74,7 +76,7 @@ Esto convierte al markdown estructurado en la **fuente editorial canónica** ent
 
 Fuera del alcance actual:
 
-- chatbot libre conversacional;
+- chatbot libre conversacional sin grounding ni restricción por proyecto;
 - CMS genérico multi-contenido;
 - gestión completa de proyectos/PM dentro del producto;
 - ingestión totalmente autónoma sin revisión humana;
@@ -136,6 +138,7 @@ Regla importante: **el flujo manual y el flujo automático ya están alineados c
 - **Summary / Description**
 - **Category**
 - **Client / Context**
+- **Markdown Source URL** (`source_markdown_url`) — solo admin/privado; habilita el assistant cuando existe
 - **Main images**
 - **Published**
 
@@ -159,6 +162,8 @@ Regla importante: **el flujo manual y el flujo automático ya están alineados c
 - Las tecnologías deben existir primero en `/admin/technologies`.
 - Los campos actuales de tecnología son: `name`, `category`, `icon`, `brand color`.
 - En el admin actual, `Client / Context` todavía viaja por el campo heredado `brand`, pero el dominio funcional correcto es `client/context`.
+- `source_markdown_url` es privado/admin-only; la API pública no debe exponer esa URL.
+- La API pública sí expone `assistant_available`, derivado de si `source_markdown_url` está presente y no vacío.
 - `Main images` hoy se representa con media optimizada (`thumbnail_url`, `medium_url`, `full_url`) y una lista legacy derivada para compatibilidad.
 - Para nuevas fuentes markdown generadas o normalizadas, la recomendación editorial por defecto es `Published=true`; `Published=false` debe usarse solo cuando se quiera mantener el proyecto fuera de la API pública.
 - La implementación real de búsqueda/readiness actual está optimizada sobre todo para `title`, `description`, `client/context`, `technologies`, `solution_summary`, `architecture`, `business_goal`, `problem_statement` y `ai_usage`; otros bloques ricos siguen siendo valiosos editorialmente, pero hoy no tienen el mismo peso operativo en código.
@@ -266,10 +271,11 @@ El flujo operativo disponible hoy es:
 3. crear el proyecto base en `/admin/projects/new`;
 4. cargar media optimizada y definir la imagen principal;
 5. completar el rich profile usando el markdown fuente como referencia principal;
-6. guardar;
-7. verificar el resultado real en payload admin/público o DB comparando campo por campo contra el markdown fuente;
-8. revisar readiness;
-9. ejecutar re-embed cuando corresponda.
+6. si el proyecto debe tener assistant, guardar `source_markdown_url` con una URL HTTPS pública y alcanzable del markdown fuente;
+7. guardar;
+8. verificar el resultado real en payload admin/público o DB comparando campo por campo contra el markdown fuente;
+9. revisar readiness;
+10. ejecutar re-embed cuando corresponda.
 
 Regla operativa: si el markdown fuente ya existe, la carga manual no debe reinventar contenido ya definido allí. Reanalizar el repositorio completo debe ser una acción secundaria, reservada para cuando falte ese archivo o haya evidencia nueva que lo vuelva incompleto/desactualizado.
 
@@ -281,6 +287,7 @@ Contrato mínimo de verificación post-import:
 - confirmar que `business_goal`, `problem_statement`, `solution_summary`, `architecture`, `ai_usage` y demás bloques ricos no quedaron vacíos si el markdown sí trae contenido;
 - confirmar que `integrations`, `technical_decisions`, `challenges`, `results`, `timeline` y `metrics` preservaron su contenido;
 - confirmar que la galería y `images` legacy usan assets del proyecto correcto y no quedaron contaminadas con placeholders o assets de otro proyecto;
+- si el proyecto debe tener assistant, confirmar `assistant_available=true` en el payload público y confirmar que `source_markdown_url` solo se vea en admin;
 - si el markdown fuente dice `Published=false`, el resultado correcto es proyecto inactivo y ausencia del slug en la API pública.
 
 ## 12. Flujo objetivo de ingestión desde repositorio/carpeta
@@ -308,6 +315,24 @@ Además, el análisis automático debe producir y revisar aunque sea fuera de la
 - evidence sources
 
 Aunque hoy no se persistan como columnas dedicadas, forman parte del análisis mínimo para lograr case studies y futura preparación para asistentes.
+
+## 12.1 Assistant de proyecto implementado hoy
+
+Estado actual implementado:
+
+- el detalle público puede exponer un botón de assistant por proyecto;
+- la API pública responde por `POST /api/v1/public/projects/:slug/assistant/messages`;
+- el backend resuelve el proyecto por slug, verifica `source_markdown_url`, descarga el markdown remoto y selecciona secciones relevantes antes de consultar OpenAI;
+- la URL markdown se mantiene privada/admin-only y la señal pública es `assistant_available`.
+
+Comportamiento operativo actual:
+
+- el assistant usa markdown remoto como source of truth;
+- el backend mantiene cache de chunks de markdown con persistencia temporal local;
+- si el fetch remoto falla o el host está inestable, el backend puede responder usando cache vigente o stale fallback persistido;
+- esto mejora disponibilidad, pero la calidad de respuesta sigue dependiendo de la alcanzabilidad y frescura del markdown remoto.
+
+Importante: esto **sí está implementado hoy**. Lo que todavía queda como evolución futura no es el assistant en sí, sino una capa de retrieval más sofisticada.
 
 ## 13. Requerimientos funcionales
 
@@ -351,6 +376,14 @@ El sistema debe tener una documentación operativa suficiente para que una perso
 
 El producto debe quedar preparado para un flujo futuro donde un análisis de repositorio/carpeta genere la fuente markdown inicial de un proyecto.
 
+### RF7. Assistant markdown-grounded por proyecto
+
+El sistema debe permitir responder preguntas sobre un proyecto específico usando exclusivamente su markdown fuente remoto configurado en `source_markdown_url`, sin exponer esa URL en la API pública.
+
+### RF8. Degradación controlada del assistant
+
+El assistant debe seguir siendo utilizable ante fallas temporales del fetch remoto usando cache local y stale fallback cuando exista contenido previamente resuelto para ese proyecto.
+
 ## 14. Requerimientos no funcionales
 
 - documentación rigurosa y alineada al contrato real del código;
@@ -391,11 +424,11 @@ Exige que el proyecto tenga narrativa técnica y de delivery suficientemente cla
 
 ### 16.3 Assistant readiness
 
-Nivel objetivo para consumo por chatbot/retrieval futuro.
+Nivel mixto entre capacidad implementada y evolución futura.
 
-Exige redacción semi-estructurada, evidencia explícita, naming consistente, metadata de delivery y secciones que permitan extracción/reuso por asistentes sin re-interpretación excesiva.
+Hoy ya existe un assistant por proyecto grounded en markdown remoto, pero la calidad del resultado sigue dependiendo de que la fuente esté bien redactada y sea estable. El nivel completo exige además redacción semi-estructurada, evidencia explícita, naming consistente, metadata de delivery y secciones que permitan extracción/reuso por asistentes sin re-interpretación excesiva.
 
-Situación actual: el producto está más cerca de **search readiness** que de case study readiness completa o assistant readiness completa.
+Situación actual: el producto ya cubre **search readiness** y una primera implementación real de assistant readiness operativa. Aun así, **case study readiness** completa y una assistant readiness más profunda siguen dependiendo de calidad editorial y evolución del retrieval.
 
 ## 17. Esquema objetivo futuro recomendado
 
@@ -443,8 +476,9 @@ Sin presentarlo como implementación vigente, la evolución natural del repo apu
 - normalized keywords / synonyms
 - source provenance
 - extraction quality notes
+- persistencia dedicada de chunks / embeddings de markdown para retrieval más robusto y menos dependiente del fetch remoto en tiempo real
 
-Este target schema es una recomendación de evolución para desacoplar mejor búsqueda, narrativa de case study y consumo por asistentes.
+Este target schema es una recomendación de evolución para desacoplar mejor búsqueda, narrativa de case study y consumo por asistentes. No describe la implementación actual, que hoy usa fetch remoto del markdown con cache local y stale fallback.
 
 ## 18. Estado actual y próximos pasos
 
@@ -452,6 +486,7 @@ Este target schema es una recomendación de evolución para desacoplar mejor bú
 
 - el producto ya soporta búsqueda híbrida y proyectos enriquecidos;
 - el admin ya soporta tecnologías, media optimizada, enrichment y traducciones persistidas;
+- el producto ya soporta assistant por proyecto basado en markdown fuente remoto configurado desde admin;
 - la documentación se está ajustando para reflejar el flujo real de trabajo.
 
 ### Próximos pasos recomendados
@@ -459,6 +494,7 @@ Este target schema es una recomendación de evolución para desacoplar mejor bú
 - formalizar un template markdown estable para nuevas entradas;
 - definir un pipeline repetible de análisis de repositorio/carpeta → markdown fuente;
 - evaluar posterior importador automático desde markdown hacia el admin/API;
+- evaluar persistencia dedicada de chunks/embeddings del markdown fuente para reducir dependencia del fetch remoto en runtime;
 - separar con más claridad perfiles técnicos, de delivery y de retrieval en futuras iteraciones de schema;
 - seguir reduciendo naming heredado (`product`, `brand`) en código interno.
 

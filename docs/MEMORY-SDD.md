@@ -417,3 +417,59 @@ Actualización posterior de estándar documental:
 
 - para nuevos markdowns fuente y templates recomendados, `Published=true` pasa a ser el default editorial;
 - `Published=false` sigue siendo autoritativo cuando se use de forma explícita y debe reflejarse como `active=false` sin excepciones.
+
+## 21. Change SDD archivado: `project-assistant-chat`
+
+El change `project-assistant-chat` quedó implementado y archivado.
+
+Resultado consolidado:
+
+- se agregó assistant por proyecto en el detalle público;
+- el backend expone `POST /api/v1/public/projects/:slug/assistant/messages`;
+- el assistant usa OpenAI solo desde backend y responde grounded en markdown fuente remoto del proyecto;
+- `source_markdown_url` quedó como campo admin/privado;
+- la API pública expone `assistant_available` derivado de ese campo y no debe filtrar la URL privada.
+
+## 22. Revisión visual local con Playwright
+
+Se incorporó revisión visual/local basada en Playwright para cubrir flujos reales del frontend, incluyendo catálogo, detalle de proyecto y presencia del assistant en UI pública cuando corresponde.
+
+Aprendizaje práctico:
+
+- Playwright ya forma parte del stack operativo local para revisión visual y smoke coverage del flujo público.
+
+## 23. Incidentes operativos reales posteriores al assistant
+
+### 23.1 Migración faltante rompía proyectos públicos
+
+Se confirmó un incidente real después de traer el change del assistant:
+
+- los proyectos públicos devolvían `500` hasta aplicar la migración `sqlmigrations/20260414_1100_project_assistant_chat.sql` sobre la base activa;
+- la causa fue dependencia del código nuevo sobre la columna `source_markdown_url` antes de que existiera en esa DB.
+
+Lección consolidada:
+
+- si el código nuevo toca payloads públicos y queries que derivan `assistant_available`, una DB sin esa migración puede romper endpoints públicos existentes.
+
+### 23.2 `assistant_available` dependía de dato real, no solo del código
+
+También se verificó un segundo problema real:
+
+- aunque el feature estuviera desplegado, `assistant_available` seguía en `false` hasta configurar `source_markdown_url` en la DB/admin del proyecto correspondiente;
+- no existe toggle independiente: la disponibilidad pública del assistant se deriva de ese campo.
+
+Lección consolidada:
+
+- parte del rollout del assistant es operacional/editorial, no solo de código; hay que poblar `source_markdown_url` proyecto por proyecto.
+
+### 23.3 Host remoto de markdown inestable desde el backend
+
+Se detectó además una condición real de runtime:
+
+- el host remoto del markdown fue inestable o intermitente desde el entorno backend;
+- para evitar degradación total del assistant, la implementación quedó con cache persistida de chunks y stale fallback local;
+- el source of truth sigue siendo la URL remota, pero el assistant puede seguir respondiendo con contenido previamente resuelto cuando el fetch actual falla.
+
+Decisión operativa/documental:
+
+- la disponibilidad del assistant mejora con cache + stale fallback, pero la calidad y frescura siguen dependiendo de la reachability del markdown remoto.

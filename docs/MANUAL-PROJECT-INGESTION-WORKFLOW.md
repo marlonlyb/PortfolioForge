@@ -187,7 +187,31 @@ Esto está alineado con el comportamiento actual del frontend, que deriva la lis
 
 ---
 
-### 6. Published
+### 6. Markdown source URL (private)
+
+Campo real: `source_markdown_url`
+
+**Qué hace**
+- se guarda solo en admin/privado;
+- no debe exponerse en el payload público del proyecto;
+- cuando existe y no está vacío, el frontend público puede mostrar el entrypoint del project assistant mediante `assistant_available=true`.
+
+**Cuándo completarlo**
+- complétalo cuando el proyecto tenga markdown fuente público y ese proyecto deba exponer assistant en el detalle público;
+- déjalo vacío si no quieres assistant público o si el markdown aún no está listo.
+
+**Validación obligatoria**
+- debe ser URL `https://` válida;
+- debe ser pública y alcanzable desde el backend;
+- debe apuntar al markdown fuente real del proyecto, no a una landing o HTML genérico;
+- debe contener el contenido esperado del case study para grounding del assistant.
+
+**Regla operativa**
+- la visibilidad del assistant se deriva de este campo; no existe un toggle público separado.
+
+---
+
+### 7. Published
 
 Campo real: `active`
 
@@ -204,7 +228,7 @@ Campo real: `active`
 
 Estos campos viven en `project_profiles` + relación con tecnologías.
 
-### 7. Technologies
+### 8. Technologies
 
 Campo real: `technology_ids`
 
@@ -225,7 +249,7 @@ Ejemplos:
 
 ---
 
-### 8. Business Goal
+### 9. Business Goal
 
 Campo real: `business_goal`
 
@@ -239,7 +263,7 @@ Ejemplo:
 
 ---
 
-### 9. Problem Statement
+### 10. Problem Statement
 
 Campo real: `problem_statement`
 
@@ -249,7 +273,7 @@ Campo real: `problem_statement`
 
 ---
 
-### 10. Solution Summary
+### 11. Solution Summary
 
 Campo real: `solution_summary`
 
@@ -262,7 +286,7 @@ Este es uno de los campos más importantes para búsqueda y readiness.
 
 ---
 
-### 11. Architecture
+### 12. Architecture
 
 Campo real: `architecture`
 
@@ -274,7 +298,7 @@ Campo real: `architecture`
 
 ---
 
-### 12. AI Usage
+### 13. AI Usage
 
 Campo real: `ai_usage`
 
@@ -286,7 +310,7 @@ No fuerces este campo si el proyecto no tuvo uso real de IA.
 
 ---
 
-### 13. Integrations
+### 14. Integrations
 
 Campo real: `integrations`
 
@@ -306,7 +330,7 @@ name: REST maintenance API | type: external API | direction: outbound | note: co
 
 ---
 
-### 14. Technical Decisions
+### 15. Technical Decisions
 
 Campo real: `technical_decisions`
 
@@ -326,7 +350,7 @@ decision: persistir eventos críticos para auditoría técnica | why: soportar t
 
 ---
 
-### 15. Challenges
+### 16. Challenges
 
 Campo real: `challenges`
 
@@ -338,7 +362,7 @@ Campo real: `challenges`
 
 ---
 
-### 16. Results
+### 17. Results
 
 Campo real: `results`
 
@@ -350,7 +374,7 @@ Campo real: `results`
 
 ---
 
-### 17. Metrics
+### 18. Metrics
 
 Campo real: `metrics`
 
@@ -376,7 +400,7 @@ Recomendación editorial:
 
 ---
 
-### 18. Timeline
+### 19. Timeline
 
 Campo real: `timeline`
 
@@ -424,9 +448,9 @@ No inventes campos nuevos fuera del contrato actual.
 
 - **Search readiness**: nivel realmente soportado hoy por código y admin.
 - **Case study readiness**: calidad editorial para que el proyecto funcione como caso técnico completo.
-- **Assistant readiness**: calidad de estructuración para futura recuperación/chatbot.
+- **Assistant readiness**: calidad de estructuración para el assistant ya implementado hoy y para futura evolución de retrieval.
 
-Hoy la UI valida y expone sobre todo el primer nivel. Los otros dos dependen de disciplina editorial durante la carga manual.
+Hoy la UI valida y expone sobre todo el primer nivel. El assistant ya existe, pero su calidad sigue dependiendo de disciplina editorial durante la carga manual y de que el markdown remoto sea alcanzable.
 
 ## 5. Orden recomendado de carga manual
 
@@ -435,15 +459,16 @@ Hoy la UI valida y expone sobre todo el primer nivel. Los otros dos dependen de 
 3. completar **Summary / Description**;
 4. definir **Category**;
 5. completar **Client / Context**;
-6. cargar al menos 5 imágenes con variantes `_low`, `_medium`, `_high`;
-7. seleccionar **Technologies**;
-8. redactar **Business Goal** y **Problem Statement**;
-9. redactar muy bien **Solution Summary**;
-10. completar **Architecture**, **AI Usage** si aplica, listas, métricas y timeline;
-11. guardar;
-12. verificar payload admin/DB y, si quedó activo, payload público;
-13. revisar readiness;
-14. re-embed si el proyecto ya está listo para búsqueda.
+6. si el proyecto debe tener assistant, completar **Markdown source URL (private)** con una URL HTTPS pública y alcanzable;
+7. cargar al menos 5 imágenes con variantes `_low`, `_medium`, `_high`;
+8. seleccionar **Technologies**;
+9. redactar **Business Goal** y **Problem Statement**;
+10. redactar muy bien **Solution Summary**;
+11. completar **Architecture**, **AI Usage** si aplica, listas, métricas y timeline;
+12. guardar;
+13. verificar payload admin/DB y, si quedó activo, payload público;
+14. revisar readiness;
+15. re-embed si el proyecto ya está listo para búsqueda.
 
 ## 6. Verificación obligatoria después de guardar
 
@@ -453,6 +478,8 @@ Validación mínima obligatoria:
 
 - `GET /api/v1/admin/products/:id` o revisión equivalente en DB para confirmar campos base y media;
 - `GET /api/v1/public/projects/:slug?lang=es` si `active=true`;
+- si el proyecto debe tener assistant, verificar que admin/DB conserve `source_markdown_url`, que el payload público exponga `assistant_available=true` y que no filtre `source_markdown_url`;
+- si el proyecto debe tener assistant, probar `POST /api/v1/public/projects/:slug/assistant/messages` con una pregunta simple;
 - si el markdown dice `Published=false`, confirmar lo contrario: endpoint público `404` y ausencia del slug en `GET /api/v1/public/projects`.
 
 Checklist campo por campo:
@@ -460,12 +487,16 @@ Checklist campo por campo:
 - [ ] `Title` coincide con la fuente o con la normalización editorial aprobada
 - [ ] `active` respeta `Published`
 - [ ] `Client / Context` no quedó truncado o reemplazado por otro valor incorrecto
+- [ ] `source_markdown_url` quedó cargado correctamente en admin cuando aplica
 - [ ] `Technologies` coincide por cantidad y nombre con el markdown
 - [ ] `Business Goal`, `Problem Statement`, `Solution Summary`, `Architecture` y `AI Usage` no quedaron vacíos si la fuente tiene contenido
 - [ ] `Integrations`, `Technical Decisions`, `Challenges`, `Results`, `Timeline` conservan todos los ítems esperados
 - [ ] `Metrics` conserva sus claves y valores
 - [ ] `images` legacy y `media` apuntan al proyecto correcto
 - [ ] la imagen principal y las primeras imágenes no están contaminadas con assets ajenos o placeholders
+- [ ] el payload público no expone `source_markdown_url`
+- [ ] `assistant_available` coincide con la presencia real de `source_markdown_url`
+- [ ] el assistant responde al menos una pregunta básica cuando está habilitado
 
 Regla de fallo:
 
@@ -482,6 +513,7 @@ entonces la carga debe tratarse como **fallida**, aunque la escritura en DB haya
 - [ ] Category consistente
 - [ ] Client / Context correcto
 - [ ] `active` alineado con `Published` del markdown fuente
+- [ ] `source_markdown_url` configurado si el proyecto debe tener assistant
 - [ ] mínimo 5 imágenes
 - [ ] una imagen marcada como principal
 - [ ] Technologies seleccionadas
@@ -493,6 +525,9 @@ entonces la carga debe tratarse como **fallida**, aunque la escritura en DB haya
 - [ ] Información de delivery/PM distribuida en campos existentes sin perder contexto
 - [ ] payload admin/DB verificado contra el markdown fuente
 - [ ] payload público verificado si el proyecto queda activo
+- [ ] `assistant_available` verificado si existe markdown fuente
+- [ ] `source_markdown_url` sigue siendo admin-only
+- [ ] assistant probado con una pregunta simple si está habilitado
 - [ ] media principal y galería sin assets ajenos ni contaminación de otro proyecto
 
 ## 8. Ejemplo de criterio editorial
