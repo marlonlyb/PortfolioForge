@@ -20,6 +20,7 @@ type Server struct {
 	productCompatH handlers.ProductPublicCompatHandler
 	lHandler       handlers.LoginHandler
 	projHandler    handlers.ProjectPublicHandler
+	assistantH     handlers.ProjectAssistantHandlerContract
 	sHandler       handlers.SearchHandler
 	searchAdminH   handlers.SearchAdminHandler
 	techHandler    *handlers.TechnologyHandler
@@ -33,6 +34,7 @@ func NewServer(
 	productCompatH handlers.ProductPublicCompatHandler,
 	lHandler handlers.LoginHandler,
 	projHandler handlers.ProjectPublicHandler,
+	assistantH handlers.ProjectAssistantHandlerContract,
 	sHandler handlers.SearchHandler,
 	searchAdminH handlers.SearchAdminHandler,
 	techHandler *handlers.TechnologyHandler,
@@ -46,6 +48,7 @@ func NewServer(
 		productCompatH: productCompatH,
 		lHandler:       lHandler,
 		projHandler:    projHandler,
+		assistantH:     assistantH,
 		sHandler:       sHandler,
 		searchAdminH:   searchAdminH,
 		techHandler:    techHandler,
@@ -75,7 +78,7 @@ func (s *Server) Initialize() {
 
 	routes.LoginPublic(e, s.lHandler)
 
-	routes.ProjectPublic(e, s.projHandler)
+	routes.ProjectPublic(e, s.projHandler, s.assistantH)
 	routes.ProjectAdmin(e, s.projAdminH, authMiddleware.IsValid, authMiddleware.IsAdmin)
 	routes.SiteSettingsPublic(e, s.siteConfigH)
 	routes.SiteSettingsAdmin(e, s.siteConfigH, authMiddleware.IsValid, authMiddleware.IsAdmin)

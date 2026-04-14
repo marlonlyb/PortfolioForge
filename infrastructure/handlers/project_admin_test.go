@@ -56,6 +56,30 @@ type stubEmbeddingProvider struct {
 	err  error
 }
 
+type stubProjectAdminReader struct {
+	project model.Project
+}
+
+func (s *stubProjectAdminReader) GetByID(context.Context, uuid.UUID) (model.Project, error) {
+	return s.project, nil
+}
+
+func (s *stubProjectAdminReader) GetBySlug(context.Context, string) (model.Project, error) {
+	return model.Project{}, nil
+}
+
+func (s *stubProjectAdminReader) ListPublished(context.Context) ([]model.Project, error) {
+	return nil, nil
+}
+
+func (s *stubProjectAdminReader) GetTechnologiesByProjectID(context.Context, uuid.UUID) ([]model.Technology, error) {
+	return nil, nil
+}
+
+func (s *stubProjectAdminReader) GetAssistantContextBySlug(context.Context, string) (model.ProjectAssistantContext, error) {
+	return model.ProjectAssistantContext{}, nil
+}
+
 func (s *stubEmbeddingProvider) Generate(_ context.Context, text string) ([]float32, error) {
 	s.text = text
 	if s.err != nil {
@@ -95,6 +119,7 @@ func TestProjectAdminHandler_UpdateProjectEnrichmentFailsWhenEmbeddingGeneration
 		},
 		embeddingProv:   embeddingProv,
 		semanticEnabled: true,
+		projectRepo:     &stubProjectAdminReader{project: model.Project{ID: projectID}},
 	}
 
 	body := `{"profile":{"business_goal":"mejorar conversión","problem_statement":"búsqueda semántica inconsistente","solution_summary":"normaliza evidencia","architecture":"go api","ai_usage":"embeddings"},"technology_ids":["` + uuid.New().String() + `"]}`
@@ -166,6 +191,7 @@ func TestProjectAdminHandler_UpdateProjectEnrichmentSucceedsAndPersistsReembeddi
 		},
 		embeddingProv:   embeddingProv,
 		semanticEnabled: true,
+		projectRepo:     &stubProjectAdminReader{project: model.Project{ID: projectID}},
 	}
 
 	body := `{"profile":{"business_goal":"mejorar conversión","problem_statement":"` + problemStatement + `","solution_summary":"normaliza evidencia","architecture":"go api","ai_usage":"embeddings"},"technology_ids":["` + technologyID.String() + `"]}`

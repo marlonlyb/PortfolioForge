@@ -38,6 +38,10 @@ func (s *stubProjectReader) GetTechnologiesByProjectID(context.Context, uuid.UUI
 	return s.technologiesResp, nil
 }
 
+func (s *stubProjectReader) GetAssistantContextBySlug(context.Context, string) (model.ProjectAssistantContext, error) {
+	return model.ProjectAssistantContext{}, nil
+}
+
 type stubSearchRepository struct {
 	refreshedProjectID uuid.UUID
 	refreshHits        int

@@ -7,18 +7,19 @@ import (
 )
 
 type Project struct {
-	ID          uuid.UUID       `json:"id"`
-	Name        string          `json:"name"`
-	Slug        string          `json:"slug"`
-	Description string          `json:"description"`
-	Category    string          `json:"category"`
-	ClientName  string          `json:"client_name,omitempty"`
-	Status      string          `json:"status"` // draft|published|archived
-	Featured    bool            `json:"featured"`
-	Active      bool            `json:"active"`
-	Images      json.RawMessage `json:"images"`
-	CreatedAt   int64           `json:"created_at"`
-	UpdatedAt   int64           `json:"updated_at"`
+	ID                 uuid.UUID       `json:"id"`
+	Name               string          `json:"name"`
+	Slug               string          `json:"slug"`
+	Description        string          `json:"description"`
+	Category           string          `json:"category"`
+	ClientName         string          `json:"client_name,omitempty"`
+	Status             string          `json:"status"` // draft|published|archived
+	Featured           bool            `json:"featured"`
+	Active             bool            `json:"active"`
+	AssistantAvailable bool            `json:"assistant_available"`
+	Images             json.RawMessage `json:"images"`
+	CreatedAt          int64           `json:"created_at"`
+	UpdatedAt          int64           `json:"updated_at"`
 	// Joined data (not in projects table)
 	Profile      *ProjectProfile `json:"profile,omitempty"`
 	Technologies []Technology    `json:"technologies,omitempty"`

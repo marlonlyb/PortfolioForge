@@ -7,6 +7,8 @@ import { fetchProjectBySlug } from './api';
 import { searchProjects } from '../search/api';
 import type { Project } from '../../shared/types/project';
 import { AppError } from '../../shared/api/errors';
+import { fetchAdminProjectById } from '../admin-projects/api';
+import { ProjectAssistantChat } from './ProjectAssistantChat';
 import {
   buildProjectSearchMatchContext,
   buildSearchMatchContext,
@@ -100,6 +102,14 @@ function formatTechnologySummary(technologies: Project['technologies']): string 
   return `${visibleNames.join(' · ')} +${rest.length}`;
 }
 
+function buildExcerpt(value?: string | null, maxLength = 280): string {
+	const trimmed = value?.trim() ?? '';
+	if (trimmed.length <= maxLength) {
+		return trimmed;
+	}
+	return `${trimmed.slice(0, maxLength).trimEnd()}…`;
+}
+
 function getRenderableList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
 
@@ -111,8 +121,9 @@ function getRenderableList(value: unknown): string[] {
 
       if (isRecord(item)) {
         const primitiveEntries = Object.entries(item)
-          .filter(([, entryValue]) => isPrimitiveValue(entryValue))
-          .map(([entryKey, entryValue]) => `${formatLabel(entryKey)}: ${formatPrimitiveValue(entryValue)}`);
+          .flatMap(([entryKey, entryValue]) => (isPrimitiveValue(entryValue)
+            ? [`${formatLabel(entryKey)}: ${formatPrimitiveValue(entryValue)}`]
+            : []));
 
         return primitiveEntries.length > 0 ? primitiveEntries.join(' · ') : null;
       }
@@ -126,11 +137,12 @@ function getRenderableEntries(value: unknown): KeyValueEntry[] {
   if (!isRecord(value)) return [];
 
   return Object.entries(value)
-    .filter(([, entryValue]) => isPrimitiveValue(entryValue))
-    .map(([entryKey, entryValue]) => ({
-      label: formatLabel(entryKey),
-      value: formatPrimitiveValue(entryValue),
-    }))
+    .flatMap(([entryKey, entryValue]) => (isPrimitiveValue(entryValue)
+      ? [{
+        label: formatLabel(entryKey),
+        value: formatPrimitiveValue(entryValue),
+      }]
+      : []))
     .filter((entry) => entry.value.trim().length > 0);
 }
 
@@ -168,13 +180,14 @@ export function ProductDetailPage() {
   const [resolvedSearchMatchContext, setResolvedSearchMatchContext] = useState<SearchMatchContext | undefined>(
     locationMatchContext,
   );
+  const [adminSourceMarkdownURL, setAdminSourceMarkdownURL] = useState<string | null>(null);
 
   useEffect(() => {
     if (!slug) {
       setLoading(false);
-        setError(t.detailNotFound);
-        return;
-      }
+      setError(t.detailNotFound);
+      return;
+    }
 
     let cancelled = false;
     setLoading(true);
@@ -187,6 +200,7 @@ export function ProductDetailPage() {
       .then((data) => {
         if (!cancelled) {
           setProject(data);
+          setAdminSourceMarkdownURL(null);
           setLoading(false);
         }
       })
@@ -201,6 +215,30 @@ export function ProductDetailPage() {
       cancelled = true;
     };
   }, [locale, slug, t.detailNotFound]);
+
+  useEffect(() => {
+    if (!project?.id || !sessionStorage.getItem('auth_token')) {
+      setAdminSourceMarkdownURL(null);
+      return;
+    }
+
+    let cancelled = false;
+    fetchAdminProjectById(project.id)
+      .then((adminProject) => {
+        if (!cancelled) {
+          setAdminSourceMarkdownURL(adminProject.source_markdown_url?.trim() || null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAdminSourceMarkdownURL(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.id]);
 
   useEffect(() => {
     if (locationMatchContext) {
@@ -247,18 +285,23 @@ export function ProductDetailPage() {
   const projectName = project?.name ?? '';
   const technologies = project?.technologies ?? [];
   const galleryMedia = project ? getOrderedProjectMedia(project) : [];
-  const galleryImages: GalleryImage[] = galleryMedia
-    .map((media) => ({
+  const galleryImages: GalleryImage[] = galleryMedia.flatMap((media) => {
+    const preview = getProjectMediaMedium(media);
+    const full = getProjectMediaFull(media);
+
+    if (!preview || !full) {
+      return [];
+    }
+
+    return [{
       id: media.id,
-      preview: getProjectMediaMedium(media),
-      full: getProjectMediaFull(media),
+      preview,
+      full,
       alt: media.alt_text?.trim() || media.caption?.trim() || projectName,
       caption: media.caption?.trim(),
       featured: media.featured,
-    }))
-    .filter((item): item is { id: string; preview: string; full: string; alt: string; caption?: string; featured: boolean } =>
-      Boolean(item.preview && item.full),
-    );
+    }];
+  });
   const selectedGalleryImage = galleryImages[selectedGalleryIndex] ?? null;
   const activeLightboxImage = lightboxIndex !== null ? galleryImages[lightboxIndex] ?? null : null;
   const businessGoal = project?.profile?.business_goal?.trim();
@@ -310,19 +353,21 @@ export function ProductDetailPage() {
   useEffect(() => {
     if (!galleryViewportApi) return undefined;
 
+    const viewportApi = galleryViewportApi;
+
     function syncGalleryState() {
-      setSelectedGalleryIndex(galleryViewportApi.selectedScrollSnap());
-      setCanScrollGalleryPrev(galleryViewportApi.canScrollPrev());
-      setCanScrollGalleryNext(galleryViewportApi.canScrollNext());
+      setSelectedGalleryIndex(viewportApi.selectedScrollSnap());
+      setCanScrollGalleryPrev(viewportApi.canScrollPrev());
+      setCanScrollGalleryNext(viewportApi.canScrollNext());
     }
 
     syncGalleryState();
-    galleryViewportApi.on('select', syncGalleryState);
-    galleryViewportApi.on('reInit', syncGalleryState);
+    viewportApi.on('select', syncGalleryState);
+    viewportApi.on('reInit', syncGalleryState);
 
     return () => {
-      galleryViewportApi.off('select', syncGalleryState);
-      galleryViewportApi.off('reInit', syncGalleryState);
+      viewportApi.off('select', syncGalleryState);
+      viewportApi.off('reInit', syncGalleryState);
     };
   }, [galleryViewportApi]);
 
@@ -416,7 +461,13 @@ export function ProductDetailPage() {
               ) : null}
             </div>
 
-            <p className="detail__summary detail__summary--hero">{project.description}</p>
+            <p className="detail__summary detail__summary--hero">{buildExcerpt(project.description, 320)}</p>
+
+            {adminSourceMarkdownURL ? (
+              <p className="detail__admin-source">
+                <a href={adminSourceMarkdownURL} target="_blank" rel="noreferrer">Admin markdown source</a>
+              </p>
+            ) : null}
 
             {visibleHeroTechnologies.length > 0 ? (
               <div className="detail__hero-tech">
@@ -547,10 +598,10 @@ export function ProductDetailPage() {
 
             <div className="detail__main-stack">
               {narrativeSections.map((section) => (
-                <CaseStudySection key={section.title} title={section.title} content={section.content} />
-              ))}
+                  <CaseStudySection key={section.title} title={section.title} content={buildExcerpt(section.content, 300)} />
+                ))}
+              </div>
             </div>
-          </div>
 
           <aside className="detail__side-column">
             <div className="detail__column-intro detail__column-intro--side">
@@ -625,6 +676,7 @@ export function ProductDetailPage() {
           </aside>
         </div>
         </section>
+      <ProjectAssistantChat slug={project.slug} enabled={project.assistant_available} lang={locale} />
       {activeLightboxImage ? (
         <div className="detail__lightbox" role="dialog" aria-modal="true" aria-label="Image preview" onClick={() => setLightboxIndex(null)}>
           <button type="button" className="detail__lightbox-close" aria-label="Close image preview" onClick={() => setLightboxIndex(null)}>

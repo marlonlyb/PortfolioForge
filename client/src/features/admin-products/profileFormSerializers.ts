@@ -23,8 +23,9 @@ export function serializeProfileList(value: unknown): string {
 
       if (isRecord(item)) {
         const primitiveEntries = Object.entries(item)
-          .filter(([, entryValue]) => isPrimitiveValue(entryValue))
-          .map(([entryKey, entryValue]) => `${entryKey}: ${formatPrimitiveValue(entryValue)}`);
+          .flatMap(([entryKey, entryValue]) => (isPrimitiveValue(entryValue)
+            ? [`${entryKey}: ${formatPrimitiveValue(entryValue)}`]
+            : []));
 
         return primitiveEntries.length > 0 ? primitiveEntries.join(' · ') : null;
       }
@@ -46,8 +47,9 @@ export function serializeProfileMetrics(value: unknown): string {
   if (!isRecord(value)) return '';
 
   return Object.entries(value)
-    .filter(([, entryValue]) => isPrimitiveValue(entryValue))
-    .map(([entryKey, entryValue]) => `${entryKey}: ${formatPrimitiveValue(entryValue)}`)
+    .flatMap(([entryKey, entryValue]) => (isPrimitiveValue(entryValue)
+      ? [`${entryKey}: ${formatPrimitiveValue(entryValue)}`]
+      : []))
     .join('\n');
 }
 

@@ -28,6 +28,7 @@ var pFields = []string{
 	"category",
 	"brand",
 	"active",
+	"source_markdown_url",
 	"created_at",
 	"updated_at",
 }
@@ -64,6 +65,7 @@ func (p ProjectCatalogRepository) Create(m *model.AdminProjectWrite) error {
 		NullIfEmpty(legacy.Category),
 		NullIfEmpty(legacy.Brand),
 		legacy.Active,
+		NullIfEmpty(legacy.SourceMarkdownURL),
 		legacy.CreatedAt,
 		Int64ToNull(legacy.UpdatedAt),
 	)
@@ -89,6 +91,7 @@ func (p ProjectCatalogRepository) Update(m *model.AdminProjectWrite) error {
 		NullIfEmpty(legacy.Category),
 		NullIfEmpty(legacy.Brand),
 		legacy.Active,
+		NullIfEmpty(legacy.SourceMarkdownURL),
 		legacy.UpdatedAt,
 		legacy.ID,
 	)
@@ -285,6 +288,7 @@ func (p ProjectCatalogRepository) getStoreProducts(whereClause string, arg inter
 			p.description,
 			COALESCE(NULLIF(p.category, ''), 'general') AS category,
 			COALESCE(p.brand, '') AS brand,
+			COALESCE(p.source_markdown_url, '') AS source_markdown_url,
 			p.images,
 			p.active,
 			v.id,
@@ -317,22 +321,23 @@ func (p ProjectCatalogRepository) getStoreProducts(whereClause string, arg inter
 
 	for rows.Next() {
 		var (
-			productID   uuid.UUID
-			name        string
-			slug        string
-			description string
-			category    string
-			brand       string
-			imagesRaw   []byte
-			active      bool
-			variantID   uuid.NullUUID
-			variantProd uuid.NullUUID
-			sku         sql.NullString
-			color       sql.NullString
-			size        sql.NullString
-			price       sql.NullFloat64
-			stock       sql.NullInt64
-			imageURL    sql.NullString
+			productID         uuid.UUID
+			name              string
+			slug              string
+			description       string
+			category          string
+			brand             string
+			sourceMarkdownURL string
+			imagesRaw         []byte
+			active            bool
+			variantID         uuid.NullUUID
+			variantProd       uuid.NullUUID
+			sku               sql.NullString
+			color             sql.NullString
+			size              sql.NullString
+			price             sql.NullFloat64
+			stock             sql.NullInt64
+			imageURL          sql.NullString
 		)
 
 		if err = rows.Scan(
@@ -342,6 +347,7 @@ func (p ProjectCatalogRepository) getStoreProducts(whereClause string, arg inter
 			&description,
 			&category,
 			&brand,
+			&sourceMarkdownURL,
 			&imagesRaw,
 			&active,
 			&variantID,
@@ -364,15 +370,16 @@ func (p ProjectCatalogRepository) getStoreProducts(whereClause string, arg inter
 			}
 
 			productData = &model.StoreProduct{
-				ID:          productID,
-				Name:        name,
-				Slug:        slugify(slug),
-				Description: description,
-				Category:    category,
-				Brand:       strings.TrimSpace(brand),
-				Images:      images,
-				Active:      active,
-				Variants:    []model.StoreProductVariant{},
+				ID:                productID,
+				Name:              name,
+				Slug:              slugify(slug),
+				Description:       description,
+				Category:          category,
+				Brand:             strings.TrimSpace(brand),
+				SourceMarkdownURL: strings.TrimSpace(sourceMarkdownURL),
+				Images:            images,
+				Active:            active,
+				Variants:          []model.StoreProductVariant{},
 			}
 			productsMap[productID] = productData
 			orderedIDs = append(orderedIDs, productID)

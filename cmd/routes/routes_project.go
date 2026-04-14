@@ -7,11 +7,12 @@ import (
 )
 
 // ProjectPublic registers public project read routes.
-func ProjectPublic(e *echo.Echo, h handlers.ProjectPublicHandler) {
+func ProjectPublic(e *echo.Echo, h handlers.ProjectPublicHandler, assistant handlers.ProjectAssistantHandlerContract) {
 	g := e.Group("/api/v1/public/projects")
 
 	g.GET("", h.ListPublished)
 	g.GET("/:slug", h.GetBySlug)
+	g.POST("/:slug/assistant/messages", assistant.CreateMessage)
 }
 
 // ProjectAdmin defines admin routes for project enrichment.

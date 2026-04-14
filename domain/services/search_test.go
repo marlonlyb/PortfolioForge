@@ -46,6 +46,10 @@ func (m *mockProjectReader) GetTechnologiesByProjectID(_ context.Context, _ uuid
 	return m.techs, nil
 }
 
+func (m *mockProjectReader) GetAssistantContextBySlug(_ context.Context, _ string) (model.ProjectAssistantContext, error) {
+	return model.ProjectAssistantContext{}, nil
+}
+
 type mockEmbeddingProv struct{}
 
 func (m *mockEmbeddingProv) Generate(_ context.Context, _ string) ([]float32, error) {

@@ -12,6 +12,7 @@ import (
 	"github.com/marlonlyb/portfolioforge/infrastructure/handlers"
 	"github.com/marlonlyb/portfolioforge/infrastructure/localization"
 	"github.com/marlonlyb/portfolioforge/infrastructure/postgres"
+	"github.com/marlonlyb/portfolioforge/infrastructure/projectassistant"
 )
 
 func main() {
@@ -59,6 +60,11 @@ func main() {
 	projectCatalogHandlers := handlers.NewProjectCatalog(projectCatalogService, projectLocalizationService)
 	productPublicCompatHandlers := handlers.NewProductPublicCompat(productPublicCompatService)
 	projHandlers := handlers.NewProjectPublic(projService, projectLocalizationService)
+	markdownCache := projectassistant.NewDefaultMarkdownCache()
+	assistantFetcher := projectassistant.NewMarkdownFetcher(markdownCache)
+	assistantProvider := projectassistant.NewOpenAIProvider(openAIKey)
+	assistantService := services.NewProjectAssistant(projRepository, assistantFetcher, assistantProvider)
+	assistantHandlers := handlers.NewProjectAssistantHandler(assistantService)
 
 	var embeddingProv embedding.EmbeddingProvider = infraEmbedding.NewNoOpEmbeddingProvider()
 	var explProv searchPorts.ExplanationProvider = explanation.NewTemplateExplanationProvider()
@@ -84,7 +90,7 @@ func main() {
 	projAdminHandlers := handlers.NewProjectAdminHandler(dbPool, embeddingProv, semanticEnabled, projRepository, projectLocalizationService)
 	siteSettingsHandlers := handlers.NewSiteSettingsHandler(siteSettingsRepository)
 
-	httpServer := NewServer(uHandlers, projectCatalogHandlers, productPublicCompatHandlers, lHandlers, projHandlers, searchHandlers, searchAdminHandlers, techHandlers, projAdminHandlers, siteSettingsHandlers)
+	httpServer := NewServer(uHandlers, projectCatalogHandlers, productPublicCompatHandlers, lHandlers, projHandlers, assistantHandlers, searchHandlers, searchAdminHandlers, techHandlers, projAdminHandlers, siteSettingsHandlers)
 	httpServer.Initialize()
 
 }

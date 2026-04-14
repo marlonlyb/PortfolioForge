@@ -82,6 +82,7 @@ export interface Project {
   status: ProjectStatus;
   featured: boolean;
   active: boolean;
+  assistant_available: boolean;
   images: string[];
   media?: ProjectMedia[];
   created_at: number;
@@ -92,4 +93,19 @@ export interface Project {
 
 export interface ProjectListResponse {
   items: Project[];
+}
+
+export interface ProjectAssistantMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ProjectAssistantRequest {
+  question: string;
+  history: ProjectAssistantMessage[];
+  lang: string;
+}
+
+export interface ProjectAssistantResponse {
+  answer: string;
 }

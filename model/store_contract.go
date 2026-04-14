@@ -45,17 +45,18 @@ type StoreProductVariant struct {
 // StoreProduct is the legacy storage-shaped read contract used by compat routes.
 // Prefer Project/AdminProject contracts outside the compat layer.
 type StoreProduct struct {
-	ID              uuid.UUID             `json:"id"`
-	Name            string                `json:"name"`
-	Slug            string                `json:"slug"`
-	Description     string                `json:"description"`
-	Category        string                `json:"category"`
-	Brand           string                `json:"brand,omitempty"`
-	Images          []string              `json:"images"`
-	Media           []ProjectMedia        `json:"media,omitempty"`
-	Active          bool                  `json:"active"`
-	PriceFrom       float64               `json:"price_from,omitempty"`
-	AvailableColors []string              `json:"available_colors,omitempty"`
-	AvailableSizes  []string              `json:"available_sizes,omitempty"`
-	Variants        []StoreProductVariant `json:"variants,omitempty"`
+	ID                uuid.UUID             `json:"id"`
+	Name              string                `json:"name"`
+	Slug              string                `json:"slug"`
+	Description       string                `json:"description"`
+	Category          string                `json:"category"`
+	Brand             string                `json:"brand,omitempty"`
+	SourceMarkdownURL string                `json:"source_markdown_url,omitempty"`
+	Images            []string              `json:"images"`
+	Media             []ProjectMedia        `json:"media,omitempty"`
+	Active            bool                  `json:"active"`
+	PriceFrom         float64               `json:"price_from,omitempty"`
+	AvailableColors   []string              `json:"available_colors,omitempty"`
+	AvailableSizes    []string              `json:"available_sizes,omitempty"`
+	Variants          []StoreProductVariant `json:"variants,omitempty"`
 }

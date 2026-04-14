@@ -10,16 +10,17 @@ import (
 // AdminProjectWrite is the canonical admin write contract for projects.
 // Legacy aliases remain accepted during the products->projects transition.
 type AdminProjectWrite struct {
-	ID          uuid.UUID                  `json:"id,omitempty"`
-	Name        string                     `json:"name"`
-	Description string                     `json:"description"`
-	Category    string                     `json:"category"`
-	ClientName  string                     `json:"client_name,omitempty"`
-	Active      *bool                      `json:"active"`
-	Images      json.RawMessage            `json:"images"`
-	Media       []AdminProjectMediaInput   `json:"media"`
-	Features    json.RawMessage            `json:"features"`
-	Variants    []AdminProjectVariantInput `json:"variants"`
+	ID                uuid.UUID                  `json:"id,omitempty"`
+	Name              string                     `json:"name"`
+	Description       string                     `json:"description"`
+	Category          string                     `json:"category"`
+	ClientName        string                     `json:"client_name,omitempty"`
+	SourceMarkdownURL string                     `json:"source_markdown_url,omitempty"`
+	Active            *bool                      `json:"active"`
+	Images            json.RawMessage            `json:"images"`
+	Media             []AdminProjectMediaInput   `json:"media"`
+	Features          json.RawMessage            `json:"features"`
+	Variants          []AdminProjectVariantInput `json:"variants"`
 
 	// Legacy request aliases kept for backward compatibility.
 	ProductName string `json:"product_name,omitempty"`
@@ -55,20 +56,21 @@ type AdminProjectVariantInput struct {
 // AdminProject is the canonical admin read contract for projects.
 // Legacy aliases remain serialized during the compatibility window.
 type AdminProject struct {
-	ID              uuid.UUID             `json:"id"`
-	Name            string                `json:"name"`
-	Slug            string                `json:"slug"`
-	Description     string                `json:"description"`
-	Category        string                `json:"category"`
-	ClientName      string                `json:"client_name,omitempty"`
-	Brand           string                `json:"brand,omitempty"`
-	Images          []string              `json:"images"`
-	Media           []ProjectMedia        `json:"media,omitempty"`
-	Active          bool                  `json:"active"`
-	PriceFrom       float64               `json:"price_from,omitempty"`
-	AvailableColors []string              `json:"available_colors,omitempty"`
-	AvailableSizes  []string              `json:"available_sizes,omitempty"`
-	Variants        []AdminProjectVariant `json:"variants,omitempty"`
+	ID                uuid.UUID             `json:"id"`
+	Name              string                `json:"name"`
+	Slug              string                `json:"slug"`
+	Description       string                `json:"description"`
+	Category          string                `json:"category"`
+	ClientName        string                `json:"client_name,omitempty"`
+	Brand             string                `json:"brand,omitempty"`
+	SourceMarkdownURL string                `json:"source_markdown_url,omitempty"`
+	Images            []string              `json:"images"`
+	Media             []ProjectMedia        `json:"media,omitempty"`
+	Active            bool                  `json:"active"`
+	PriceFrom         float64               `json:"price_from,omitempty"`
+	AvailableColors   []string              `json:"available_colors,omitempty"`
+	AvailableSizes    []string              `json:"available_sizes,omitempty"`
+	Variants          []AdminProjectVariant `json:"variants,omitempty"`
 }
 
 type AdminProjectVariant struct {
@@ -94,6 +96,7 @@ func (p *AdminProjectWrite) Normalize() {
 	p.Name = strings.TrimSpace(p.Name)
 	p.Category = strings.TrimSpace(p.Category)
 	p.ClientName = strings.TrimSpace(p.ClientName)
+	p.SourceMarkdownURL = strings.TrimSpace(p.SourceMarkdownURL)
 }
 
 func (p AdminProjectWrite) ResolveActive(defaultValue bool) bool {
@@ -105,13 +108,14 @@ func (p AdminProjectWrite) ResolveActive(defaultValue bool) bool {
 
 func (p AdminProjectWrite) ToLegacyProduct(defaultActive bool) *Product {
 	legacy := &Product{
-		ID:          p.ID,
-		ProductName: p.Name,
-		Images:      p.Images,
-		Description: p.Description,
-		Features:    p.Features,
-		CreatedAt:   p.CreatedAt,
-		UpdatedAt:   p.UpdatedAt,
+		ID:                p.ID,
+		ProductName:       p.Name,
+		Images:            p.Images,
+		Description:       p.Description,
+		Features:          p.Features,
+		SourceMarkdownURL: p.SourceMarkdownURL,
+		CreatedAt:         p.CreatedAt,
+		UpdatedAt:         p.UpdatedAt,
 	}
 	legacy.SetStoreFields(p.Name, p.Category, p.ClientName, p.ResolveActive(defaultActive))
 	return legacy
@@ -148,20 +152,21 @@ func AdminProjectFromStoreProduct(store StoreProduct) AdminProject {
 	}
 
 	return AdminProject{
-		ID:              store.ID,
-		Name:            store.Name,
-		Slug:            store.Slug,
-		Description:     store.Description,
-		Category:        store.Category,
-		ClientName:      store.Brand,
-		Brand:           store.Brand,
-		Images:          store.Images,
-		Media:           store.Media,
-		Active:          store.Active,
-		PriceFrom:       store.PriceFrom,
-		AvailableColors: store.AvailableColors,
-		AvailableSizes:  store.AvailableSizes,
-		Variants:        variants,
+		ID:                store.ID,
+		Name:              store.Name,
+		Slug:              store.Slug,
+		Description:       store.Description,
+		Category:          store.Category,
+		ClientName:        store.Brand,
+		Brand:             store.Brand,
+		SourceMarkdownURL: store.SourceMarkdownURL,
+		Images:            store.Images,
+		Media:             store.Media,
+		Active:            store.Active,
+		PriceFrom:         store.PriceFrom,
+		AvailableColors:   store.AvailableColors,
+		AvailableSizes:    store.AvailableSizes,
+		Variants:          variants,
 	}
 }
 

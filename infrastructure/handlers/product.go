@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
@@ -37,7 +38,7 @@ func (h *ProjectCatalog) Create(c echo.Context) error {
 
 	req.Normalize()
 
-	if contractErr := validateCreateProductRequest(req.Name, req.Category, req.ClientName); contractErr != nil {
+	if contractErr := validateCreateProductRequest(req.Name, req.Category, req.ClientName, req.SourceMarkdownURL); contractErr != nil {
 		return contractErr
 	}
 
@@ -84,7 +85,7 @@ func (h *ProjectCatalog) Create(c echo.Context) error {
 	return c.JSON(response.ContractCreated(projectData))
 }
 
-func validateCreateProductRequest(name, category, clientName string) *model.ContractError {
+func validateCreateProductRequest(name, category, clientName, sourceMarkdownURL string) *model.ContractError {
 	if name == "" {
 		return response.ContractError(400, "validation_error", "El nombre del proyecto es requerido", model.APIErrorDetail{Field: "name", Issue: "required"})
 	}
@@ -99,6 +100,17 @@ func validateCreateProductRequest(name, category, clientName string) *model.Cont
 
 	if len([]rune(clientName)) > 80 {
 		return response.ContractError(400, "validation_error", "El cliente/contexto no puede exceder 80 caracteres", model.APIErrorDetail{Field: "client_name", Issue: "max_length:80"})
+	}
+
+	if len([]rune(sourceMarkdownURL)) > 2048 {
+		return response.ContractError(400, "validation_error", "La URL markdown no puede exceder 2048 caracteres", model.APIErrorDetail{Field: "source_markdown_url", Issue: "max_length:2048"})
+	}
+
+	if strings.TrimSpace(sourceMarkdownURL) != "" {
+		parsed, err := url.Parse(strings.TrimSpace(sourceMarkdownURL))
+		if err != nil || parsed.Scheme != "https" || strings.TrimSpace(parsed.Host) == "" {
+			return response.ContractError(400, "validation_error", "La URL markdown debe ser una URL HTTPS válida", model.APIErrorDetail{Field: "source_markdown_url", Issue: "invalid_url"})
+		}
 	}
 
 	return nil
@@ -157,6 +169,8 @@ func productLengthViolationMessage(column string) (field string, message string)
 		return "client_name", "El cliente/contexto no puede exceder 80 caracteres"
 	case "slug":
 		return "name", "El nombre del proyecto genera un slug demasiado largo"
+	case "source_markdown_url":
+		return "source_markdown_url", "La URL markdown no puede exceder 2048 caracteres"
 	case "sku":
 		return "variants", "El SKU de una variante no puede exceder 120 caracteres"
 	case "color":
@@ -216,6 +230,10 @@ func (h *ProjectCatalog) Update(c echo.Context) error {
 
 	req.ID = ID
 	req.Normalize()
+
+	if contractErr := validateCreateProductRequest(req.Name, req.Category, req.ClientName, req.SourceMarkdownURL); contractErr != nil {
+		return contractErr
+	}
 
 	projectMedia := buildProjectMediaPayload(ID, req.Media, req.Images)
 	legacyImages, marshalErr := marshalProjectLegacyImages(projectMedia, req.Images)

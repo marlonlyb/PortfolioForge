@@ -40,6 +40,10 @@ type ProjectPublicHandler interface {
 	ListPublished(c echo.Context) error
 }
 
+type ProjectAssistantHandlerContract interface {
+	CreateMessage(c echo.Context) error
+}
+
 // SearchAdminHandler defines the interface for admin search management endpoints.
 type SearchAdminHandler interface {
 	GetReadiness(c echo.Context) error

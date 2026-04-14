@@ -13,19 +13,20 @@ var slugRegex = regexp.MustCompile(`[^a-z0-9]+`)
 // Product is the legacy persistence model backed by the `products` table.
 // Prefer Project/AdminProject contracts outside the compat layer.
 type Product struct {
-	ID          uuid.UUID       `json:"id"`
-	ProductName string          `json:"product_name"`
-	Price       float64         `json:"price"`
-	Images      json.RawMessage `json:"images"`
-	Description string          `json:"description"`
-	Features    json.RawMessage `json:"features"`
-	Name        string          `json:"name,omitempty"`
-	Slug        string          `json:"slug,omitempty"`
-	Category    string          `json:"category,omitempty"`
-	Brand       string          `json:"brand,omitempty"`
-	Active      bool            `json:"active"`
-	CreatedAt   int64           `json:"created_at"`
-	UpdatedAt   int64           `json:"updated_at"`
+	ID                uuid.UUID       `json:"id"`
+	ProductName       string          `json:"product_name"`
+	Price             float64         `json:"price"`
+	Images            json.RawMessage `json:"images"`
+	Description       string          `json:"description"`
+	Features          json.RawMessage `json:"features"`
+	SourceMarkdownURL string          `json:"source_markdown_url,omitempty"`
+	Name              string          `json:"name,omitempty"`
+	Slug              string          `json:"slug,omitempty"`
+	Category          string          `json:"category,omitempty"`
+	Brand             string          `json:"brand,omitempty"`
+	Active            bool            `json:"active"`
+	CreatedAt         int64           `json:"created_at"`
+	UpdatedAt         int64           `json:"updated_at"`
 }
 
 // SetStoreFields sets the extended store fields on the product.

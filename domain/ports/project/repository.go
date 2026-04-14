@@ -14,6 +14,7 @@ type ProjectReader interface {
 	GetBySlug(ctx context.Context, slug string) (model.Project, error)
 	ListPublished(ctx context.Context) ([]model.Project, error)
 	GetTechnologiesByProjectID(ctx context.Context, projectID uuid.UUID) ([]model.Technology, error)
+	GetAssistantContextBySlug(ctx context.Context, slug string) (model.ProjectAssistantContext, error)
 }
 
 // ProjectWriter defines write operations for projects.

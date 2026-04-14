@@ -261,6 +261,7 @@ export function AdminProductFormPage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [brand, setBrand] = useState('');
+  const [sourceMarkdownURL, setSourceMarkdownURL] = useState('');
   const [mediaItems, setMediaItems] = useState<MediaFormItem[]>([createEmptyMediaItem(0)]);
   const [active, setActive] = useState(true);
 
@@ -325,6 +326,7 @@ export function AdminProductFormPage() {
           setDescription(project.description);
           setCategory(project.category);
           setBrand(project.brand ?? '');
+          setSourceMarkdownURL(project.source_markdown_url ?? '');
           setMediaItems(project.media && project.media.length > 0 ? project.media : createFallbackMediaItems(project.images ?? []));
           setActive(project.active);
 
@@ -454,6 +456,7 @@ export function AdminProductFormPage() {
           description,
           category,
           brand: brand || undefined,
+          source_markdown_url: sourceMarkdownURL.trim(),
           images: imageList,
           media: normalizedMedia,
           active,
@@ -465,6 +468,7 @@ export function AdminProductFormPage() {
           description,
           category,
           brand: brand || undefined,
+          source_markdown_url: sourceMarkdownURL.trim(),
           images: imageList,
           media: normalizedMedia,
           active,
@@ -583,6 +587,20 @@ export function AdminProductFormPage() {
                 />
               </label>
             </div>
+
+            <label className="admin__label">
+              Markdown source URL (private)
+              <input
+                className="admin__input"
+                type="url"
+                placeholder="https://www.mlbautomation.com/case-study.md"
+                value={sourceMarkdownURL}
+                onChange={(event) => setSourceMarkdownURL(event.target.value)}
+              />
+            </label>
+            <p className="admin__field-hint">
+              Solo se usa en backend para el assistant. Déjalo vacío para deshabilitar el chat público.
+            </p>
 
             <div className="admin__label">
               <div className="admin__media-header">

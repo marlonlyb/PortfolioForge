@@ -33,7 +33,7 @@ func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (model.Pr
 		SELECT p.id, p.name,
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
 			p.description, p.category, COALESCE(p.brand, '') AS client_name,
-			p.active, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
+			p.active, (COALESCE(NULLIF(trim(p.source_markdown_url), ''), '') <> '') AS assistant_available, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
 			COALESCE(pp.business_goal, ''), COALESCE(pp.problem_statement, ''),
 			COALESCE(pp.solution_summary, ''), COALESCE(pp.architecture, ''),
 			COALESCE(pp.integrations, 'null'), COALESCE(pp.ai_usage, ''),
@@ -44,7 +44,7 @@ func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (model.Pr
 		LEFT JOIN project_profiles pp ON pp.project_id = p.id
 		WHERE p.id = $1`, id).Scan(
 		&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName,
-		&p.Active, &p.Images, &p.CreatedAt, &p.UpdatedAt,
+		&p.Active, &p.AssistantAvailable, &p.Images, &p.CreatedAt, &p.UpdatedAt,
 		&profile.BusinessGoal, &profile.ProblemStatement,
 		&profile.SolutionSummary, &profile.Architecture,
 		&profile.Integrations, &profile.AIUsage,
@@ -91,7 +91,7 @@ func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (model.P
 		SELECT p.id, p.name,
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
 			p.description, p.category, COALESCE(p.brand, '') AS client_name,
-			p.active, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
+			p.active, (COALESCE(NULLIF(trim(p.source_markdown_url), ''), '') <> '') AS assistant_available, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
 			COALESCE(pp.business_goal, ''), COALESCE(pp.problem_statement, ''),
 			COALESCE(pp.solution_summary, ''), COALESCE(pp.architecture, ''),
 			COALESCE(pp.integrations, 'null'), COALESCE(pp.ai_usage, ''),
@@ -102,7 +102,7 @@ func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (model.P
 		LEFT JOIN project_profiles pp ON pp.project_id = p.id
 		WHERE p.slug = $1 AND p.active = TRUE`, slug).Scan(
 		&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName,
-		&p.Active, &p.Images, &p.CreatedAt, &p.UpdatedAt,
+		&p.Active, &p.AssistantAvailable, &p.Images, &p.CreatedAt, &p.UpdatedAt,
 		&profile.BusinessGoal, &profile.ProblemStatement,
 		&profile.SolutionSummary, &profile.Architecture,
 		&profile.Integrations, &profile.AIUsage,
@@ -142,7 +142,7 @@ func (r *ProjectRepository) ListPublished(ctx context.Context) ([]model.Project,
 		SELECT p.id, p.name,
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
 			p.description, p.category, COALESCE(p.brand, '') AS client_name,
-			p.active, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at
+			p.active, (COALESCE(NULLIF(trim(p.source_markdown_url), ''), '') <> '') AS assistant_available, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at
 		FROM products p
 		WHERE p.active = TRUE
 		ORDER BY p.created_at DESC`)
@@ -156,7 +156,7 @@ func (r *ProjectRepository) ListPublished(ctx context.Context) ([]model.Project,
 		var p model.Project
 		if err := rows.Scan(
 			&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName,
-			&p.Active, &p.Images, &p.CreatedAt, &p.UpdatedAt,
+			&p.Active, &p.AssistantAvailable, &p.Images, &p.CreatedAt, &p.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("postgres.ProjectRepository.ListPublished scan: %w", err)
 		}
@@ -188,6 +188,24 @@ func (r *ProjectRepository) ListPublished(ctx context.Context) ([]model.Project,
 // GetTechnologiesByProjectID returns technologies for a specific project.
 func (r *ProjectRepository) GetTechnologiesByProjectID(ctx context.Context, projectID uuid.UUID) ([]model.Technology, error) {
 	return r.fetchTechnologies(ctx, projectID)
+}
+
+func (r *ProjectRepository) GetAssistantContextBySlug(ctx context.Context, slug string) (model.ProjectAssistantContext, error) {
+	var project model.ProjectAssistantContext
+	err := r.db.QueryRow(ctx, `
+		SELECT p.id,
+			COALESCE(NULLIF(p.name, ''), p.product_name) AS name,
+			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
+			p.active,
+			COALESCE(p.source_markdown_url, '') AS source_markdown_url
+		FROM products p
+		WHERE COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) = $1`, slug,
+	).Scan(&project.ID, &project.Name, &project.Slug, &project.Active, &project.SourceMarkdownURL)
+	if err != nil {
+		return model.ProjectAssistantContext{}, fmt.Errorf("postgres.ProjectRepository.GetAssistantContextBySlug: %w", err)
+	}
+
+	return project, nil
 }
 
 // fetchProfile populates the ProjectProfile for a given project.
