@@ -49,6 +49,7 @@ describe('StoreLayout', () => {
     );
 
     expect(screen.getByRole('link', { name: 'Login' })).toHaveAttribute('href', '/login');
+    expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute('href', '/signup');
     expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
 
     await waitFor(() => {

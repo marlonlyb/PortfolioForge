@@ -28,6 +28,7 @@ export const router = createBrowserRouter([
       { path: 'projects/:slug', element: <ProductDetailPage /> },
       { path: 'search', element: <SearchResultsPage /> },
       { path: 'login', element: <LoginPage mode="public" /> },
+      { path: 'signup', element: <LoginPage mode="public" variant="signup" /> },
       { path: 'admin/login', element: <LoginPage mode="admin" /> },
       { path: 'verify-email', element: <VerifyEmailOtpPage /> },
       { path: 'complete-profile', element: <CompleteProfilePage /> },

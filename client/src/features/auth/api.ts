@@ -12,16 +12,27 @@ export interface LoginResponse {
   expires_in: number;
 }
 
-export interface EmailLoginRequest {
+export interface PublicEmailRequest {
   email: string;
 }
 
-export interface EmailLoginVerifyRequest {
+export interface PublicLoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface PublicSignupRequest {
+  email: string;
+  password: string;
+  confirm_password: string;
+}
+
+export interface EmailVerificationVerifyRequest {
   email: string;
   code: string;
 }
 
-export interface EmailLoginDispatchResponse {
+export interface EmailVerificationDispatchResponse {
   verification_required: boolean;
   message: string;
   cooldown_seconds: number;
@@ -48,12 +59,24 @@ export function loginWithGoogle(payload: GoogleLoginRequest): Promise<LoginRespo
   return httpPost<LoginResponse>('/api/v1/public/login/google', payload);
 }
 
-export function requestEmailLogin(payload: EmailLoginRequest): Promise<EmailLoginDispatchResponse> {
-  return httpPost<EmailLoginDispatchResponse>('/api/v1/public/login/email/request', payload);
+export function publicLogin(payload: PublicLoginRequest): Promise<LoginResponse> {
+  return httpPost<LoginResponse>('/api/v1/public/login', payload);
 }
 
-export function verifyEmailLogin(payload: EmailLoginVerifyRequest): Promise<LoginResponse> {
-  return httpPost<LoginResponse>('/api/v1/public/login/email/verify', payload);
+export function publicSignup(payload: PublicSignupRequest): Promise<EmailVerificationDispatchResponse> {
+  return httpPost<EmailVerificationDispatchResponse>('/api/v1/public/signup', payload);
+}
+
+export function requestEmailVerification(payload: PublicEmailRequest): Promise<EmailVerificationDispatchResponse> {
+  return httpPost<EmailVerificationDispatchResponse>('/api/v1/public/email-verification/request', payload);
+}
+
+export function resendEmailVerification(payload: PublicEmailRequest): Promise<EmailVerificationDispatchResponse> {
+  return httpPost<EmailVerificationDispatchResponse>('/api/v1/public/email-verification/resend', payload);
+}
+
+export function verifyEmailVerification(payload: EmailVerificationVerifyRequest): Promise<{ user: SessionUser }> {
+  return httpPost<{ user: SessionUser }>('/api/v1/public/email-verification/verify', payload);
 }
 
 export function updateMyProfile(payload: UpdateProfileRequest): Promise<UpdateProfileResponse> {

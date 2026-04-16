@@ -46,15 +46,15 @@ func (s *runtimeAuthUserServiceStub) AdminLogin(string, string) (model.User, err
 	return model.User{}, errors.New("not implemented")
 }
 
-func (s *runtimeAuthUserServiceStub) LoginWithGoogle(model.GoogleIdentity) (model.User, error) {
-	return model.User{}, errors.New("not implemented")
-}
-
-func (s *runtimeAuthUserServiceStub) RequestEmailLogin(string) (model.EmailVerificationDispatchResult, error) {
+func (s *runtimeAuthUserServiceStub) PublicSignup(string, string) (model.EmailVerificationDispatchResult, error) {
 	return model.EmailVerificationDispatchResult{}, errors.New("not implemented")
 }
 
-func (s *runtimeAuthUserServiceStub) VerifyEmailLogin(string, string) (model.User, error) {
+func (s *runtimeAuthUserServiceStub) PublicLogin(string, string) (model.User, error) {
+	return model.User{}, errors.New("not implemented")
+}
+
+func (s *runtimeAuthUserServiceStub) LoginWithGoogle(model.GoogleIdentity) (model.User, error) {
 	return model.User{}, errors.New("not implemented")
 }
 

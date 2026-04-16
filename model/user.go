@@ -20,6 +20,7 @@ type User struct {
 	ProfileCompleted       bool            `json:"profile_completed"`
 	AssistantEligible      bool            `json:"assistant_eligible"`
 	CanUseProjectAssistant bool            `json:"can_use_project_assistant"`
+	LocalAuthState         string          `json:"-"`
 	LastLoginAt            int64           `json:"last_login_at,omitempty"`
 	CreatedAt              int64           `json:"created_at"`
 	UpdatedAt              int64           `json:"updated_at"`

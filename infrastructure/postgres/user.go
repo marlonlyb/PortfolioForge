@@ -28,6 +28,7 @@ var uFields = []string{
 	"email_verified",
 	"full_name",
 	"company",
+	"local_auth_state",
 	"last_login_at",
 	"created_at",
 	"updated_at",
@@ -79,6 +80,7 @@ func (u *User) Create(m *model.User) error {
 		m.EmailVerified,
 		NullIfEmpty(m.FullName),
 		NullIfEmpty(m.Company),
+		NullIfEmpty(m.LocalAuthState),
 		Int64ToNull(m.LastLoginAt),
 		m.CreatedAt,
 		Int64ToNull(m.UpdatedAt),
@@ -104,9 +106,9 @@ func (u *User) UpsertPasswordlessPublicUser(email, passwordHash string, now int6
 
 	row := u.db.QueryRow(context.Background(), `
 		INSERT INTO users (
-			id, email, password, is_admin, details, auth_provider, provider_subject, email_verified, full_name, company, last_login_at, created_at, updated_at, deleted_at
+			id, email, password, is_admin, details, auth_provider, provider_subject, email_verified, full_name, company, local_auth_state, last_login_at, created_at, updated_at, deleted_at
 		) VALUES (
-			$1, $2, $3, FALSE, $4, 'local', NULL, FALSE, NULL, NULL, NULL, $5, $6, NULL
+			$1, $2, $3, FALSE, $4, 'local', NULL, FALSE, NULL, NULL, 'password_setup_required', NULL, $5, $6, NULL
 		)
 		ON CONFLICT (email) DO UPDATE
 		SET updated_at = users.updated_at
@@ -205,9 +207,9 @@ func (u *User) UpsertGoogleUser(identity model.GoogleIdentity) (model.User, erro
 
 	row := u.db.QueryRow(ctx, `
 		INSERT INTO users (
-			id, email, password, is_admin, details, auth_provider, provider_subject, email_verified, full_name, company, last_login_at, created_at, updated_at, deleted_at
+			id, email, password, is_admin, details, auth_provider, provider_subject, email_verified, full_name, company, local_auth_state, last_login_at, created_at, updated_at, deleted_at
 		) VALUES (
-			$1, $2, NULL, FALSE, $3, 'google', $4, $5, NULLIF($6, ''), NULL, $7, $8, $9, NULL
+			$1, $2, NULL, FALSE, $3, 'google', $4, $5, NULLIF($6, ''), NULL, 'ready', $7, $8, $9, NULL
 		)
 		RETURNING `+strings.Join(uFields, ", "), userID, trimmedEmail, details, trimmedSubject, identity.EmailVerified, trimmedFullName, now, now, now)
 
@@ -224,6 +226,17 @@ func (u *User) UpdateProfile(ID uuid.UUID, fullName, company string) (model.User
 		WHERE id = $1
 		  AND deleted_at IS NULL
 		RETURNING `+strings.Join(uFields, ", "), ID, strings.TrimSpace(fullName), strings.TrimSpace(company), now)
+	return u.scanRow(row, true)
+}
+
+func (u *User) UpdateLastLogin(ID uuid.UUID, lastLoginAt, updatedAt int64) (model.User, error) {
+	row := u.db.QueryRow(context.Background(), `
+		UPDATE users
+		SET last_login_at = $2,
+		    updated_at = $3
+		WHERE id = $1
+		  AND deleted_at IS NULL
+		RETURNING `+strings.Join(uFields, ", "), ID, lastLoginAt, updatedAt)
 	return u.scanRow(row, true)
 }
 
@@ -362,6 +375,7 @@ func (u *User) scanRow(s pgx.Row, withPassword bool) (model.User, error) {
 	providerSubject := sql.NullString{}
 	fullName := sql.NullString{}
 	company := sql.NullString{}
+	localAuthState := sql.NullString{}
 	lastLoginAt := sql.NullInt64{}
 	updateAtNull := sql.NullInt64{}
 	deletedAtNull := sql.NullInt64{}
@@ -377,6 +391,7 @@ func (u *User) scanRow(s pgx.Row, withPassword bool) (model.User, error) {
 		&m.EmailVerified,
 		&fullName,
 		&company,
+		&localAuthState,
 		&lastLoginAt,
 		&m.CreatedAt,
 		&updateAtNull,
@@ -390,6 +405,7 @@ func (u *User) scanRow(s pgx.Row, withPassword bool) (model.User, error) {
 	m.ProviderSubject = providerSubject.String
 	m.FullName = fullName.String
 	m.Company = company.String
+	m.LocalAuthState = localAuthState.String
 	m.LastLoginAt = lastLoginAt.Int64
 	m.UpdatedAt = updateAtNull.Int64
 	m.DeletedAt = deletedAtNull.Int64

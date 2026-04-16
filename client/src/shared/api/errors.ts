@@ -37,6 +37,8 @@ export const API_ERROR_CODES = {
   AUTHENTICATION_REQUIRED: 'authentication_required',
   INVALID_CREDENTIALS: 'invalid_credentials',
   ACCOUNT_PROVIDER_CONFLICT: 'account_provider_conflict',
+  EMAIL_ALREADY_IN_USE: 'email_already_in_use',
+  PASSWORD_SETUP_REQUIRED: 'password_setup_required',
   GOOGLE_EMAIL_UNVERIFIED: 'google_email_unverified',
   GOOGLE_AUTH_UNAVAILABLE: 'google_auth_unavailable',
   INVALID_GOOGLE_TOKEN: 'invalid_google_token',

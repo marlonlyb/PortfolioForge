@@ -33,7 +33,7 @@ PortfolioForge debe ser un portfolio técnico de alta credibilidad con dos capac
 El sistema ya implementa:
 
 - sitio público con landing, búsqueda, catálogo y detalle de proyecto;
-- auth público con una sola entrada `Log in`, Google y OTP por email, más `/admin/login` oculto para admins locales;
+- auth público con entradas separadas `Log in` y `Sign up`, Google y email/password local para no-admins, OTP reservado para verificación de email, más `/admin/login` oculto para admins locales;
 - búsqueda híbrida por evidencia real (filtros estructurados + FTS + fuzzy + semántica);
 - explicaciones resumidas por resultado;
 - project assistant por proyecto disponible sobre el detalle público, pero visible solo para sesiones elegibles cuando existe markdown fuente configurado;
@@ -93,7 +93,7 @@ Quiere:
 
 - buscar experiencia por términos reales;
 - entender rápido problema, solución, arquitectura y resultados;
-- entrar con la menor fricción posible mediante Google o un OTP enviado a su email;
+- entrar con la menor fricción posible mediante Google o email/password local, manteniendo OTP solo para verificar el email;
 - validar capacidad técnica sin hablar primero con el autor.
 
 ### 7.2 Administrador / autor del portfolio
@@ -323,7 +323,7 @@ Aunque hoy no se persistan como columnas dedicadas, forman parte del análisis m
 Estado actual implementado:
 
 - el detalle público mantiene el assistant completamente oculto para visitantes anónimos; solo usuarios autenticados pero aún inelegibles ven CTAs de onboarding, y el chat solo aparece con sesión elegible;
-- `/login` actúa como la única entrada pública y ofrece solo `Log in with Google` + email OTP para usuarios no admin;
+- `/login` ofrece `Log in with Google` + email/password local para usuarios no admin y `/signup` ofrece el alta pública equivalente;
 - `/admin/login` permanece disponible solo por URL directa y no se expone desde la navegación pública;
 - las cuentas públicas locales ya no usan password ni sign up separado: el mismo flujo OTP crea o reutiliza la cuenta y autentica al usuario tras verificar el código; el assistant sigue bloqueado hasta completar onboarding/eligibilidad;
 - la API privada responde por `POST /api/v1/private/projects/:slug/assistant/messages` y rechaza usuarios no autenticados o inelegibles;

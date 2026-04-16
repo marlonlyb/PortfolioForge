@@ -4,10 +4,17 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLocale } from '../../app/providers/LocaleProvider';
 import { useSession } from '../../app/providers/SessionProvider';
 import { API_ERROR_CODES, AppError } from '../../shared/api/errors';
-import { adminLogin, loginWithGoogle, requestEmailLogin } from './api';
+import {
+  adminLogin,
+  loginWithGoogle,
+  publicLogin,
+  publicSignup,
+  type EmailVerificationDispatchResponse,
+} from './api';
 
 interface LoginLocationState {
   from?: string;
+  notice?: string;
 }
 
 const LOGIN_PAGE_MODE = {
@@ -15,7 +22,13 @@ const LOGIN_PAGE_MODE = {
   ADMIN: 'admin',
 } as const;
 
+const PUBLIC_AUTH_VARIANT = {
+  LOGIN: 'login',
+  SIGNUP: 'signup',
+} as const;
+
 type LoginPageMode = (typeof LOGIN_PAGE_MODE)[keyof typeof LOGIN_PAGE_MODE];
+type PublicAuthVariant = (typeof PUBLIC_AUTH_VARIANT)[keyof typeof PUBLIC_AUTH_VARIANT];
 
 interface GoogleCredentialResponse {
   credential?: string;
@@ -41,43 +54,52 @@ declare global {
 
 interface LoginPageProps {
   mode?: LoginPageMode;
+  variant?: PublicAuthVariant;
+}
+
+interface SignupSuccessState {
+  email: string;
+  response: EmailVerificationDispatchResponse;
 }
 
 function formatValidationDetail(field?: string, issue?: string): string | null {
-  if (field === 'email' && issue === 'required') {
-    return 'Email is required.';
-  }
-
+  if (field === 'email' && issue === 'required') return 'Email is required.';
+  if (field === 'password' && issue === 'invalid') return 'Password must contain at least 8 characters.';
+  if (field === 'confirm_password' && issue === 'required') return 'Confirm password is required.';
+  if (field === 'confirm_password' && issue === 'mismatch') return 'Passwords must match.';
   return null;
 }
 
-export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC }: LoginPageProps) {
+export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC, variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLocale();
   const { login } = useSession();
-  const state = location.state as LoginLocationState | null;
+  const state = (location.state as LoginLocationState | null) ?? null;
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
   const isPublicMode = mode === LOGIN_PAGE_MODE.PUBLIC;
+  const isSignupVariant = isPublicMode && variant === PUBLIC_AUTH_VARIANT.SIGNUP;
 
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formNotice, setFormNotice] = useState<string | null>(state?.notice ?? null);
   const [googleError, setGoogleError] = useState<string | null>(null);
-  const [loginSubmitting, setLoginSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState<SignupSuccessState | null>(null);
 
   useEffect(() => {
-    setLoginError(null);
+    setFormError(null);
     setGoogleError(null);
-  }, [isPublicMode]);
+    setSignupSuccess(null);
+  }, [isPublicMode, isSignupVariant]);
 
   useEffect(() => {
-    if (!isPublicMode || !googleClientId) {
-      return;
-    }
+    if (!isPublicMode || !googleClientId) return;
 
     if (window.google?.accounts.id) {
       setGoogleReady(true);
@@ -100,9 +122,7 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC }: LoginPageProps) {
   }, [googleClientId, isPublicMode]);
 
   useEffect(() => {
-    const isPublicLoginView = isPublicMode;
-
-    if (!isPublicLoginView || !googleClientId || !googleReady || !googleButtonRef.current || !window.google?.accounts.id) {
+    if (!isPublicMode || !googleClientId || !googleReady || !googleButtonRef.current || !window.google?.accounts.id) {
       return;
     }
 
@@ -115,7 +135,7 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC }: LoginPageProps) {
         }
 
         setGoogleError(null);
-        setLoginError(null);
+        setFormError(null);
         setGoogleSubmitting(true);
 
         try {
@@ -129,11 +149,7 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC }: LoginPageProps) {
 
           navigate(state?.from ?? '/', { replace: true });
         } catch (err) {
-          if (err instanceof AppError) {
-            setGoogleError(err.message);
-          } else {
-            setGoogleError('Unable to complete Google sign-in.');
-          }
+          setGoogleError(err instanceof AppError ? err.message : 'Unable to complete Google sign-in.');
         } finally {
           setGoogleSubmitting(false);
         }
@@ -145,62 +161,62 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC }: LoginPageProps) {
       theme: 'outline',
       size: 'large',
       type: 'standard',
-      text: 'continue_with',
+      text: isSignupVariant ? 'signup_with' : 'continue_with',
       shape: 'pill',
     });
-  }, [googleClientId, googleReady, isPublicMode, login, navigate, state?.from]);
+  }, [googleClientId, googleReady, isPublicMode, isSignupVariant, login, navigate, state?.from]);
 
-  async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoginError(null);
+    setSubmitting(true);
+    setFormError(null);
     setGoogleError(null);
-    setLoginSubmitting(true);
+    setFormNotice(null);
 
     try {
-      if (isPublicMode) {
-        const response = await requestEmailLogin({ email: loginEmail.trim() });
-        navigate('/verify-email', {
-          replace: true,
-          state: {
-            email: loginEmail.trim(),
-            from: state?.from ?? '/',
-            cooldownSeconds: response.cooldown_seconds,
-          },
-        });
+      if (isPublicMode && isSignupVariant) {
+        const response = await publicSignup({ email: email.trim(), password, confirm_password: confirmPassword });
+        setSignupSuccess({ email: email.trim(), response });
         return;
       }
 
-      const response = await adminLogin({ email: loginEmail, password: loginPassword });
+      if (isPublicMode) {
+        const response = await publicLogin({ email: email.trim(), password });
+        login(response);
+        if (!response.user.profile_completed) {
+          navigate('/complete-profile', { replace: true, state: { from: state?.from ?? '/' } });
+          return;
+        }
+        navigate(state?.from ?? '/', { replace: true });
+        return;
+      }
+
+      const response = await adminLogin({ email: email.trim(), password });
       login(response);
       navigate('/admin/projects', { replace: true });
-      return;
-
     } catch (err) {
       if (err instanceof AppError) {
-        if (isPublicMode && err.code === API_ERROR_CODES.VALIDATION_ERROR) {
+        if (err.code === API_ERROR_CODES.VALIDATION_ERROR) {
           const detail = err.details[0];
-          setLoginError(formatValidationDetail(detail?.field, detail?.issue) ?? err.message);
-        } else if (!isPublicMode && err.code === API_ERROR_CODES.INVALID_CREDENTIALS) {
-          setLoginError('Invalid email or password.');
+          setFormError(formatValidationDetail(detail?.field, detail?.issue) ?? err.message);
+        } else if (err.code === API_ERROR_CODES.INVALID_CREDENTIALS) {
+          setFormError('Invalid email or password.');
+        } else if (err.code === API_ERROR_CODES.PASSWORD_SETUP_REQUIRED) {
+          setFormError('This account still needs a password setup or reset before it can sign in.');
         } else {
-          setLoginError(err.message);
+          setFormError(err.message);
         }
       } else {
-        setLoginError('An unexpected error occurred. Please try again.');
+        setFormError('An unexpected error occurred. Please try again.');
       }
     } finally {
-      setLoginSubmitting(false);
+      setSubmitting(false);
     }
   }
 
-  function renderPublicAuthContent() {
+  function renderGoogleBlock() {
     return (
-      <section className="auth-page__panel auth-page__panel--primary">
-        <p className="eyebrow">{t.authPublicEyebrow}</p>
-
-        <h2>{t.authPublicLoginTitle}</h2>
-        <p className="auth-page__redirect-note">{t.authPublicLoginDescription}</p>
-
+      <>
         <div className="auth-page__google-block">
           <div className="auth-page__google-button-wrap" ref={googleButtonRef} aria-live="polite" />
           <span className="auth-page__google-copy">Continue with Google</span>
@@ -213,29 +229,105 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC }: LoginPageProps) {
         ) : null}
         {googleSubmitting ? <p className="auth-page__alt">Completing Google sign-in…</p> : null}
         {googleError ? <div className="auth-page__error" role="alert">{googleError}</div> : null}
+      </>
+    );
+  }
+
+  function renderPublicSuccess() {
+    if (!signupSuccess) return null;
+
+    return (
+      <section className="auth-page__panel auth-page__panel--primary">
+        <p className="eyebrow">Public sign up</p>
+        <h2>Check your email</h2>
+        <p className="auth-page__redirect-note">{signupSuccess.response.message}</p>
+        <p className="auth-page__helper">Verify the code first, then log in with your new password.</p>
+
+        <div className="auth-page__form">
+          <Link
+            className="btn btn--primary"
+            to="/verify-email"
+            state={{ email: signupSuccess.email, cooldownSeconds: signupSuccess.response.cooldown_seconds }}
+          >
+            Verify email
+          </Link>
+          <Link className="btn btn--secondary" to="/login">
+            Back to login
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  function renderPublicForm() {
+    if (signupSuccess) return renderPublicSuccess();
+
+    return (
+      <section className="auth-page__panel auth-page__panel--primary">
+        <p className="eyebrow">{t.authPublicEyebrow}</p>
+        <h2>{isSignupVariant ? t.authPublicSignupTitle : t.authPublicLoginTitle}</h2>
+        <p className="auth-page__redirect-note">{isSignupVariant ? t.authPublicSignupDescription : t.authPublicLoginDescription}</p>
+
+        {renderGoogleBlock()}
 
         <p className="auth-page__helper">{t.authPublicLocalRestriction}</p>
+        {formNotice ? <p className="auth-page__alt">{formNotice}</p> : null}
+        {formError ? <div className="auth-page__error" role="alert">{formError}</div> : null}
 
-        {loginError ? <div className="auth-page__error" role="alert">{loginError}</div> : null}
-
-        <form className="auth-page__form" onSubmit={handleLoginSubmit}>
+        <form className="auth-page__form" onSubmit={handleSubmit}>
           <label className="auth-page__label">
             Email
             <input
               type="email"
               className="auth-page__input"
-              value={loginEmail}
-              onChange={(event) => setLoginEmail(event.target.value)}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               required
               autoComplete="email"
-              disabled={loginSubmitting}
+              disabled={submitting}
             />
           </label>
 
-          <button type="submit" className="btn btn--primary" disabled={loginSubmitting}>
-            {loginSubmitting ? 'Sending code…' : 'Continue with email'}
+          <label className="auth-page__label">
+            Password
+            <input
+              type="password"
+              className="auth-page__input"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              autoComplete={isSignupVariant ? 'new-password' : 'current-password'}
+              disabled={submitting}
+            />
+          </label>
+
+          {isSignupVariant ? (
+            <label className="auth-page__label">
+              Confirm password
+              <input
+                type="password"
+                className="auth-page__input"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                required
+                autoComplete="new-password"
+                disabled={submitting}
+              />
+            </label>
+          ) : null}
+
+          <button type="submit" className="btn btn--primary" disabled={submitting}>
+            {submitting ? (isSignupVariant ? 'Creating account…' : 'Signing in…') : (isSignupVariant ? 'Create account' : 'Sign in')}
           </button>
         </form>
+
+        <p className="auth-page__alt">
+          {isSignupVariant ? (
+            <Link to="/login">Already have an account? Log in</Link>
+          ) : (
+            <Link to="/signup">Need an account? Sign up</Link>
+          )}
+        </p>
       </section>
     );
   }
@@ -244,7 +336,7 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC }: LoginPageProps) {
     <section className="auth-page">
       <article className="card auth-page__shell">
         <div className="auth-page__stack">
-          {isPublicMode ? renderPublicAuthContent() : null}
+          {isPublicMode ? renderPublicForm() : null}
 
           {!isPublicMode ? (
             <section className="auth-page__panel auth-page__panel--primary">
@@ -252,19 +344,19 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC }: LoginPageProps) {
               <h2>{t.authAdminTitle}</h2>
               <p className="auth-page__redirect-note">{t.authAdminDescription}</p>
 
-              {loginError ? <div className="auth-page__error" role="alert">{loginError}</div> : null}
+              {formError ? <div className="auth-page__error" role="alert">{formError}</div> : null}
 
-              <form className="auth-page__form" onSubmit={handleLoginSubmit}>
+              <form className="auth-page__form" onSubmit={handleSubmit}>
                 <label className="auth-page__label">
                   Email
                   <input
                     type="email"
                     className="auth-page__input"
-                    value={loginEmail}
-                    onChange={(event) => setLoginEmail(event.target.value)}
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
                     required
                     autoComplete="email"
-                    disabled={loginSubmitting}
+                    disabled={submitting}
                   />
                 </label>
 
@@ -273,16 +365,16 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC }: LoginPageProps) {
                   <input
                     type="password"
                     className="auth-page__input"
-                    value={loginPassword}
-                    onChange={(event) => setLoginPassword(event.target.value)}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
                     required
                     autoComplete="current-password"
-                    disabled={loginSubmitting}
+                    disabled={submitting}
                   />
                 </label>
 
-                <button type="submit" className="btn btn--primary" disabled={loginSubmitting}>
-                  {loginSubmitting ? 'Signing in…' : 'Sign in'}
+                <button type="submit" className="btn btn--primary" disabled={submitting}>
+                  {submitting ? 'Signing in…' : 'Sign in'}
                 </button>
               </form>
             </section>

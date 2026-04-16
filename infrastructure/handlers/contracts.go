@@ -36,8 +36,8 @@ type ProductPublicCompatHandler interface {
 
 type LoginHandler interface {
 	AdminLogin(c echo.Context) error
-	RequestEmailLogin(c echo.Context) error
-	VerifyEmailLogin(c echo.Context) error
+	PublicLogin(c echo.Context) error
+	PublicSignup(c echo.Context) error
 	LoginWithGoogle(c echo.Context) error
 }
 

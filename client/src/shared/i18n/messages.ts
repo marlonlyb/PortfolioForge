@@ -5,6 +5,7 @@ interface Messages {
   headerSummary: string;
   navHome: string;
   navLogin: string;
+  navSignup: string;
   navSearch: string;
   navAdmin: string;
   navLogout: string;
@@ -73,6 +74,8 @@ interface Messages {
   authPublicEyebrow: string;
   authPublicLoginTitle: string;
   authPublicLoginDescription: string;
+  authPublicSignupTitle: string;
+  authPublicSignupDescription: string;
   authPublicLocalRestriction: string;
   authAdminEyebrow: string;
   authAdminTitle: string;
@@ -86,6 +89,8 @@ type AuthMessageKey =
   | 'authPublicEyebrow'
   | 'authPublicLoginTitle'
   | 'authPublicLoginDescription'
+  | 'authPublicSignupTitle'
+  | 'authPublicSignupDescription'
   | 'authPublicLocalRestriction'
   | 'authAdminEyebrow'
   | 'authAdminTitle'
@@ -101,9 +106,12 @@ const authMessages: Record<PublicLocale, Pick<Messages, AuthMessageKey>> = {
     authPublicEyebrow: 'Acceso público',
     authPublicLoginTitle: 'Login to PortfolioForge',
     authPublicLoginDescription:
-      'Use Google or request a one-time email code. First-time and returning public users follow the same passwordless flow.',
+      'Use Google or sign in with your local email and password.',
+    authPublicSignupTitle: 'Create your account',
+    authPublicSignupDescription:
+      'Sign up with Google or create a local account with email and password. Email verification is required before the assistant unlocks.',
     authPublicLocalRestriction:
-      'Email login stays passwordless. Assistant access still requires a verified email and a completed profile.',
+      'Local accounts still need a verified email and a completed profile before the assistant unlocks.',
     authAdminEyebrow: 'Admin access',
     authAdminTitle: 'Admin access',
     authAdminDescription:
@@ -117,9 +125,12 @@ const authMessages: Record<PublicLocale, Pick<Messages, AuthMessageKey>> = {
     authPublicEyebrow: 'Accés públic',
     authPublicLoginTitle: 'Login to PortfolioForge',
     authPublicLoginDescription:
-      'Use Google or request a one-time email code. First-time and returning public users follow the same passwordless flow.',
+      'Use Google or sign in with your local email and password.',
+    authPublicSignupTitle: 'Create your account',
+    authPublicSignupDescription:
+      'Sign up with Google or create a local account with email and password. Email verification is required before the assistant unlocks.',
     authPublicLocalRestriction:
-      'Email login stays passwordless. Assistant access still requires a verified email and a completed profile.',
+      'Local accounts still need a verified email and a completed profile before the assistant unlocks.',
     authAdminEyebrow: 'Admin access',
     authAdminTitle: 'Admin access',
     authAdminDescription:
@@ -133,9 +144,12 @@ const authMessages: Record<PublicLocale, Pick<Messages, AuthMessageKey>> = {
     authPublicEyebrow: 'Public access',
     authPublicLoginTitle: 'Login to PortfolioForge',
     authPublicLoginDescription:
-      'Use Google or request a one-time email code. First-time and returning public users follow the same passwordless flow.',
+      'Use Google or sign in with your local email and password.',
+    authPublicSignupTitle: 'Create your account',
+    authPublicSignupDescription:
+      'Sign up with Google or create a local account with email and password. Email verification is required before the assistant unlocks.',
     authPublicLocalRestriction:
-      'Email login stays passwordless. Assistant access still requires a verified email and a completed profile.',
+      'Local accounts still need a verified email and a completed profile before the assistant unlocks.',
     authAdminEyebrow: 'Admin access',
     authAdminTitle: 'Admin access',
     authAdminDescription:
@@ -149,9 +163,12 @@ const authMessages: Record<PublicLocale, Pick<Messages, AuthMessageKey>> = {
     authPublicEyebrow: 'Öffentlicher Zugang',
     authPublicLoginTitle: 'Login to PortfolioForge',
     authPublicLoginDescription:
-      'Use Google or request a one-time email code. First-time and returning public users follow the same passwordless flow.',
+      'Use Google or sign in with your local email and password.',
+    authPublicSignupTitle: 'Create your account',
+    authPublicSignupDescription:
+      'Sign up with Google or create a local account with email and password. Email verification is required before the assistant unlocks.',
     authPublicLocalRestriction:
-      'Email login stays passwordless. Assistant access still requires a verified email and a completed profile.',
+      'Local accounts still need a verified email and a completed profile before the assistant unlocks.',
     authAdminEyebrow: 'Admin access',
     authAdminTitle: 'Admin access',
     authAdminDescription:
@@ -169,6 +186,7 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     headerSummary: 'Arquitectura, producto y sistemas de IA presentados como case studies públicos.',
     navHome: 'Inicio',
     navLogin: 'Login',
+    navSignup: 'Sign up',
     navSearch: 'Buscar',
     navAdmin: 'Admin',
     navLogout: 'Salir',
@@ -250,6 +268,7 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     headerSummary: 'Arquitectura, producte i sistemes d’IA presentats com a case studies públics.',
     navHome: 'Inici',
     navLogin: 'Login',
+    navSignup: 'Sign up',
     navSearch: 'Cercar',
     navAdmin: 'Admin',
     navLogout: 'Sortir',
@@ -331,6 +350,7 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     headerSummary: 'Architecture, product, and AI systems presented as public case studies.',
     navHome: 'Home',
     navLogin: 'Login',
+    navSignup: 'Sign up',
     navSearch: 'Search',
     navAdmin: 'Admin',
     navLogout: 'Logout',
@@ -412,6 +432,7 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     headerSummary: 'Architektur, Produkt und KI-Systeme als öffentliche Case Studies präsentiert.',
     navHome: 'Start',
     navLogin: 'Login',
+    navSignup: 'Sign up',
     navSearch: 'Suche',
     navAdmin: 'Admin',
     navLogout: 'Abmelden',

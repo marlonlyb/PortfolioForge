@@ -61,16 +61,16 @@ func (s *stubUserService) AdminLogin(string, string) (model.User, error) {
 	return model.User{}, errors.New("not implemented")
 }
 
-func (s *stubUserService) LoginWithGoogle(model.GoogleIdentity) (model.User, error) {
+func (s *stubUserService) PublicSignup(string, string) (model.EmailVerificationDispatchResult, error) {
+	return model.EmailVerificationDispatchResult{}, errors.New("not implemented")
+}
+
+func (s *stubUserService) PublicLogin(string, string) (model.User, error) {
 	return model.User{}, errors.New("not implemented")
 }
 
-func (s *stubUserService) RequestEmailLogin(string) (model.EmailVerificationDispatchResult, error) {
-	return s.requestResp, s.requestErr
-}
-
-func (s *stubUserService) VerifyEmailLogin(string, string) (model.User, error) {
-	return s.verifyResp, s.verifyErr
+func (s *stubUserService) LoginWithGoogle(model.GoogleIdentity) (model.User, error) {
+	return model.User{}, errors.New("not implemented")
 }
 
 func (s *stubUserService) UpdateProfile(_ uuid.UUID, fullName, company string) (model.User, error) {

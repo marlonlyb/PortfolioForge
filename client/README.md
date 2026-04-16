@@ -30,6 +30,7 @@ La app Vite abre por defecto en `http://localhost:5173`.
 ## Verificación mínima
 
 - `/` renderiza el shell público.
-- `/login` renders the only public auth entry point: Google plus passwordless email OTP.
+- `/login` renders the public login flow: Google plus local email/password.
+- `/signup` renders the public signup flow: Google plus local email/password with verification-required success.
 - `/admin/login` sigue disponible por URL directa pero no se expone en la navegación pública.
 - `/admin` sigue accesible bajo `RequireAdmin` con su layout actual.

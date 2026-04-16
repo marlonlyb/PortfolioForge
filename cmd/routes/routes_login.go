@@ -6,11 +6,9 @@ import (
 )
 
 func LoginPublic(e *echo.Echo, h handlers.LoginHandler) {
-	g := e.Group("/api/v1/public/login")
-
-	g.POST("/google", h.LoginWithGoogle)
-	g.POST("/email/request", h.RequestEmailLogin)
-	g.POST("/email/verify", h.VerifyEmailLogin)
+	e.POST("/api/v1/public/signup", h.PublicSignup)
+	e.POST("/api/v1/public/login", h.PublicLogin)
+	e.POST("/api/v1/public/login/google", h.LoginWithGoogle)
 }
 
 func LoginAdmin(e *echo.Echo, h handlers.LoginHandler) {

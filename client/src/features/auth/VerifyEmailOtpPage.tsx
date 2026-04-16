@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { useSession } from '../../app/providers/SessionProvider';
 import { API_ERROR_CODES, AppError } from '../../shared/api/errors';
-import { requestEmailLogin, verifyEmailLogin } from './api';
+import { resendEmailVerification, verifyEmailVerification } from './api';
 
 interface VerifyEmailLocationState {
   email?: string;
@@ -14,21 +14,19 @@ interface VerifyEmailLocationState {
 export function VerifyEmailOtpPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { login, user, refreshSession, setUser } = useSession();
+  const { user, refreshSession, setUser } = useSession();
   const state = (location.state as VerifyEmailLocationState | null) ?? null;
 
   const [email, setEmail] = useState(state?.email ?? user?.email ?? '');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string>('Enter the 6-digit code we sent to your email.');
+  const [notice, setNotice] = useState<string>('Enter the 6-digit verification code we sent to your email.');
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendRemaining, setResendRemaining] = useState(state?.cooldownSeconds ?? 60);
 
   useEffect(() => {
-    if (resendRemaining <= 0) {
-      return undefined;
-    }
+    if (resendRemaining <= 0) return undefined;
 
     const timeoutId = window.setTimeout(() => {
       setResendRemaining((current) => Math.max(current - 1, 0));
@@ -43,32 +41,32 @@ export function VerifyEmailOtpPage() {
     return <Navigate replace to="/admin/projects" />;
   }
 
-  if (user?.auth_provider === 'local' && user.email_verified) {
-    if (user.profile_completed) {
-      return <Navigate replace to={state?.from ?? '/'} />;
-    }
-
-    return <Navigate replace to="/complete-profile" state={{ from: state?.from ?? '/' }} />;
-  }
-
   async function handleVerify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
 
     try {
-      const response = await verifyEmailLogin({ email: email.trim(), code: code.trim() });
+      const response = await verifyEmailVerification({ email: email.trim(), code: code.trim() });
 
-      login(response);
-      setUser(response.user);
-      const refreshedUser = await refreshSession();
-      const nextUser = refreshedUser ?? response.user;
-      if (!nextUser.profile_completed) {
-        navigate('/complete-profile', { replace: true, state: { from: state?.from ?? '/' } });
+      if (user) {
+        setUser(response.user);
+        const refreshedUser = await refreshSession();
+        const nextUser = refreshedUser ?? response.user;
+
+        if (!nextUser.profile_completed) {
+          navigate('/complete-profile', { replace: true, state: { from: state?.from ?? '/' } });
+          return;
+        }
+
+        navigate(state?.from ?? '/', { replace: true });
         return;
       }
 
-      navigate(state?.from ?? '/', { replace: true });
+      navigate('/login', {
+        replace: true,
+        state: { notice: 'Email verified. Log in with your password to continue.' },
+      });
     } catch (err) {
       if (err instanceof AppError) {
         if (err.code === API_ERROR_CODES.OTP_INVALID) {
@@ -91,7 +89,7 @@ export function VerifyEmailOtpPage() {
     setError(null);
 
     try {
-      const response = await requestEmailLogin({ email: email.trim() });
+      const response = await resendEmailVerification({ email: email.trim() });
       setNotice(response.message);
       setResendRemaining(response.cooldown_seconds);
     } catch (err) {
@@ -108,8 +106,8 @@ export function VerifyEmailOtpPage() {
   return (
     <section className="auth-page">
       <article className="card">
-        <p className="eyebrow">Email login</p>
-        <h2>Verify your email code</h2>
+        <p className="eyebrow">Email verification</p>
+        <h2>Verify your email</h2>
         <p className="auth-page__redirect-note">{notice}</p>
 
         {error ? <div className="auth-page__error" role="alert">{error}</div> : null}
@@ -144,7 +142,7 @@ export function VerifyEmailOtpPage() {
           </label>
 
           <button type="submit" className="btn btn--primary" disabled={submitting}>
-            {submitting ? 'Verifying…' : 'Complete sign in'}
+            {submitting ? 'Verifying…' : 'Verify email'}
           </button>
         </form>
 

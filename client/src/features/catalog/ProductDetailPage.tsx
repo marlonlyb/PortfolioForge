@@ -730,7 +730,7 @@ export function ProductDetailPage() {
 				</>
 			) : user.auth_provider === 'local' && !user.email_verified ? (
 				<>
-				  <p className="assistant-chat__copy">Verify your email to unlock assistant eligibility for your local account.</p>
+				  <p className="assistant-chat__copy">Verify your email to keep your local account eligible for the assistant.</p>
 				  <Link className="btn btn--primary" to="/verify-email" state={{ from: location.pathname, email: user.email }}>
 				    Verify email
 				  </Link>

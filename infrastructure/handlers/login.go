@@ -18,6 +18,12 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
+type publicSignupRequest struct {
+	Email           string `json:"email"`
+	Password        string `json:"password"`
+	ConfirmPassword string `json:"confirm_password"`
+}
+
 type googleLoginRequest struct {
 	IDToken string `json:"id_token"`
 }
@@ -58,45 +64,23 @@ func (h *Login) AdminLogin(c echo.Context) error {
 	return c.JSON(response.ContractOK(data))
 }
 
-func (h *Login) RequestEmailLogin(c echo.Context) error {
-	var request model.EmailVerificationRequest
-	if err := c.Bind(&request); err != nil {
-		return response.ContractError(400, "validation_error", "Invalid email login payload")
-	}
-	if strings.TrimSpace(request.Email) == "" {
-		return response.ContractError(400, "validation_error", "Email is required", model.APIErrorDetail{Field: "email", Issue: "required"})
-	}
-
-	result, err := h.service.RequestEmailLogin(request.Email)
+func (h *Login) PublicLogin(c echo.Context) error {
+	request, err := bindPasswordLoginRequest(c)
 	if err != nil {
-		return response.ContractError(500, "unexpected_error", "Unable to process the email login request")
+		return err
 	}
 
-	return c.JSON(response.ContractOK(result))
-}
-
-func (h *Login) VerifyEmailLogin(c echo.Context) error {
-	var request model.EmailVerificationVerifyRequest
-	if err := c.Bind(&request); err != nil {
-		return response.ContractError(400, "validation_error", "Invalid verification payload")
-	}
-
-	if strings.TrimSpace(request.Email) == "" {
-		return response.ContractError(400, "validation_error", "Email is required", model.APIErrorDetail{Field: "email", Issue: "required"})
-	}
-	if len(strings.TrimSpace(request.Code)) != 6 {
-		return response.ContractError(400, "validation_error", "Verification code must contain 6 digits", model.APIErrorDetail{Field: "code", Issue: "invalid"})
-	}
-
-	userModel, tokenSigned, err := h.service.VerifyEmailLogin(request.Email, request.Code, os.Getenv("JWT_SECRET_KEY"))
-	if err != nil {
+	userModel, tokenSigned, serviceErr := h.service.PublicLogin(request.Email, request.Password, os.Getenv("JWT_SECRET_KEY"))
+	if serviceErr != nil {
 		switch {
-		case errors.Is(err, model.ErrOTPInvalid):
-			return response.ContractError(400, "otp_invalid", "The verification code is invalid")
-		case errors.Is(err, model.ErrOTPExpired):
-			return response.ContractError(410, "otp_expired", "The verification code expired or must be renewed")
+		case errors.Is(serviceErr, model.ErrInvalidCredentials):
+			return response.ContractError(401, "invalid_credentials", "Invalid email or password")
+		case errors.Is(serviceErr, model.ErrProviderConflict):
+			return response.ContractError(409, "account_provider_conflict", "That email already uses Google sign-in. Continue with Google.")
+		case errors.Is(serviceErr, model.ErrPasswordSetupRequired):
+			return response.ContractError(409, "password_setup_required", "This account still needs a password setup or reset before it can log in.")
 		default:
-			return response.ContractError(500, "unexpected_error", "Unable to verify the email code")
+			return response.ContractError(500, "unexpected_error", "Unable to sign in")
 		}
 	}
 
@@ -105,6 +89,27 @@ func (h *Login) VerifyEmailLogin(c echo.Context) error {
 		"token":      tokenSigned,
 		"expires_in": int((12 * time.Hour).Seconds()),
 	}))
+}
+
+func (h *Login) PublicSignup(c echo.Context) error {
+	request, err := bindPublicSignupRequest(c)
+	if err != nil {
+		return err
+	}
+
+	result, serviceErr := h.service.PublicSignup(request.Email, request.Password, os.Getenv("JWT_SECRET_KEY"))
+	if serviceErr != nil {
+		switch {
+		case errors.Is(serviceErr, model.ErrProviderConflict):
+			return response.ContractError(409, "account_provider_conflict", "That email already uses Google sign-in. Continue with Google.")
+		case errors.Is(serviceErr, model.ErrEmailAlreadyInUse):
+			return response.ContractError(409, "email_already_in_use", "That email already belongs to an existing local account. Log in instead.")
+		default:
+			return response.ContractError(500, "unexpected_error", "Unable to create the account")
+		}
+	}
+
+	return c.JSON(response.ContractOK(result))
 }
 
 func (h *Login) LoginWithGoogle(c echo.Context) error {
@@ -132,4 +137,38 @@ func (h *Login) LoginWithGoogle(c echo.Context) error {
 		"token":      tokenSigned,
 		"expires_in": int((12 * time.Hour).Seconds()),
 	}))
+}
+
+func bindPasswordLoginRequest(c echo.Context) (loginRequest, error) {
+	var request loginRequest
+	if err := c.Bind(&request); err != nil {
+		return request, response.ContractError(400, "validation_error", "Invalid sign-in payload")
+	}
+	if strings.TrimSpace(request.Email) == "" {
+		return request, response.ContractError(400, "validation_error", "Email is required", model.APIErrorDetail{Field: "email", Issue: "required"})
+	}
+	if len(strings.TrimSpace(request.Password)) < 8 {
+		return request, response.ContractError(400, "validation_error", "Password must contain at least 8 characters", model.APIErrorDetail{Field: "password", Issue: "invalid"})
+	}
+	return request, nil
+}
+
+func bindPublicSignupRequest(c echo.Context) (publicSignupRequest, error) {
+	var request publicSignupRequest
+	if err := c.Bind(&request); err != nil {
+		return request, response.ContractError(400, "validation_error", "Invalid sign-up payload")
+	}
+	if strings.TrimSpace(request.Email) == "" {
+		return request, response.ContractError(400, "validation_error", "Email is required", model.APIErrorDetail{Field: "email", Issue: "required"})
+	}
+	if len(strings.TrimSpace(request.Password)) < 8 {
+		return request, response.ContractError(400, "validation_error", "Password must contain at least 8 characters", model.APIErrorDetail{Field: "password", Issue: "invalid"})
+	}
+	if strings.TrimSpace(request.ConfirmPassword) == "" {
+		return request, response.ContractError(400, "validation_error", "Confirm password is required", model.APIErrorDetail{Field: "confirm_password", Issue: "required"})
+	}
+	if request.Password != request.ConfirmPassword {
+		return request, response.ContractError(400, "validation_error", "Passwords must match", model.APIErrorDetail{Field: "confirm_password", Issue: "mismatch"})
+	}
+	return request, nil
 }

@@ -22,7 +22,7 @@ El proyecto ya tiene implementado y archivado en SDD:
 - **Base de datos**: PostgreSQL 16
 - **Extensiones DB**: `unaccent`, `pg_trgm`, `vector (pgvector)`
 - **LLM / Embeddings**: OpenAI (`text-embedding-3-small`, `gpt-4o-mini`)
-- **Auth**: JWT Bearer sessions, entrada pública única `/login` con Google + OTP por email, creación/login local passwordless para usuarios públicos, `/admin/login` oculto para admin local con password, y assistant habilitado solo para sesiones elegibles
+- **Auth**: JWT Bearer sessions, public `/login` + `/signup` with Google and local email/password for non-admin users, OTP reserved for email verification/resend, hidden `/admin/login` for local admin password access, and assistant enabled only for eligible sessions
 - **Revisión visual local**: Playwright
 
 ## Funcionalidad principal
@@ -171,9 +171,10 @@ Si `VITE_API_BASE_URL` no existe, el frontend usa `http://localhost:8080` por de
 - `/search` — resultados de búsqueda
 - `/projects` — catálogo
 - `/projects/:slug` — detalle de proyecto
-- `/login` — entrada pública única con Google y OTP por email
+- `/login` — public login with Google or local email/password
+- `/signup` — public signup with Google or local email/password
 - `/admin/login` — login admin oculto del UI público pero accesible por URL directa
-- `/verify-email` — verificación OTP de 6 dígitos que completa el login por email
+- `/verify-email` — 6-digit OTP flow for email verification / re-verification only
 - `/complete-profile` — completar `full_name` y `company` antes de usar el assistant
 
 ### Frontend admin
@@ -186,9 +187,12 @@ Si `VITE_API_BASE_URL` no existe, el frontend usa `http://localhost:8080` por de
 
 ### API pública
 - `GET /api/v1/public/search?q=...&technologies=...&category=...&client=...`
-- `POST /api/v1/public/login/email/request`
-- `POST /api/v1/public/login/email/verify`
+- `POST /api/v1/public/signup`
+- `POST /api/v1/public/login`
 - `POST /api/v1/public/login/google`
+- `POST /api/v1/public/email-verification/request`
+- `POST /api/v1/public/email-verification/resend`
+- `POST /api/v1/public/email-verification/verify`
 - `POST /api/v1/admin/login`
 - `POST /api/v1/public/email-verification/request`
 - `POST /api/v1/public/email-verification/resend`
@@ -216,7 +220,7 @@ Si `VITE_API_BASE_URL` no existe, el frontend usa `http://localhost:8080` por de
 
 1. Levanta backend y frontend
 2. Entra a `http://localhost:5173/login`
-3. Usa Google o escribe tu email en `/login` para recibir un OTP y entrar con el flujo público passwordless
+3. Usa Google o inicia sesión con email/password en `/login`; usa `/signup` para crear una cuenta local pública nueva
 4. Para administración, entra manualmente a `http://localhost:5173/admin/login` con un usuario admin local
 5. Crea tecnologías en `/admin/technologies`
 6. Enriquece un proyecto desde `/admin/projects/:id`
@@ -226,7 +230,7 @@ Si `VITE_API_BASE_URL` no existe, el frontend usa `http://localhost:8080` por de
    - `SIEMENS`
    - `commissioning`
    - `react scada`
-10. Si `assistant_available=true` en el payload público, abre `/projects/:slug`, confirma que el assistant no aparece en sesión anónima y luego entra con Google o con OTP por email
+10. Si `assistant_available=true` en el payload público, abre `/projects/:slug`, confirma que el assistant no aparece en sesión anónima y luego entra con Google o con una cuenta local verificada
 11. Si el usuario público entra por email, valida que reciba un OTP de 6 dígitos, que `/verify-email` complete la sesión y que el assistant siga bloqueado hasta completar perfil
 12. Si el usuario público no tiene `full_name` o `company`, completa `/complete-profile` y valida que recién entonces se habilita el chat
 

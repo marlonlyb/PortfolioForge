@@ -35,20 +35,20 @@ func (l Login) AdminLogin(email, password, jwtSecretKey string) (model.User, str
 	return l.issueToken(user, jwtSecretKey)
 }
 
-func (l Login) RequestEmailLogin(email string) (model.EmailVerificationDispatchResult, error) {
-	result, err := l.ServiceUser.RequestEmailLogin(email)
+func (l Login) PublicLogin(email, password, jwtSecretKey string) (model.User, string, error) {
+	user, err := l.ServiceUser.PublicLogin(email, password)
 	if err != nil {
-		return model.EmailVerificationDispatchResult{}, fmt.Errorf("%s %w", "ServiceUser.RequestEmailLogin()", err)
-	}
-	return result, nil
-}
-
-func (l Login) VerifyEmailLogin(email, code, jwtSecretKey string) (model.User, string, error) {
-	user, err := l.ServiceUser.VerifyEmailLogin(email, code)
-	if err != nil {
-		return model.User{}, "", fmt.Errorf("%s %w", "ServiceUser.VerifyEmailLogin()", err)
+		return model.User{}, "", fmt.Errorf("%s %w", "ServiceUser.PublicLogin()", err)
 	}
 	return l.issueToken(user, jwtSecretKey)
+}
+
+func (l Login) PublicSignup(email, password, _ string) (model.EmailVerificationDispatchResult, error) {
+	result, err := l.ServiceUser.PublicSignup(email, password)
+	if err != nil {
+		return model.EmailVerificationDispatchResult{}, fmt.Errorf("%s %w", "ServiceUser.PublicSignup()", err)
+	}
+	return result, nil
 }
 
 func (l Login) LoginWithGoogle(idToken, jwtSecretKey string) (model.User, string, error) {

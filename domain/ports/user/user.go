@@ -13,6 +13,7 @@ type Repository interface {
 	GetByEmail(email string) (model.User, error)
 	GetByProviderSubject(provider, subject string) (model.User, error)
 	UpsertGoogleUser(identity model.GoogleIdentity) (model.User, error)
+	UpdateLastLogin(ID uuid.UUID, lastLoginAt, updatedAt int64) (model.User, error)
 	UpdateProfile(ID uuid.UUID, fullName, company string) (model.User, error)
 	CreateEmailVerificationChallenge(challenge *model.EmailVerificationChallenge) error
 	GetLatestEmailVerificationChallengeByUserID(userID uuid.UUID) (model.EmailVerificationChallenge, error)
@@ -32,9 +33,9 @@ type Service interface {
 	GetByID(ID uuid.UUID) (model.User, error)
 	GetByEmail(email string) (model.User, error)
 	AdminLogin(email, password string) (model.User, error)
+	PublicSignup(email, password string) (model.EmailVerificationDispatchResult, error)
+	PublicLogin(email, password string) (model.User, error)
 	LoginWithGoogle(identity model.GoogleIdentity) (model.User, error)
-	RequestEmailLogin(email string) (model.EmailVerificationDispatchResult, error)
-	VerifyEmailLogin(email, code string) (model.User, error)
 	UpdateProfile(ID uuid.UUID, fullName, company string) (model.User, error)
 	RequestEmailVerification(email string) (model.EmailVerificationDispatchResult, error)
 	ResendEmailVerification(email string) (model.EmailVerificationDispatchResult, error)
@@ -49,7 +50,7 @@ type Service interface {
 
 type ServiceLogin interface {
 	AdminLogin(email, password string) (model.User, error)
+	PublicSignup(email, password string) (model.EmailVerificationDispatchResult, error)
+	PublicLogin(email, password string) (model.User, error)
 	LoginWithGoogle(identity model.GoogleIdentity) (model.User, error)
-	RequestEmailLogin(email string) (model.EmailVerificationDispatchResult, error)
-	VerifyEmailLogin(email, code string) (model.User, error)
 }

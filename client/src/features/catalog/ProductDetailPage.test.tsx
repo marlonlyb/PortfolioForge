@@ -249,7 +249,7 @@ describe('ProductDetailPage', () => {
     renderDetailPage();
 
     expect(await screen.findByRole('heading', { name: 'PortfolioForge' })).toBeInTheDocument();
-    expect(screen.getByText('Verify your email to unlock assistant eligibility for your local account.')).toBeInTheDocument();
+    expect(screen.getByText('Verify your email to keep your local account eligible for the assistant.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Verify email' })).toBeInTheDocument();
   });
 

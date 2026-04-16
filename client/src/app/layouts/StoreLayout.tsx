@@ -101,14 +101,24 @@ export function StoreLayout() {
                     </button>
                   </>
                 ) : (
-                  <NavLink
-                    className={({ isActive }) =>
-                      isActive ? 'nav-link nav-link--active' : 'nav-link'
-                    }
-                    to="/login"
-                  >
-                    {t.navLogin}
-                  </NavLink>
+                  <>
+                    <NavLink
+                      className={({ isActive }) =>
+                        isActive ? 'nav-link nav-link--active' : 'nav-link'
+                      }
+                      to="/login"
+                    >
+                      {t.navLogin}
+                    </NavLink>
+                    <NavLink
+                      className={({ isActive }) =>
+                        isActive ? 'nav-link nav-link--active' : 'nav-link'
+                      }
+                      to="/signup"
+                    >
+                      {t.navSignup}
+                    </NavLink>
+                  </>
                 )}
               </nav>
             </div>
@@ -187,14 +197,24 @@ export function StoreLayout() {
                       </button>
                     </>
                   ) : (
-                    <NavLink
-                      className={({ isActive }) =>
-                        isActive ? 'nav-link nav-link--active' : 'nav-link'
-                      }
-                      to="/login"
-                    >
-                      {t.navLogin}
-                    </NavLink>
+                    <>
+                      <NavLink
+                        className={({ isActive }) =>
+                          isActive ? 'nav-link nav-link--active' : 'nav-link'
+                        }
+                        to="/login"
+                      >
+                        {t.navLogin}
+                      </NavLink>
+                      <NavLink
+                        className={({ isActive }) =>
+                          isActive ? 'nav-link nav-link--active' : 'nav-link'
+                        }
+                        to="/signup"
+                      >
+                        {t.navSignup}
+                      </NavLink>
+                    </>
                   )}
                 </nav>
               </div>

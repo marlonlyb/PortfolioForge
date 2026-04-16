@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -24,6 +25,8 @@ type userRepositoryStub struct {
 	updatedChallengeAttempts int
 	consumedChallengeID      uuid.UUID
 	markedVerifiedUserID     uuid.UUID
+	updatedLastLoginUserID   uuid.UUID
+	updatedLastLoginAt       int64
 }
 
 func (s *userRepositoryStub) Create(user *model.User) error {
@@ -97,6 +100,20 @@ func (s *userRepositoryStub) UpdateProfile(id uuid.UUID, fullName, company strin
 	s.userByEmail[user.Email] = user
 	s.indexUser(user)
 	return user, nil
+}
+
+func (s *userRepositoryStub) UpdateLastLogin(id uuid.UUID, lastLoginAt, updatedAt int64) (model.User, error) {
+	userData, err := s.GetByID(id)
+	if err != nil {
+		return model.User{}, err
+	}
+	userData.LastLoginAt = lastLoginAt
+	userData.UpdatedAt = updatedAt
+	s.updatedLastLoginUserID = id
+	s.updatedLastLoginAt = lastLoginAt
+	s.userByEmail[userData.Email] = userData
+	s.indexUser(userData)
+	return userData, nil
 }
 
 func (s *userRepositoryStub) AdminList() (model.Users, error) {
@@ -248,6 +265,12 @@ func TestCreateLocalUserStartsPendingVerification(t *testing.T) {
 	if user.EmailVerified {
 		t.Fatalf("email_verified = true, want false")
 	}
+	if repo.createdUser == nil {
+		t.Fatalf("expected user to be persisted")
+	}
+	if repo.createdUser.LocalAuthState != "ready" {
+		t.Fatalf("local_auth_state = %q, want ready", repo.createdUser.LocalAuthState)
+	}
 	if repo.createdChallenge == nil {
 		t.Fatalf("expected email verification challenge to be created")
 	}
@@ -256,6 +279,72 @@ func TestCreateLocalUserStartsPendingVerification(t *testing.T) {
 	}
 	if len(mailer.lastMessage.OTPCode) != 6 {
 		t.Fatalf("otp length = %d, want 6", len(mailer.lastMessage.OTPCode))
+	}
+}
+
+func TestPublicLoginRejectsPasswordSetupRequiredLocalUser(t *testing.T) {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("legacy-placeholder"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("GenerateFromPassword() error = %v", err)
+	}
+
+	repo := &userRepositoryStub{userByEmail: map[string]model.User{
+		"ada@example.com": {
+			ID:             uuid.New(),
+			Email:          "ada@example.com",
+			Password:       string(passwordHash),
+			AuthProvider:   "local",
+			LocalAuthState: "password_setup_required",
+			CreatedAt:      time.Now().Add(-1 * time.Hour).Unix(),
+			UpdatedAt:      time.Now().Add(-1 * time.Hour).Unix(),
+		},
+	}}
+	service := NewUser(repo, &verificationMailerStub{})
+
+	_, err = service.PublicLogin("ada@example.com", "secret-123")
+	if !errors.Is(err, model.ErrPasswordSetupRequired) {
+		t.Fatalf("PublicLogin() error = %v, want %v", err, model.ErrPasswordSetupRequired)
+	}
+	if repo.updatedLastLoginUserID != uuid.Nil {
+		t.Fatalf("unexpected UpdateLastLogin() call for password-setup-required user")
+	}
+}
+
+func TestPublicLoginAllowsReadyLocalUser(t *testing.T) {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("secret-123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("GenerateFromPassword() error = %v", err)
+	}
+
+	userID := uuid.New()
+	repo := &userRepositoryStub{userByEmail: map[string]model.User{
+		"ada@example.com": {
+			ID:             userID,
+			Email:          "ada@example.com",
+			Password:       string(passwordHash),
+			AuthProvider:   "local",
+			LocalAuthState: "ready",
+			EmailVerified:  true,
+			FullName:       "Ada Lovelace",
+			Company:        "Analytical Engines",
+			CreatedAt:      time.Now().Add(-1 * time.Hour).Unix(),
+			UpdatedAt:      time.Now().Add(-1 * time.Hour).Unix(),
+		},
+	}}
+	service := NewUser(repo, &verificationMailerStub{})
+
+	loggedInUser, err := service.PublicLogin("ada@example.com", "secret-123")
+	if err != nil {
+		t.Fatalf("PublicLogin() error = %v", err)
+	}
+	if loggedInUser.Email != "ada@example.com" {
+		t.Fatalf("email = %q, want ada@example.com", loggedInUser.Email)
+	}
+	if loggedInUser.Password != "" {
+		t.Fatalf("password = %q, want empty", loggedInUser.Password)
+	}
+	if repo.updatedLastLoginUserID != userID {
+		t.Fatalf("updated last login user = %s, want %s", repo.updatedLastLoginUserID, userID)
 	}
 }
 

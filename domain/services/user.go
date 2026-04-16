@@ -50,6 +50,7 @@ func (u *User) Create(m *model.User) error {
 
 	m.Email = normalizeEmail(m.Email)
 	m.AuthProvider = "local"
+	m.LocalAuthState = "ready"
 	m.EmailVerified = false
 
 	password, err := bcrypt.GenerateFromPassword([]byte(m.Password), bcrypt.DefaultCost)
@@ -197,6 +198,84 @@ func (u *User) AdminLogin(email, password string) (model.User, error) {
 
 	m.LastLoginAt = time.Now().Unix()
 	return sanitizeUser(m), nil
+}
+
+func (u *User) PublicSignup(email, password string) (model.EmailVerificationDispatchResult, error) {
+	normalizedEmail := normalizeEmail(email)
+	trimmedPassword := strings.TrimSpace(password)
+	if normalizedEmail == "" || trimmedPassword == "" {
+		return model.EmailVerificationDispatchResult{}, model.ErrInvalidCredentials
+	}
+
+	if existingUser, err := u.Repository.GetByEmail(normalizedEmail); err == nil {
+		authProvider := strings.TrimSpace(existingUser.AuthProvider)
+		if authProvider == "" {
+			authProvider = "local"
+		}
+		if authProvider != "local" {
+			return model.EmailVerificationDispatchResult{}, model.ErrProviderConflict
+		}
+		return model.EmailVerificationDispatchResult{}, model.ErrEmailAlreadyInUse
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return model.EmailVerificationDispatchResult{}, fmt.Errorf("%s %w", "Repository.GetByEmail()", err)
+	}
+
+	userData := &model.User{
+		Email:    normalizedEmail,
+		Password: trimmedPassword,
+		IsAdmin:  false,
+		Details:  []byte("{}"),
+	}
+	if err := u.Create(userData); err != nil {
+		return model.EmailVerificationDispatchResult{}, err
+	}
+
+	return model.EmailVerificationDispatchResult{
+		VerificationRequired: true,
+		Message:              "Account created. Check your email for the verification code.",
+		CooldownSeconds:      int(emailVerificationCooldown / time.Second),
+	}, nil
+}
+
+func (u *User) PublicLogin(email, password string) (model.User, error) {
+	normalizedEmail := normalizeEmail(email)
+	trimmedPassword := strings.TrimSpace(password)
+	if normalizedEmail == "" || trimmedPassword == "" {
+		return model.User{}, model.ErrInvalidCredentials
+	}
+
+	userData, err := u.Repository.GetByEmail(normalizedEmail)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.User{}, model.ErrInvalidCredentials
+		}
+		return model.User{}, fmt.Errorf("%s %w", "Repository.GetByEmail()", err)
+	}
+
+	authProvider := strings.TrimSpace(userData.AuthProvider)
+	if authProvider == "" {
+		authProvider = "local"
+	}
+	if authProvider != "local" {
+		return model.User{}, model.ErrProviderConflict
+	}
+	if userData.IsAdmin {
+		return model.User{}, model.ErrInvalidCredentials
+	}
+	if strings.TrimSpace(userData.Password) == "" || userData.LocalAuthState == "password_setup_required" {
+		return model.User{}, model.ErrPasswordSetupRequired
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(userData.Password), []byte(trimmedPassword)); err != nil {
+		return model.User{}, model.ErrInvalidCredentials
+	}
+
+	now := time.Now().Unix()
+	updatedUser, err := u.Repository.UpdateLastLogin(userData.ID, now, now)
+	if err != nil {
+		return model.User{}, fmt.Errorf("%s %w", "Repository.UpdateLastLogin()", err)
+	}
+
+	return sanitizeUser(updatedUser), nil
 }
 
 func (u *User) LoginWithGoogle(identity model.GoogleIdentity) (model.User, error) {
