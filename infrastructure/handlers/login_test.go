@@ -157,7 +157,7 @@ func hashRuntimeLoginPassword(t *testing.T, raw string) string {
 	return string(hash)
 }
 
-func TestLogin_AdminLogin(t *testing.T) {
+func TestLogin_AdminLoginUsesUnifiedPasswordFlow(t *testing.T) {
 	os.Setenv("JWT_SECRET_KEY", "secret")
 	defer os.Unsetenv("JWT_SECRET_KEY")
 
@@ -173,6 +173,42 @@ func TestLogin_AdminLogin(t *testing.T) {
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+}
+
+func TestLogin_AdminLoginRuntimeAllowsNonAdminUserForCompatibilityAlias(t *testing.T) {
+	os.Setenv("JWT_SECRET_KEY", "secret")
+	defer os.Unsetenv("JWT_SECRET_KEY")
+
+	userID := uuid.New()
+	repo := &runtimeLoginRepositoryStub{users: map[string]model.User{
+		"ada@example.com": {
+			ID:             userID,
+			Email:          "ada@example.com",
+			Password:       hashRuntimeLoginPassword(t, "secret-123"),
+			AuthProvider:   "local",
+			LocalAuthState: "ready",
+			CreatedAt:      time.Now().Add(-1 * time.Hour).Unix(),
+			UpdatedAt:      time.Now().Add(-1 * time.Hour).Unix(),
+		},
+	}}
+	service := userservice.NewLogin(userservice.NewUser(repo, noopVerificationMailer{}), nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/login", bytes.NewBufferString(`{"email":"ada@example.com","password":"secret-123"}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := echo.New().NewContext(req, rec)
+
+	h := &Login{service: service, responser: response.API{}}
+	if err := h.AdminLogin(c); err != nil {
+		response.HTTPErrorHandler(err, c)
+	}
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if repo.updatedLastLoginID != userID {
+		t.Fatalf("updated last login id = %s, want %s", repo.updatedLastLoginID, userID)
 	}
 }
 
@@ -284,6 +320,39 @@ func TestLogin_PublicLoginRuntimeAllowsReadyLocalUser(t *testing.T) {
 	}
 	if repo.updatedLastLoginID != userID {
 		t.Fatalf("updated last login id = %s, want %s", repo.updatedLastLoginID, userID)
+	}
+}
+
+func TestLogin_PublicLoginRuntimeRejectsInvalidCredentials(t *testing.T) {
+	os.Setenv("JWT_SECRET_KEY", "secret")
+	defer os.Unsetenv("JWT_SECRET_KEY")
+
+	repo := &runtimeLoginRepositoryStub{users: map[string]model.User{
+		"ada@example.com": {
+			ID:             uuid.New(),
+			Email:          "ada@example.com",
+			Password:       hashRuntimeLoginPassword(t, "secret-123"),
+			AuthProvider:   "local",
+			LocalAuthState: "ready",
+			CreatedAt:      time.Now().Add(-1 * time.Hour).Unix(),
+			UpdatedAt:      time.Now().Add(-1 * time.Hour).Unix(),
+		},
+	}}
+	service := userservice.NewLogin(userservice.NewUser(repo, noopVerificationMailer{}), nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/public/login", bytes.NewBufferString(`{"email":"ada@example.com","password":"wrong-password"}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := echo.New().NewContext(req, rec)
+
+	h := &Login{service: service, responser: response.API{}}
+	if err := h.PublicLogin(c); err != nil {
+		response.HTTPErrorHandler(err, c)
+	}
+
+	assertAPIError(t, rec, http.StatusUnauthorized, "invalid_credentials")
+	if repo.updatedLastLoginID != uuid.Nil {
+		t.Fatalf("unexpected UpdateLastLogin() call for invalid credentials")
 	}
 }
 

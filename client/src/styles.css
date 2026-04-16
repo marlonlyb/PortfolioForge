@@ -3539,8 +3539,20 @@ small {
   background: rgba(20, 17, 29, 0.96);
 }
 
+.assistant-chat__message--user {
+  background: rgba(58, 46, 82, 0.96);
+}
+
 .assistant-chat__message--assistant {
   background: rgba(72, 104, 255, 0.14);
+}
+
+.assistant-chat__message--pending {
+  border-style: dashed;
+}
+
+.assistant-chat__message--typing p {
+  font-style: italic;
 }
 
 .assistant-chat__form {
@@ -3554,7 +3566,28 @@ small {
 
 .assistant-chat__actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.assistant-chat__clear {
+  border: none;
+  background: transparent;
+  color: #c6bde2;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.assistant-chat__clear:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  text-decoration: none;
+}
+
+.assistant-chat__error {
+  margin: 0;
 }
 
 .detail__aside-panel {

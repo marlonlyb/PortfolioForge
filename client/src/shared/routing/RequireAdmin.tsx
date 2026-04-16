@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
 import { useSession } from '../../app/providers/SessionProvider';
 
@@ -8,13 +8,14 @@ import { useSession } from '../../app/providers/SessionProvider';
  */
 export function RequireAdmin() {
   const { user, loading } = useSession();
+  const location = useLocation();
 
   if (loading) {
     return null;
   }
 
   if (!user) {
-    return <Navigate replace to="/admin/login" />;
+    return <Navigate replace to="/login" state={{ from: `${location.pathname}${location.search}${location.hash}` }} />;
   }
 
   if (!user.is_admin) {

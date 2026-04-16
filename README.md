@@ -22,7 +22,7 @@ El proyecto ya tiene implementado y archivado en SDD:
 - **Base de datos**: PostgreSQL 16
 - **Extensiones DB**: `unaccent`, `pg_trgm`, `vector (pgvector)`
 - **LLM / Embeddings**: OpenAI (`text-embedding-3-small`, `gpt-4o-mini`)
-- **Auth**: JWT Bearer sessions, public `/login` + `/signup` with Google and local email/password for non-admin users, OTP reserved for email verification/resend, hidden `/admin/login` for local admin password access, and assistant enabled only for eligible sessions
+- **Auth**: JWT Bearer sessions, canonical `/login` as the only visible public nav entry, Google or local email/password for all local users, `/signup` kept for direct access or auth-flow links, `/admin/login` kept as a compatibility alias to the same login behavior, OTP reserved for email verification/resend, and assistant enabled only for eligible sessions
 - **Revisión visual local**: Playwright
 
 ## Funcionalidad principal
@@ -171,9 +171,9 @@ Si `VITE_API_BASE_URL` no existe, el frontend usa `http://localhost:8080` por de
 - `/search` — resultados de búsqueda
 - `/projects` — catálogo
 - `/projects/:slug` — detalle de proyecto
-- `/login` — public login with Google or local email/password
-- `/signup` — public signup with Google or local email/password
-- `/admin/login` — login admin oculto del UI público pero accesible por URL directa
+- `/login` — canonical login with Google or local email/password for any registered user
+- `/signup` — direct-access signup route kept inside the auth flow (not shown in the public header)
+- `/admin/login` — compatibility alias to the shared login screen, still reachable by direct URL
 - `/verify-email` — 6-digit OTP flow for email verification / re-verification only
 - `/complete-profile` — completar `full_name` y `company` antes de usar el assistant
 
@@ -220,8 +220,8 @@ Si `VITE_API_BASE_URL` no existe, el frontend usa `http://localhost:8080` por de
 
 1. Levanta backend y frontend
 2. Entra a `http://localhost:5173/login`
-3. Usa Google o inicia sesión con email/password en `/login`; usa `/signup` para crear una cuenta local pública nueva
-4. Para administración, entra manualmente a `http://localhost:5173/admin/login` con un usuario admin local
+3. Usa Google o inicia sesión con email/password en `/login`; desde ahí puedes abrir `Sign up`, o entrar directo a `/signup`, para crear una cuenta local pública nueva
+4. Si quieres validar compatibilidad con bookmarks antiguos, entra manualmente a `http://localhost:5173/admin/login`; el formulario aplica las mismas reglas que `/login`
 5. Crea tecnologías en `/admin/technologies`
 6. Enriquece un proyecto desde `/admin/projects/:id`
 7. Si el proyecto debe exponer assistant, configura `source_markdown_url` con una URL HTTPS pública que apunte al markdown fuente

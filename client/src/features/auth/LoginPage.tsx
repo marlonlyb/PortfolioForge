@@ -2,10 +2,9 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { useLocale } from '../../app/providers/LocaleProvider';
-import { useSession } from '../../app/providers/SessionProvider';
+import { useSession, type SessionUser } from '../../app/providers/SessionProvider';
 import { API_ERROR_CODES, AppError } from '../../shared/api/errors';
 import {
-  adminLogin,
   loginWithGoogle,
   publicLogin,
   publicSignup,
@@ -17,17 +16,11 @@ interface LoginLocationState {
   notice?: string;
 }
 
-const LOGIN_PAGE_MODE = {
-  PUBLIC: 'public',
-  ADMIN: 'admin',
-} as const;
-
 const PUBLIC_AUTH_VARIANT = {
   LOGIN: 'login',
   SIGNUP: 'signup',
 } as const;
 
-type LoginPageMode = (typeof LOGIN_PAGE_MODE)[keyof typeof LOGIN_PAGE_MODE];
 type PublicAuthVariant = (typeof PUBLIC_AUTH_VARIANT)[keyof typeof PUBLIC_AUTH_VARIANT];
 
 interface GoogleCredentialResponse {
@@ -53,7 +46,6 @@ declare global {
 }
 
 interface LoginPageProps {
-  mode?: LoginPageMode;
   variant?: PublicAuthVariant;
 }
 
@@ -70,7 +62,7 @@ function formatValidationDetail(field?: string, issue?: string): string | null {
   return null;
 }
 
-export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC, variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProps) {
+export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLocale();
@@ -78,8 +70,7 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC, variant = PUBLIC_AUTH
   const state = (location.state as LoginLocationState | null) ?? null;
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-  const isPublicMode = mode === LOGIN_PAGE_MODE.PUBLIC;
-  const isSignupVariant = isPublicMode && variant === PUBLIC_AUTH_VARIANT.SIGNUP;
+  const isSignupVariant = variant === PUBLIC_AUTH_VARIANT.SIGNUP;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -96,10 +87,10 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC, variant = PUBLIC_AUTH
     setFormError(null);
     setGoogleError(null);
     setSignupSuccess(null);
-  }, [isPublicMode, isSignupVariant]);
+  }, [isSignupVariant]);
 
   useEffect(() => {
-    if (!isPublicMode || !googleClientId) return;
+    if (!googleClientId) return;
 
     if (window.google?.accounts.id) {
       setGoogleReady(true);
@@ -119,10 +110,10 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC, variant = PUBLIC_AUTH
     script.dataset.googleIdentity = 'true';
     script.onload = () => setGoogleReady(true);
     document.head.appendChild(script);
-  }, [googleClientId, isPublicMode]);
+  }, [googleClientId]);
 
   useEffect(() => {
-    if (!isPublicMode || !googleClientId || !googleReady || !googleButtonRef.current || !window.google?.accounts.id) {
+    if (!googleClientId || !googleReady || !googleButtonRef.current || !window.google?.accounts.id) {
       return;
     }
 
@@ -140,14 +131,7 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC, variant = PUBLIC_AUTH
 
         try {
           const session = await loginWithGoogle({ id_token: response.credential });
-          login(session);
-
-          if (!session.user.profile_completed) {
-            navigate('/complete-profile', { replace: true, state: { from: state?.from ?? '/' } });
-            return;
-          }
-
-          navigate(state?.from ?? '/', { replace: true });
+          handleSuccessfulLogin(session.user, session);
         } catch (err) {
           setGoogleError(err instanceof AppError ? err.message : 'Unable to complete Google sign-in.');
         } finally {
@@ -164,7 +148,26 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC, variant = PUBLIC_AUTH
       text: isSignupVariant ? 'signup_with' : 'continue_with',
       shape: 'pill',
     });
-  }, [googleClientId, googleReady, isPublicMode, isSignupVariant, login, navigate, state?.from]);
+  }, [googleClientId, googleReady, isSignupVariant, login, navigate, state?.from]);
+
+  function resolvePostLoginPath(user: SessionUser): string {
+    if (state?.from) {
+      return state.from;
+    }
+
+    return user.is_admin ? '/admin/projects' : '/';
+  }
+
+  function handleSuccessfulLogin(user: SessionUser, response: Parameters<typeof login>[0]) {
+    login(response);
+
+    if (!user.profile_completed) {
+      navigate('/complete-profile', { replace: true, state: { from: resolvePostLoginPath(user) } });
+      return;
+    }
+
+    navigate(resolvePostLoginPath(user), { replace: true });
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -174,26 +177,14 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC, variant = PUBLIC_AUTH
     setFormNotice(null);
 
     try {
-      if (isPublicMode && isSignupVariant) {
+      if (isSignupVariant) {
         const response = await publicSignup({ email: email.trim(), password, confirm_password: confirmPassword });
         setSignupSuccess({ email: email.trim(), response });
         return;
       }
 
-      if (isPublicMode) {
-        const response = await publicLogin({ email: email.trim(), password });
-        login(response);
-        if (!response.user.profile_completed) {
-          navigate('/complete-profile', { replace: true, state: { from: state?.from ?? '/' } });
-          return;
-        }
-        navigate(state?.from ?? '/', { replace: true });
-        return;
-      }
-
-      const response = await adminLogin({ email: email.trim(), password });
-      login(response);
-      navigate('/admin/projects', { replace: true });
+      const response = await publicLogin({ email: email.trim(), password });
+      handleSuccessfulLogin(response.user, response);
     } catch (err) {
       if (err instanceof AppError) {
         if (err.code === API_ERROR_CODES.VALIDATION_ERROR) {
@@ -336,53 +327,11 @@ export function LoginPage({ mode = LOGIN_PAGE_MODE.PUBLIC, variant = PUBLIC_AUTH
     <section className="auth-page">
       <article className="card auth-page__shell">
         <div className="auth-page__stack">
-          {isPublicMode ? renderPublicForm() : null}
-
-          {!isPublicMode ? (
-            <section className="auth-page__panel auth-page__panel--primary">
-              <p className="eyebrow">{t.authAdminEyebrow}</p>
-              <h2>{t.authAdminTitle}</h2>
-              <p className="auth-page__redirect-note">{t.authAdminDescription}</p>
-
-              {formError ? <div className="auth-page__error" role="alert">{formError}</div> : null}
-
-              <form className="auth-page__form" onSubmit={handleSubmit}>
-                <label className="auth-page__label">
-                  Email
-                  <input
-                    type="email"
-                    className="auth-page__input"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    required
-                    autoComplete="email"
-                    disabled={submitting}
-                  />
-                </label>
-
-                <label className="auth-page__label">
-                  Password
-                  <input
-                    type="password"
-                    className="auth-page__input"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    required
-                    autoComplete="current-password"
-                    disabled={submitting}
-                  />
-                </label>
-
-                <button type="submit" className="btn btn--primary" disabled={submitting}>
-                  {submitting ? 'Signing in…' : 'Sign in'}
-                </button>
-              </form>
-            </section>
-          ) : null}
+          {renderPublicForm()}
         </div>
 
         <p className="auth-page__alt auth-page__alt--footer">
-          <Link to={isPublicMode ? '/' : '/login'}>{isPublicMode ? t.authBackToPortfolio : t.authBackToPublicLogin}</Link>
+          <Link to="/">{t.authBackToPortfolio}</Link>
         </p>
       </article>
     </section>

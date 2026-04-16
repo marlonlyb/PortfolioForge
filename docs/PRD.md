@@ -1,211 +1,488 @@
-# PRD - PortfolioForge
+# PRD — PortfolioForge
 
-## 1. Resumen ejecutivo
+## 1. Propósito del producto
 
-PortfolioForge es una plataforma para convertir experiencia profesional real en case studies navegables, buscables y explicables. El producto combina un sitio público orientado a discovery con una consola admin donde cada proyecto se modela como una entrada rica de portfolio, no como una ficha comercial genérica.
+PortfolioForge es una plataforma para convertir experiencia profesional real en proyectos públicos navegables, buscables y explicables.
 
-La dirección actual del producto ya no se limita a “publicar proyectos manualmente”. El objetivo es establecer un flujo completo de ingestión que permita partir de evidencia real de trabajo —repositorios, carpetas de proyecto, documentación técnica, imágenes y notas operativas— para producir una fuente markdown estructurada y, desde allí, cargar proyectos consistentes dentro del admin.
+Su objetivo no es solo “mostrar trabajos”, sino operar un sistema editorial donde:
 
-## 2. Problema
+- un **markdown canónico** concentra la narrativa principal del proyecto;
+- la **UI + DB** persisten una versión estructurada, resumida y operativa de ese contenido;
+- la **búsqueda** recupera proyectos por evidencia real;
+- el **assistant** responde preguntas grounded exclusivamente en el markdown publicado vía `source_markdown_url`.
 
-Los portfolios tradicionales fallan en tres niveles:
+El producto actual ya funciona como portfolio público, consola admin de curación y runtime de búsqueda/assistant. La dirección vigente consolida al `.md` canónico como fuente editorial principal para altas y actualizaciones.
 
-- muestran resultados visuales, pero no el razonamiento técnico ni el impacto de negocio;
-- no responden bien a búsquedas por evidencia real (`CAN Bus`, `SCADA`, `commissioning`, `React`, `Go`, `OpenAI`, etc.);
-- dependen de carga manual inconsistente, lo que dificulta escalar un portfolio amplio y riguroso.
+---
 
-Además, gran parte de la experiencia profesional valiosa nace fuera de una “ficha” preparada para marketing: vive en repositorios, carpetas de entregables, diagramas, capturas, documentos técnicos y contexto operativo disperso. PortfolioForge debe capturar ese material y transformarlo en entradas publicables, comparables y buscables.
+## 2. Principios del producto real
 
-## 3. Visión del producto
+1. **El repositorio fuente no se publica directamente**: primero se transforma en un `.md` canónico.
+2. **El `.md` canónico es la fuente editorial principal**: resume, organiza y estabiliza el proyecto.
+3. **La UI admin no debe reinventar el proyecto**: debe persistir y ajustar lo ya definido en el markdown.
+4. **La DB y la UI son la capa runtime estructurada**: exponen catálogo, detalle, búsqueda, readiness, localización y media optimizada.
+5. **El assistant no usa chat libre**: responde sobre un proyecto concreto usando solo el markdown remoto configurado.
+6. **El dominio funcional es `project`** aunque persistan nombres legacy como `product` y `brand`.
 
-PortfolioForge debe ser un portfolio técnico de alta credibilidad con dos capacidades principales:
+---
 
-1. **Descubrimiento público por evidencia real**  
-   El visitante describe una necesidad, tecnología o contexto y el sistema recupera proyectos relevantes con explicaciones breves, limitadas a evidencia del proyecto.
+## 3. Usuarios principales
 
-2. **Producción estructurada de case studies**  
-   El administrador puede transformar proyectos reales en entradas consistentes del portfolio usando un modelo de contenido claro, primero manual y progresivamente asistido por análisis de repositorios/carpetas.
+### 3.1 Visitante público
 
-## 4. Dirección actual
+Quiere:
 
-### 4.1 Lo que ya existe
+- descubrir experiencia por búsqueda real (`React`, `SCADA`, `commissioning`, etc.);
+- explorar catálogo y detalle de proyectos;
+- entender problema, ejecución y solución técnica;
+- consultar el assistant cuando el proyecto lo permite y su sesión es elegible.
 
-El sistema ya implementa:
+### 3.2 Administrador / autor del portfolio
 
-- sitio público con landing, búsqueda, catálogo y detalle de proyecto;
-- auth público con entradas separadas `Log in` y `Sign up`, Google y email/password local para no-admins, OTP reservado para verificación de email, más `/admin/login` oculto para admins locales;
-- búsqueda híbrida por evidencia real (filtros estructurados + FTS + fuzzy + semántica);
-- explicaciones resumidas por resultado;
-- project assistant por proyecto disponible sobre el detalle público, pero visible solo para sesiones elegibles cuando existe markdown fuente configurado;
-- admin de proyectos;
-- admin de tecnologías;
-- enriquecimiento de proyectos con `project_profiles`;
+Quiere:
+
+- crear y actualizar proyectos consistentes;
+- reutilizar un markdown canónico como fuente de verdad editorial;
+- gestionar tecnologías, media, traducciones y readiness;
+- publicar proyectos con assistant grounded y búsqueda útil.
+
+---
+
+## 4. Arquitectura real del sistema
+
+## 4.1 Backend
+
+Stack actual:
+
+- Go 1.20
+- Echo v4
+- PostgreSQL 16
+- pgvector + FTS + pg_trgm
+- OpenAI para embeddings, explanations y assistant
+
+Estructura real:
+
+- `cmd/` — wiring y rutas
+- `domain/services/` — reglas de búsqueda, proyectos, assistant, auth
+- `domain/ports/` — contratos
+- `infrastructure/postgres/` — repositorios y composición de documentos de búsqueda
+- `infrastructure/handlers/` — APIs públicas, privadas y admin
+- `infrastructure/localization/` — traducción persistida y aplicación por locale
+- `model/` — contratos `Project`, `ProjectProfile`, `AdminProject`, `User`, etc.
+- `sqlmigrations/` — evolución real del esquema
+
+## 4.2 Frontend
+
+Stack actual:
+
+- React 19
+- TypeScript 5.9
+- Vite 7
+
+Features reales:
+
+- `landing/` — entrada pública
+- `search/` — búsqueda híbrida y resultados
+- `catalog/` — catálogo y detalle público
+- `admin-products/` y `admin-projects/` — administración de proyectos durante transición legacy
+- `admin-technologies/` — CRUD de tecnologías
+- `auth/` — login, signup, OTP, perfil completo
+- `shared/i18n/` — locale público `es`, `ca`, `en`, `de`
+
+## 4.3 Capas de información del producto
+
+PortfolioForge ya opera con cuatro capas distintas:
+
+1. **Repositorio fuente / evidencia bruta**
+2. **Markdown canónico del proyecto**
+3. **UI + DB runtime resumida y estructurada**
+4. **Assistant grounded en markdown remoto**
+
+Relación entre capas:
+
+- el repo fuente sirve para generar el `.md` canónico;
+- el `.md` canónico sirve para poblar el proyecto en UI/DB;
+- la UI/DB alimenta catálogo, detalle, búsqueda y localización;
+- `source_markdown_url` publica ese mismo `.md` para el assistant.
+
+---
+
+## 5. Estado funcional real
+
+El repositorio actual implementa o soporta:
+
+- portfolio público con catálogo y detalle por slug;
+- búsqueda híbrida por evidencia real;
+- explicaciones breves por resultado;
+- assistant/chat por proyecto grounded en markdown remoto;
+- `source_markdown_url` privado en admin y `assistant_available` derivado en público;
+- enriquecimiento estructurado mediante `project_profiles`;
+- media optimizada por variantes `thumbnail/medium/full`;
+- localización persistida por proyecto y campo;
+- auto-traducción desde español base y override manual;
+- readiness de búsqueda;
 - recomposición del documento de búsqueda y re-embedding;
-- revisión visual local basada en Playwright.
+- transición progresiva de legacy `product` hacia dominio `project`.
 
-### 4.2 Lo que ahora se está consolidando
+---
 
-La dirección de producto actual incorpora un flujo editorial más riguroso:
+## 6. Modelo de dominio actual
 
-- analizar un repositorio o carpeta de proyecto real;
-- extraer contexto técnico, operativo y de negocio;
-- mapear evidencia a los campos reales de PortfolioForge;
-- generar una fuente markdown estable y revisable;
-- tratar esa fuente markdown como origen editorial canónico del proyecto;
-- usar esa fuente para completar el admin con menor fricción y mayor consistencia.
+## 6.1 Dominio funcional vs storage heredado
 
-Esto convierte al markdown estructurado en la **fuente editorial canónica** entre la evidencia bruta y la carga en UI. La UI actual debe entenderse como la capa operativa de persistencia/ejecución de ese contenido, no como el lugar primario donde se inventa o redefine el proyecto.
+La realidad actual es híbrida:
 
-## 5. Objetivos
-
-### 5.1 Objetivos de producto
-
-- demostrar experiencia real con evidencia técnica y resultados;
-- permitir que un potencial cliente encuentre proyectos por problema, stack, arquitectura o contexto;
-- ofrecer entradas de portfolio suficientemente ricas para funcionar como case studies;
-- reducir la carga manual repetitiva en la creación de proyectos;
-- preparar el sistema para ingestión semiautomática y, después, automática asistida.
-
-### 5.2 Objetivos operativos del flujo de contenido
-
-- normalizar cómo se nombran los proyectos;
-- normalizar tecnologías, imágenes y campos enriquecidos;
-- evitar portfolios “bonitos pero vacíos”;
-- permitir trabajar desde material técnico real, no desde memoria improvisada.
-
-## 6. No objetivos actuales
-
-Fuera del alcance actual:
-
-- chatbot libre conversacional sin grounding ni restricción por proyecto;
-- CMS genérico multi-contenido;
-- gestión completa de proyectos/PM dentro del producto;
-- ingestión totalmente autónoma sin revisión humana;
-- DAM/media management avanzada;
-- blog o publishing editorial generalista;
-- e-commerce, checkout, órdenes o pagos.
-
-## 7. Usuarios principales
-
-### 7.1 Visitante
-
-Quiere:
-
-- buscar experiencia por términos reales;
-- entender rápido problema, solución, arquitectura y resultados;
-- entrar con la menor fricción posible mediante Google o email/password local, manteniendo OTP solo para verificar el email;
-- validar capacidad técnica sin hablar primero con el autor.
-
-### 7.2 Administrador / autor del portfolio
-
-Quiere:
-
-- crear proyectos publicables con estructura consistente;
-- cargar tecnologías reutilizables;
-- enriquecer proyectos con contexto de negocio y ejecución;
-- reutilizar documentación técnica real para poblar el portfolio.
-
-## 8. Propuesta de valor
-
-PortfolioForge no es solo un portfolio visual. Es un sistema para:
-
-- **presentar experiencia real** como evidencia estructurada;
-- **buscar** esa experiencia con modelos híbridos de recuperación;
-- **explicar** por qué un proyecto coincide con una búsqueda;
-- **operacionalizar** la creación de nuevos case studies desde material técnico existente.
-
-## 9. Modelo de contenido vigente en admin
-
-El modelo vigente debe alinearse con los campos reales del código y de la UI admin.
-
-### 9.0 Mapping canónico, nombres vigentes y gap actual
-
-La documentación debe distinguir entre:
-
-- **nombre editorial / workflow**: el lenguaje con el que se analiza y redacta el proyecto;
-- **nombre real actual de UI/storage**: el contrato que hoy existe en código y base.
-
-| Dominio editorial / público | UI o storage actual | Observación |
+| Dominio funcional | Storage / compat actual | Nota |
 |---|---|---|
-| `Client / Context` | `brand` (legacy) | En consumo público el concepto correcto es `client/context` / `client_name`, pero la carga admin y la composición de búsqueda todavía dependen fuertemente de `brand`. |
-| `Published` | `active` | `active = true` equivale a proyecto publicable; el naming de producto correcto sigue siendo Published/Unpublished. |
-| `Technologies` | relación por `technology_ids` | La fuente editorial puede listar nombres, pero la persistencia real ocurre por IDs de tecnologías ya creadas. |
-| `Main images` | `media` + `images` legacy derivado | La UI actual ya maneja variantes y metadata; la lista plana existe solo como compatibilidad y fallback. |
+| `project` | tabla `products` | transición activa |
+| `client_name` | columna `brand` | público usa `client_name`, admin/storage aún aceptan `brand` |
+| `published` | `active` | `active=true` equivale a proyecto publicado |
+| `project_profiles` | `project_profiles` | enriquecimiento real del detalle |
+| `media` | `project_media` + `images` legacy | `images` queda como compat/fallback |
 
-Regla importante: **el flujo manual y el flujo automático ya están alineados conceptualmente, pero todavía no son 1:1 exactos**. La documentación debe reflejar esa alineación lógica sin prometer equivalencia literal entre markdown fuente y storage actual.
+Regla: la documentación canónica debe hablar en lenguaje **project**, pero sin ocultar que la persistencia todavía depende de nombres legacy.
 
-### 9.1 Campos base de proyecto
+## 6.2 Entidad pública `Project`
 
-- **Title**
-- **Summary / Description**
-- **Category**
-- **Client / Context**
-- **Markdown Source URL** (`source_markdown_url`) — solo admin/privado; habilita la capacidad de assistant cuando existe
-- **Main images**
-- **Published**
+Campos runtime relevantes:
 
-### 9.2 Campos de enriquecimiento
+- `id`
+- `name`
+- `slug`
+- `description`
+- `category`
+- `client_name`
+- `status`
+- `featured`
+- `active`
+- `assistant_available`
+- `images`
+- `media[]`
+- `profile`
+- `technologies[]`
 
-- **Technologies**
-- **Business Goal**
-- **Problem Statement**
-- **Solution Summary**
-- **Architecture**
-- **AI Usage**
-- **Integrations**
-- **Technical Decisions**
-- **Challenges**
-- **Results**
-- **Metrics**
-- **Timeline**
+## 6.3 Perfil enriquecido `ProjectProfile`
 
-### 9.3 Reglas operativas clave
+Campos reales actuales:
 
-- Las tecnologías deben existir primero en `/admin/technologies`.
-- Los campos actuales de tecnología son: `name`, `category`, `icon`, `brand color`.
-- En el admin actual, `Client / Context` todavía viaja por el campo heredado `brand`, pero el dominio funcional correcto es `client/context`.
-- `source_markdown_url` es privado/admin-only; la API pública no debe exponer esa URL.
-- La API pública sí expone `assistant_available`, derivado de si `source_markdown_url` está presente y no vacío, pero el chat requiere además sesión elegible.
-- `Main images` hoy se representa con media optimizada (`thumbnail_url`, `medium_url`, `full_url`) y una lista legacy derivada para compatibilidad.
-- Para nuevas fuentes markdown generadas o normalizadas, la recomendación editorial por defecto es `Published=true`; `Published=false` debe usarse solo cuando se quiera mantener el proyecto fuera de la API pública.
-- La implementación real de búsqueda/readiness actual está optimizada sobre todo para `title`, `description`, `client/context`, `technologies`, `solution_summary`, `architecture`, `business_goal`, `problem_statement` y `ai_usage`; otros bloques ricos siguen siendo valiosos editorialmente, pero hoy no tienen el mismo peso operativo en código.
+- `business_goal`
+- `problem_statement`
+- `solution_summary`
+- `delivery_scope`
+- `responsibility_scope`
+- `architecture`
+- `ai_usage`
+- `integrations`
+- `technical_decisions`
+- `challenges`
+- `results`
+- `metrics`
+- `timeline`
 
-## 10. Convenciones editoriales actuales
+Los campos mínimos nuevos ya presentes en el producto son:
 
-### 10.1 Naming de proyectos
+- `delivery_scope`
+- `responsibility_scope`
 
-El nombre fuente de un proyecto debe seguir esta convención:
+## 6.4 Tecnologías
 
-- nombre corto y técnico;
-- sin incluir cliente o empresa en el título;
-- basado en la tecnología, dominio o concepto central.
+Las tecnologías existen como entidad separada y deben crearse antes de asociarse a un proyecto.
 
-Ejemplos válidos:
+Campos reales:
 
-- `CAN Bus Crane Telemetry`
-- `SCADA Commissioning Dashboard`
-- `React Search Explainability Platform`
+- `name`
+- `slug`
+- `category`
+- `icon`
+- `color`
 
-Ejemplos no recomendados:
+## 6.5 Media
 
-- `Proyecto PRECOR`
-- `Sistema de Empresa X`
-- `Cliente Y - Dashboard`
+Contrato vigente por ítem:
 
-El cliente o contexto pertenece al campo **Client / Context**, no al título.
+- `thumbnail_url`
+- `medium_url`
+- `full_url`
+- `caption`
+- `alt_text`
+- `featured`
+- `sort_order`
+- `media_type`
 
-### 10.2 Convención de imágenes
+La UI usa media optimizada como contrato principal y reconstruye `images` solo para compatibilidad/fallback.
 
-Para una fuente markdown de proyecto:
+## 6.6 Localización persistida
 
-- usar como convención pública/canónica por defecto URLs completas con el patrón `https://mlbautomation.com/dev/portfolioforge/<project-slug>/imagen01_<low|medium|high>.webp`;
-- mantener al menos **5 imágenes** por proyecto cuando el material lo permita;
-- en **Main images** usar normalmente las variantes `_medium` como referencia principal;
-- reservar `_low` para catálogo / miniatura y `_high` para ampliación.
+Locales públicos soportados:
 
-Importante: esta convención es el **default público de assets** para PortfolioForge. Se documenta explícitamente así para que el origen/base pueda cambiarse más adelante sin rediseñar el modelo editorial de media.
+- `es` (base)
+- `ca`
+- `en`
+- `de`
 
-Pero el contrato editorial canónico ya no debe pensarse como “lista plana de imágenes”. Cada imagen debe entenderse como un **media item** con, idealmente, estos atributos:
+Los campos traducibles persistidos incluyen:
+
+- `name`, `description`, `category`
+- `business_goal`, `problem_statement`, `solution_summary`
+- `delivery_scope`, `responsibility_scope`
+- `architecture`, `ai_usage`
+- `integrations`, `technical_decisions`, `challenges`, `results`, `metrics`, `timeline`
+
+Cada traducción se guarda por `project_id + locale + field_key`, con modo `auto` o `manual`.
+
+---
+
+## 7. Rol del markdown canónico
+
+El `.md` canónico es la **fuente editorial principal** del proyecto.
+
+Debe cumplir estos roles:
+
+- condensar la evidencia real del repositorio/carpeta;
+- estabilizar naming, narrativa y estructura;
+- servir como insumo para poblar los campos del proyecto en la UI;
+- servir como documento que luego puede publicarse para el assistant;
+- separar la autoría editorial de la representación runtime en DB.
+
+### Regla operativa
+
+Si ya existe un markdown canónico confiable para un proyecto, ese archivo debe leerse primero y tratarse como fuente de verdad editorial. Re-analizar el repositorio completo solo se justifica cuando:
+
+- el `.md` no existe;
+- el `.md` está desactualizado;
+- aparece evidencia nueva relevante.
+
+---
+
+## 8. Rol de `source_markdown_url`
+
+`source_markdown_url` es la URL HTTPS pública del markdown canónico usado por el assistant.
+
+Reglas reales del sistema:
+
+- se configura solo en admin;
+- no debe exponerse en la API pública;
+- debe ser HTTPS válida;
+- si existe y no está vacía, el proyecto público expone `assistant_available=true`;
+- el assistant además exige sesión autenticada elegible;
+- el backend descarga el markdown remoto, lo fragmenta y selecciona secciones relevantes antes de consultar el modelo.
+
+En resumen:
+
+- **markdown canónico** = fuente editorial principal;
+- **`source_markdown_url`** = publicación remota de esa fuente para el assistant.
+
+---
+
+## 9. Relación entre markdown, UI/DB y assistant
+
+### 9.1 Markdown → UI/DB
+
+La UI/DB persiste una versión resumida y estructurada del proyecto:
+
+- campos base del proyecto;
+- `project_profiles`;
+- tecnologías relacionadas;
+- media optimizada;
+- localizaciones;
+- readiness y search document.
+
+### 9.2 UI/DB → Búsqueda
+
+La búsqueda no indexa el markdown remoto directamente. Indexa la composición runtime del proyecto persistido.
+
+Pesos reales del documento de búsqueda:
+
+- **A**: `solution_summary`, `name`, `brand/client_name`
+- **B**: `architecture`, `description`, tecnologías
+- **C**: `business_goal`, `problem_statement`, `ai_usage`
+
+El texto de embedding también usa principalmente:
+
+- `name`
+- `brand/client_name`
+- `description`
+- `solution_summary`
+- `architecture`
+- `business_goal`
+- `problem_statement`
+- `ai_usage`
+- tecnologías
+
+### 9.3 Markdown remoto → Assistant
+
+El assistant:
+
+- resuelve el proyecto por slug;
+- verifica que el proyecto esté activo;
+- verifica que exista `source_markdown_url`;
+- descarga el markdown remoto;
+- selecciona chunks relevantes por términos de la pregunta e historial;
+- responde grounded en esas secciones.
+
+Por eso el markdown canónico debe ser suficientemente completo y bien estructurado para soportar preguntas reales.
+
+---
+
+## 10. Modelo editorial actual del detalle
+
+El detalle público ya está organizado por tres capas de información:
+
+## 10.1 Estrategia
+
+Campos actuales:
+
+- `business_goal`
+- `problem_statement`
+- `solution_summary`
+
+Pregunta que responde: **por qué existió el proyecto y qué solución entregó**.
+
+## 10.2 Ejecución
+
+Campos actuales:
+
+- `delivery_scope`
+- `responsibility_scope`
+- `challenges`
+- `results`
+- `timeline`
+
+Pregunta que responde: **cómo se ejecutó, qué se entregó, qué retos hubo y qué resultados produjo**.
+
+## 10.3 Técnica
+
+Campos actuales:
+
+- `architecture`
+- `ai_usage`
+- `integrations`
+- `technical_decisions`
+- `metrics`
+
+Pregunta que responde: **cómo estaba construido, con qué integraciones, qué decisiones técnicas importaron y con qué métricas puede leerse**.
+
+Regla editorial: cualquier nuevo markdown canónico debe redactarse de manera que estas tres capas puedan mapearse sin ambigüedad.
+
+---
+
+## 11. Flujos importantes del producto
+
+## 11.1 Flujo público
+
+1. el visitante entra a landing, search o catálogo;
+2. consulta proyectos publicados;
+3. abre `/projects/:slug`;
+4. consume overview, media, detalle por capas y contexto de búsqueda;
+5. si `assistant_available=true`, el detalle muestra acceso condicional al assistant según sesión.
+
+## 11.2 Flujo admin de alta/edición
+
+1. crear o editar el proyecto base;
+2. guardar descripción, categoría, client/context y `source_markdown_url` si aplica;
+3. cargar media optimizada;
+4. asociar tecnologías existentes;
+5. completar `project_profiles`;
+6. revisar traducciones;
+7. verificar readiness;
+8. re-embed cuando cambie contenido indexable.
+
+## 11.3 Flujo de markdown canónico
+
+1. analizar repo/carpeta fuente;
+2. producir un único `.md` canónico del proyecto;
+3. usar ese `.md` para poblar el proyecto en PortfolioForge;
+4. si se quiere assistant, publicar ese `.md` en una URL HTTPS;
+5. guardar esa URL en `source_markdown_url`.
+
+## 11.4 Flujo del assistant
+
+1. el proyecto debe estar activo;
+2. debe existir `source_markdown_url` válido;
+3. el usuario debe estar autenticado;
+4. el usuario debe tener `can_use_project_assistant=true`;
+5. el backend responde usando solo el markdown remoto del proyecto.
+
+Condiciones típicas de elegibilidad del usuario:
+
+- cuenta autenticada;
+- email verificado donde corresponda;
+- perfil completo (`full_name`, `company`).
+
+## 11.5 Flujo de media
+
+1. el admin carga `media[]` con variantes optimizadas;
+2. define `featured` y `sort_order`;
+3. el frontend usa `thumbnail` para cards, `medium` para hero/galería y `full` para lightbox;
+4. `images` queda como derivado de compatibilidad.
+
+## 11.6 Flujo de localización
+
+1. el contenido base se mantiene en español;
+2. al cambiar campos traducibles, el sistema sincroniza traducciones automáticas para `ca`, `en`, `de`;
+3. el admin puede sobrescribir manualmente cualquier campo;
+4. la API pública aplica localización cuando recibe `?lang=`.
+
+## 11.7 Flujo de búsqueda y enriquecimiento
+
+1. el admin actualiza proyecto, profile, tecnologías o media;
+2. el backend recompone `project_search_documents`;
+3. si hay embeddings activos, genera nuevo embedding;
+4. la búsqueda híbrida fusiona FTS + fuzzy + semántica + filtros estructurados;
+5. cada resultado muestra explicación acotada por evidencia.
+
+---
+
+## 12. Reglas operativas para alta y actualización de proyectos
+
+1. **Si existe markdown canónico, se usa primero.**
+2. **No se inventa contenido en la UI** si el `.md` ya define el proyecto.
+3. **Las tecnologías se crean antes** de asociarlas al proyecto.
+4. **`source_markdown_url` solo se guarda si hay URL HTTPS pública real.**
+5. **`source_markdown_url` nunca debe filtrarse públicamente.**
+6. **`Published` editorial mapea a `active` runtime.**
+7. **La verificación posterior es obligatoria**: guardar en DB no basta.
+8. **Cambios en campos indexables exigen refresh de búsqueda y normalmente re-embed.**
+9. **Las traducciones manuales no deben ser sobrescritas por auto-sync.**
+10. **Media y narrativa deben pertenecer al proyecto correcto**; mezclar assets ajenos invalida la carga.
+
+### Verificación mínima post-alta/actualización
+
+- `title/name`
+- `description`
+- `category`
+- `client/context`
+- `active/published`
+- tecnologías asociadas
+- profile completo según el markdown
+- media correcta y ordenada
+- `assistant_available` si corresponde
+- ausencia pública de `source_markdown_url`
+- localizaciones persistidas si se editaron
+- readiness consistente
+
+---
+
+## 13. Convenciones útiles para contenido canónico
+
+## 13.1 Convenciones de naming
+
+- título corto, técnico y descriptivo;
+- no meter el cliente en el título;
+- `client/context` vive aparte.
+
+## 13.2 Convenciones de serialización editorial
+
+Para máxima compatibilidad con la UI actual:
+
+- `integrations`, `technical_decisions`, `challenges`, `results`, `timeline` → una línea por ítem;
+- `metrics` → `clave: valor` por línea.
+
+Esto importa porque la UI serializa/deserializa estos bloques desde texto plano hacia arrays/objetos.
+
+## 13.3 Convenciones de media
+
+Contrato editorial recomendado por imagen:
 
 - `low`
 - `medium`
@@ -215,296 +492,46 @@ Pero el contrato editorial canónico ya no debe pensarse como “lista plana de 
 - `featured`
 - `sort_order`
 
-Esta convención está alineada con la UI admin actual, que captura tres variantes por imagen: catálogo, galería y ampliada.
+Uso recomendado:
 
-### 10.3 Serialización de campos enriquecidos
+- `low` para catálogo/miniatura;
+- `medium` para detalle y galería principal;
+- `high` para ampliación.
 
-Las reglas actuales del sistema son de almacenamiento, no de calidad editorial. La UI sigue serializando/deserializando estos campos desde texto plano, pero el estándar fuente debe anticipar consumo futuro por búsqueda, case study y asistentes.
+Convención pública vigente de ejemplo:
 
-Convención fuente recomendada:
+`https://mlbautomation.com/dev/portfolioforge/<project-slug>/imagen0N_<low|medium|high>.webp`
 
-- **Technical Decisions** → `decision: ... | why: ... | tradeoff: ...`
-- **Integrations** → `name: ... | type: ... | direction: ... | note: ...`
-- **Results** → `result: ... | impact: ... | evidence: ...`
-- **Timeline** → `phase: ... | objective: ... | outcome: ...`
-- **Challenges** → `challenge: ... | mitigation: ... | status: ...`
-- **Metrics** → `key: value`, con keys normalizadas y, cuando aplique, unidad/período explícitos
+## 13.4 Convenciones de authoring del markdown
 
-Compatibilidad con la UI actual:
+El markdown canónico debe:
 
-- **una línea por ítem** para:
-  - `integrations`
-  - `technical_decisions`
-  - `challenges`
-  - `results`
-  - `timeline`
-- **`key: value` por línea** para `metrics`
+- distinguir claramente Estrategia / Ejecución / Técnica;
+- evitar claims sin evidencia;
+- priorizar hechos, decisiones, resultados y tradeoffs;
+- escribir pensando a la vez en lectura humana, mapeo a UI y uso posterior por assistant.
 
-Estas reglas existen porque la UI serializa/deserializa esos campos desde texto plano hacia arrays u objetos JSON. La mejora buscada no cambia DB/UI hoy; cambia cómo se redacta la fuente para que luego sea más recuperable y explicable.
+---
 
-### 10.4 Gaps actuales para narrativa de delivery / PM
+## 14. Restricciones y realidades actuales
 
-La UI actual **no tiene campos dedicados** para:
+- el sistema todavía persiste sobre tablas legacy `products`;
+- el dominio público y editorial correcto es `project`;
+- la búsqueda runtime consume sobre todo campos resumidos de DB, no todo el richness posible del markdown;
+- el assistant sí depende del markdown remoto real;
+- localización, media optimizada y capas de detalle ya son parte del producto vigente;
+- la transición `product` → `project` sigue activa y debe documentarse, no ignorarse.
 
-- role/scope
-- stakeholders
-- constraints
-- delivery strategy
-- risks/mitigations
-- evidence sources
+---
 
-Por lo tanto, hoy deben mapearse así:
+## 15. Definición canónica para trabajo futuro
 
-- **role/scope** → `Business Goal` + `Solution Summary`
-- **stakeholders** → `Business Goal` o `Problem Statement`
-- **constraints** → `Problem Statement`
-- **delivery strategy** → `Technical Decisions` + `Timeline`
-- **risks/mitigations** → `Challenges`
-- **evidence sources** → `Results`, `Metrics` y referencias explícitas dentro de `Summary / Description` cuando haga falta
+Para crear proyectos equivalentes en PortfolioForge, la referencia correcta es:
 
-Este mapping es transitorio, pero obligatorio mientras no exista un perfil de delivery dedicado.
+1. generar o actualizar un **único markdown canónico** por proyecto;
+2. usar ese markdown para poblar el runtime estructurado;
+3. mantener el detalle editorial organizado por **Estrategia / Ejecución / Técnica**;
+4. publicar el markdown en una URL HTTPS si el proyecto usará assistant;
+5. verificar siempre coherencia entre markdown, UI/DB, búsqueda y assistant.
 
-## 11. Flujo manual actual
-
-El flujo operativo disponible hoy es:
-
-1. si existe `90. dev_portfolioforge/<Project_Name>.md`, leerlo primero y usarlo como fuente de verdad editorial;
-2. crear tecnologías faltantes en `/admin/technologies`;
-3. crear el proyecto base en `/admin/projects/new`;
-4. cargar media optimizada y definir la imagen principal;
-5. completar el rich profile usando el markdown fuente como referencia principal;
-6. si el proyecto debe tener assistant, guardar `source_markdown_url` con una URL HTTPS pública y alcanzable del markdown fuente;
-7. guardar;
-8. verificar el resultado real en payload admin/público o DB comparando campo por campo contra el markdown fuente;
-9. revisar readiness;
-10. ejecutar re-embed cuando corresponda.
-
-Regla operativa: si el markdown fuente ya existe, la carga manual no debe reinventar contenido ya definido allí. Reanalizar el repositorio completo debe ser una acción secundaria, reservada para cuando falte ese archivo o haya evidencia nueva que lo vuelva incompleto/desactualizado.
-
-Contrato mínimo de verificación post-import:
-
-- confirmar `title`;
-- confirmar que `Published` del markdown coincide con `active` en storage/API;
-- confirmar tecnologías por cantidad y nombre;
-- confirmar que `business_goal`, `problem_statement`, `solution_summary`, `architecture`, `ai_usage` y demás bloques ricos no quedaron vacíos si el markdown sí trae contenido;
-- confirmar que `integrations`, `technical_decisions`, `challenges`, `results`, `timeline` y `metrics` preservaron su contenido;
-- confirmar que la galería y `images` legacy usan assets del proyecto correcto y no quedaron contaminadas con placeholders o assets de otro proyecto;
-- si el proyecto debe tener assistant, confirmar `assistant_available=true` en el payload público, confirmar que `source_markdown_url` solo se vea en admin y validar el gating de sesión elegible;
-- si el markdown fuente dice `Published=false`, el resultado correcto es proyecto inactivo y ausencia del slug en la API pública.
-
-## 12. Flujo objetivo de ingestión desde repositorio/carpeta
-
-El flujo hacia el que apunta el producto es:
-
-1. recibir una ruta de repositorio o carpeta;
-2. analizar estructura, README, código, integraciones, assets y evidencia documental;
-3. detectar tecnologías y contexto técnico;
-4. producir un markdown fuente alineado con los campos reales del admin;
-5. revisar y ajustar editorialmente el markdown hasta consolidarlo como fuente canónica del proyecto;
-6. cargar el contenido en la UI actual a partir de ese markdown;
-7. verificar el payload resultante contra el markdown fuente antes de considerar exitosa la ingestión;
-8. publicar y reindexar cuando corresponda.
-
-Este flujo debe permitir tomar proyectos del mundo real —por ejemplo, un caso industrial como el de grúa con CAN Bus analizado recientemente para PRECOR— sin acoplar el producto a un único cliente ni a un único vertical.
-
-Además, el análisis automático debe producir y revisar aunque sea fuera de la UI actual estas secciones fuente obligatorias:
-
-- role/scope
-- stakeholders
-- constraints
-- delivery strategy
-- risks/mitigations
-- evidence sources
-
-Aunque hoy no se persistan como columnas dedicadas, forman parte del análisis mínimo para lograr case studies y futura preparación para asistentes.
-
-## 12.1 Assistant de proyecto implementado hoy
-
-Estado actual implementado:
-
-- el detalle público mantiene el assistant completamente oculto para visitantes anónimos; solo usuarios autenticados pero aún inelegibles ven CTAs de onboarding, y el chat solo aparece con sesión elegible;
-- `/login` ofrece `Log in with Google` + email/password local para usuarios no admin y `/signup` ofrece el alta pública equivalente;
-- `/admin/login` permanece disponible solo por URL directa y no se expone desde la navegación pública;
-- las cuentas públicas locales ya no usan password ni sign up separado: el mismo flujo OTP crea o reutiliza la cuenta y autentica al usuario tras verificar el código; el assistant sigue bloqueado hasta completar onboarding/eligibilidad;
-- la API privada responde por `POST /api/v1/private/projects/:slug/assistant/messages` y rechaza usuarios no autenticados o inelegibles;
-- el backend resuelve el proyecto por slug, verifica `source_markdown_url`, descarga el markdown remoto y selecciona secciones relevantes antes de consultar OpenAI;
-- la URL markdown se mantiene privada/admin-only y la señal pública es `assistant_available`.
-
-Comportamiento operativo actual:
-
-- el assistant usa markdown remoto como source of truth;
-- el backend mantiene cache de chunks de markdown con persistencia temporal local;
-- si el fetch remoto falla o el host está inestable, el backend puede responder usando cache vigente o stale fallback persistido;
-- esto mejora disponibilidad, pero la calidad de respuesta sigue dependiendo de la alcanzabilidad y frescura del markdown remoto.
-
-Importante: esto **sí está implementado hoy**. Lo que todavía queda como evolución futura no es el assistant en sí, sino una capa de retrieval más sofisticada.
-
-## 13. Requerimientos funcionales
-
-### RF1. Gestión de proyectos
-
-El sistema debe permitir crear, editar, publicar y despublicar proyectos con los campos base y enriquecidos vigentes.
-
-### RF2. Gestión de tecnologías
-
-El sistema debe permitir crear tecnologías reutilizables con `name`, `category`, `icon` y `brand color`, para luego asociarlas a proyectos.
-
-### RF3. Búsqueda por evidencia real
-
-El sistema debe recuperar proyectos por términos presentes o semánticamente relacionados con:
-
-- título;
-- summary / description;
-- client / context;
-- tecnologías;
-- solution summary;
-- architecture;
-- business goal;
-- problem statement;
-- ai usage;
-
-Importante: en la implementación real actual, la cobertura más fuerte está en `title`, `description`, `client/context`, `technologies`, `solution_summary`, `architecture`, `business_goal`, `problem_statement` y `ai_usage`. Secciones como `integrations`, `technical decisions`, `results`, `timeline` y `challenges` son muy valiosas para narrativa y futuro retrieval, pero hoy no están igualmente ponderadas por la composición principal de búsqueda.
-
-### RF4. Explicación acotada
-
-El sistema debe explicar brevemente por qué un resultado coincide con la búsqueda sin inventar información fuera de la evidencia del proyecto.
-
-### RF5. Flujo editorial reproducible
-
-El sistema debe tener una documentación operativa suficiente para que una persona pueda:
-
-- crear proyectos manualmente hoy;
-- preparar fuentes markdown consistentes;
-- mapear evidencia técnica a los campos reales del producto.
-
-### RF6. Preparación para ingestión asistida
-
-El producto debe quedar preparado para un flujo futuro donde un análisis de repositorio/carpeta genere la fuente markdown inicial de un proyecto.
-
-### RF7. Assistant markdown-grounded por proyecto
-
-El sistema debe permitir responder preguntas sobre un proyecto específico usando exclusivamente su markdown fuente remoto configurado en `source_markdown_url`, sin exponer esa URL en la API pública.
-
-### RF8. Degradación controlada del assistant
-
-El assistant debe seguir siendo utilizable ante fallas temporales del fetch remoto usando cache local y stale fallback cuando exista contenido previamente resuelto para ese proyecto.
-
-## 14. Requerimientos no funcionales
-
-- documentación rigurosa y alineada al contrato real del código;
-- consistencia de naming entre docs y UI actual;
-- separación clara entre evidencia, fuente editorial y publicación;
-- capacidad de crecer sin rehacer el modelo de contenido;
-- mínima dependencia de interpretación subjetiva durante la carga;
-- validación post-import obligatoria sobre payload/API y no solo sobre éxito de escritura en DB;
-- fallbacks parciales o contaminaciones de media tratados como fallo de ingestión, no como éxito parcial.
-
-## 15. Restricción actual importante
-
-La UI todavía no tiene campos dedicados para gestión/lifecycle/PM, por lo que esa información debe incrustarse en los campos existentes.
-
-Regla editorial actual:
-
-- objetivos, alcance y stakeholders → **Business Goal** / **Problem Statement**;
-- decisiones de ejecución, tradeoffs y rollout → **Technical Decisions** / **Timeline**;
-- coordinación, operación y resultados de entrega → **Results** / **Metrics** / **Timeline**.
-
-Hasta que exista un modelo específico para PM, esta es la forma correcta de conservar ese contexto sin perder rigor.
-
-## 16. Tiers de calidad del contenido
-
-Para evitar falsas expectativas, PortfolioForge debe distinguir tres niveles conceptuales de calidad:
-
-### 16.1 Search readiness
-
-Nivel mínimo realmente soportado hoy en código.
-
-Busca asegurar que el proyecto sea encontrable y explicable en búsqueda con campos suficientes para FTS, fuzzy y embeddings.
-
-### 16.2 Case study readiness
-
-Nivel editorial superior.
-
-Exige que el proyecto tenga narrativa técnica y de delivery suficientemente clara: problema, solución, decisiones, tradeoffs, resultados, timeline y media coherente. Hoy este nivel depende sobre todo de disciplina editorial, no de validaciones completas del sistema.
-
-### 16.3 Assistant readiness
-
-Nivel mixto entre capacidad implementada y evolución futura.
-
-Hoy ya existe un assistant por proyecto grounded en markdown remoto, pero la calidad del resultado sigue dependiendo de que la fuente esté bien redactada y sea estable. El nivel completo exige además redacción semi-estructurada, evidencia explícita, naming consistente, metadata de delivery y secciones que permitan extracción/reuso por asistentes sin re-interpretación excesiva.
-
-Situación actual: el producto ya cubre **search readiness** y una primera implementación real de assistant readiness operativa. Aun así, **case study readiness** completa y una assistant readiness más profunda siguen dependiendo de calidad editorial y evolución del retrieval.
-
-## 17. Esquema objetivo futuro recomendado
-
-Sin presentarlo como implementación vigente, la evolución natural del repo apunta a separar el contenido en capas más explícitas:
-
-### 17.1 Base project
-
-- identidad editorial (`title`, `slug`, `category`)
-- resumen público (`description`, `client/context`, estado de publicación)
-- taxonomía (`technology_ids`)
-
-### 17.2 Media
-
-- colección de media items
-- variantes `low`, `medium`, `high`
-- metadata editorial (`caption`, `alt_text`)
-- orden y `featured`
-
-### 17.3 Technical profile
-
-- `business_goal`
-- `problem_statement`
-- `solution_summary`
-- `architecture`
-- `ai_usage`
-- `integrations`
-- `technical_decisions`
-
-### 17.4 Delivery profile
-
-- `role_scope`
-- `stakeholders`
-- `constraints`
-- `delivery_strategy`
-- `risks_mitigations`
-- `timeline`
-- `results`
-- `metrics`
-- `evidence_sources`
-
-### 17.5 Assistant / retrieval metadata
-
-- readiness tiers
-- evidence confidence / verification flags
-- normalized keywords / synonyms
-- source provenance
-- extraction quality notes
-- persistencia dedicada de chunks / embeddings de markdown para retrieval más robusto y menos dependiente del fetch remoto en tiempo real
-
-Este target schema es una recomendación de evolución para desacoplar mejor búsqueda, narrativa de case study y consumo por asistentes. No describe la implementación actual, que hoy usa fetch remoto del markdown con cache local y stale fallback.
-
-## 18. Estado actual y próximos pasos
-
-### Estado actual
-
-- el producto ya soporta búsqueda híbrida y proyectos enriquecidos;
-- el admin ya soporta tecnologías, media optimizada, enrichment y traducciones persistidas;
-- el producto ya soporta assistant por proyecto basado en markdown fuente remoto configurado desde admin;
-- la documentación se está ajustando para reflejar el flujo real de trabajo.
-
-### Próximos pasos recomendados
-
-- formalizar un template markdown estable para nuevas entradas;
-- definir un pipeline repetible de análisis de repositorio/carpeta → markdown fuente;
-- evaluar posterior importador automático desde markdown hacia el admin/API;
-- evaluar persistencia dedicada de chunks/embeddings del markdown fuente para reducir dependencia del fetch remoto en runtime;
-- separar con más claridad perfiles técnicos, de delivery y de retrieval en futuras iteraciones de schema;
-- seguir reduciendo naming heredado (`product`, `brand`) en código interno.
-
-## 19. Documentos complementarios
-
-- `docs/MANUAL-PROJECT-INGESTION-WORKFLOW.md` — cómo cargar manualmente un proyecto hoy
-- `docs/AUTOMATIC-PROJECT-INGESTION-WORKFLOW.md` — cómo analizar una carpeta/repositorio y producir el markdown fuente
-- `docs/MEMORY-SDD.md` — memoria histórica del proceso SDD y del trabajo de agentes
+Ese es el contrato real del producto hoy.

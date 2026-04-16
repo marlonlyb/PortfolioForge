@@ -5,7 +5,6 @@ interface Messages {
   headerSummary: string;
   navHome: string;
   navLogin: string;
-  navSignup: string;
   navSearch: string;
   navAdmin: string;
   navLogout: string;
@@ -186,7 +185,6 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     headerSummary: 'Arquitectura, producto y sistemas de IA presentados como case studies públicos.',
     navHome: 'Inicio',
     navLogin: 'Login',
-    navSignup: 'Sign up',
     navSearch: 'Buscar',
     navAdmin: 'Admin',
     navLogout: 'Salir',
@@ -268,7 +266,6 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     headerSummary: 'Arquitectura, producte i sistemes d’IA presentats com a case studies públics.',
     navHome: 'Inici',
     navLogin: 'Login',
-    navSignup: 'Sign up',
     navSearch: 'Cercar',
     navAdmin: 'Admin',
     navLogout: 'Sortir',
@@ -350,7 +347,6 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     headerSummary: 'Architecture, product, and AI systems presented as public case studies.',
     navHome: 'Home',
     navLogin: 'Login',
-    navSignup: 'Sign up',
     navSearch: 'Search',
     navAdmin: 'Admin',
     navLogout: 'Logout',
@@ -432,7 +428,6 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     headerSummary: 'Architektur, Produkt und KI-Systeme als öffentliche Case Studies präsentiert.',
     navHome: 'Start',
     navLogin: 'Login',
-    navSignup: 'Sign up',
     navSearch: 'Suche',
     navAdmin: 'Admin',
     navLogout: 'Abmelden',

@@ -264,7 +264,7 @@ Hoy el sistema permite:
 
 - búsqueda pública por evidencia real;
 - resultados con explicación breve;
-- login admin;
+- auth entry via canonical `/login`, with `/admin/login` kept as a compatibility alias to the same login flow;
 - CRUD admin de tecnologías;
 - carga/edición de proyectos;
 - enriched profile por proyecto;
@@ -428,8 +428,9 @@ Resultado consolidado vigente:
 - la API pública expone `assistant_available` como capacidad del proyecto derivada de `source_markdown_url` y no debe filtrar la URL privada;
 - el backend expone el envío de mensajes del assistant solo en la ruta privada autenticada `POST /api/v1/private/projects/:slug/assistant/messages`;
 - el assistant usa OpenAI solo desde backend y responde grounded en markdown fuente remoto del proyecto;
-- usuarios públicos entran por Google o por OTP de email passwordless desde `/login`;
-- admins locales conservan elegibilidad por el flujo oculto `/admin/login` con email/password;
+- `/login` es la entrada canónica para usuarios registrados y concentra el login compartido;
+- `/admin/login` sigue disponible solo como alias de compatibilidad hacia ese mismo flujo unificado;
+- el rol y los privilegios se resuelven después de autenticar la sesión, no por separar la entrada de login;
 - el assistant queda oculto para usuarios signed out y solo se habilita para sesiones elegibles.
 
 ## 22. Revisión visual local con Playwright

@@ -348,6 +348,40 @@ func TestPublicLoginAllowsReadyLocalUser(t *testing.T) {
 	}
 }
 
+func TestPublicLoginAllowsAdminUserAndPersistsLastLogin(t *testing.T) {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("secret-123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("GenerateFromPassword() error = %v", err)
+	}
+
+	userID := uuid.New()
+	repo := &userRepositoryStub{userByEmail: map[string]model.User{
+		"admin@example.com": {
+			ID:             userID,
+			Email:          "admin@example.com",
+			Password:       string(passwordHash),
+			AuthProvider:   "local",
+			LocalAuthState: "ready",
+			IsAdmin:        true,
+			EmailVerified:  true,
+			CreatedAt:      time.Now().Add(-1 * time.Hour).Unix(),
+			UpdatedAt:      time.Now().Add(-1 * time.Hour).Unix(),
+		},
+	}}
+	service := NewUser(repo, &verificationMailerStub{})
+
+	loggedInUser, err := service.PublicLogin("admin@example.com", "secret-123")
+	if err != nil {
+		t.Fatalf("PublicLogin() error = %v", err)
+	}
+	if !loggedInUser.IsAdmin {
+		t.Fatalf("is_admin = false, want true")
+	}
+	if repo.updatedLastLoginUserID != userID {
+		t.Fatalf("updated last login user = %s, want %s", repo.updatedLastLoginUserID, userID)
+	}
+}
+
 func TestVerifyEmailVerificationMarksUserVerified(t *testing.T) {
 	userID := uuid.New()
 	codeHash, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)

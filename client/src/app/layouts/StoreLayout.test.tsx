@@ -48,9 +48,12 @@ describe('StoreLayout', () => {
       </MemoryRouter>,
     );
 
+    const primaryNav = screen.getByRole('navigation', { name: 'Primary' });
+
     expect(screen.getByRole('link', { name: 'Login' })).toHaveAttribute('href', '/login');
-    expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute('href', '/signup');
+    expect(screen.queryByRole('link', { name: 'Sign up' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
+    expect(primaryNav).not.toHaveTextContent('Sign up');
 
     await waitFor(() => {
       expect(mockedFetchPublicSiteSettings).toHaveBeenCalled();

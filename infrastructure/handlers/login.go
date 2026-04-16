@@ -38,39 +38,20 @@ func NewLogin(us login.Service) *Login {
 }
 
 func (h *Login) AdminLogin(c echo.Context) error {
-
-	m := loginRequest{}
-
-	err := c.Bind(&m)
-	if err != nil {
-		return response.ContractError(400, "validation_error", "Invalid sign-in payload")
-	}
-
-	userModel, tokenSigned, err := h.service.AdminLogin(m.Email, m.Password, os.Getenv("JWT_SECRET_KEY"))
-	if err != nil {
-		if strings.Contains(err.Error(), "crypto/bcrypt: hashedPassword is not the hash of the given password") ||
-			strings.Contains(err.Error(), "no rows in result set") ||
-			errors.Is(err, model.ErrProviderConflict) {
-			return response.ContractError(401, "invalid_credentials", "Invalid email or password")
-		}
-		return response.ContractError(500, "unexpected_error", "Unable to sign in")
-	}
-
-	data := map[string]interface{}{
-		"user":       toStoreUser(userModel),
-		"token":      tokenSigned,
-		"expires_in": int((12 * time.Hour).Seconds()),
-	}
-	return c.JSON(response.ContractOK(data))
+	return h.handlePasswordLogin(c, h.service.AdminLogin)
 }
 
 func (h *Login) PublicLogin(c echo.Context) error {
+	return h.handlePasswordLogin(c, h.service.PublicLogin)
+}
+
+func (h *Login) handlePasswordLogin(c echo.Context, authenticate func(email, password, jwtSecretKey string) (model.User, string, error)) error {
 	request, err := bindPasswordLoginRequest(c)
 	if err != nil {
 		return err
 	}
 
-	userModel, tokenSigned, serviceErr := h.service.PublicLogin(request.Email, request.Password, os.Getenv("JWT_SECRET_KEY"))
+	userModel, tokenSigned, serviceErr := authenticate(request.Email, request.Password, os.Getenv("JWT_SECRET_KEY"))
 	if serviceErr != nil {
 		switch {
 		case errors.Is(serviceErr, model.ErrInvalidCredentials):

@@ -175,29 +175,7 @@ func (u *User) AdminSoftDelete(actorID, targetID uuid.UUID) error {
 }
 
 func (u *User) AdminLogin(email, password string) (model.User, error) {
-	m, err := u.Repository.GetByEmail(normalizeEmail(email))
-	if err != nil {
-		return model.User{}, fmt.Errorf("%s %w", "GetByEmail()", err)
-	}
-	if strings.TrimSpace(m.AuthProvider) == "" {
-		m.AuthProvider = "local"
-	}
-	if m.AuthProvider != "local" {
-		return model.User{}, model.ErrProviderConflict
-	}
-	if !m.IsAdmin {
-		return model.User{}, model.ErrProviderConflict
-	}
-
-	//aquí comparo los passwords, pero no que sean iguales, comparo sus
-	//comportamientos de cambio ya que estamos usando bcrypt
-	err = bcrypt.CompareHashAndPassword([]byte(m.Password), []byte(password))
-	if err != nil {
-		return model.User{}, fmt.Errorf("%s %w", "CompareHashAndPassword()", err)
-	}
-
-	m.LastLoginAt = time.Now().Unix()
-	return sanitizeUser(m), nil
+	return u.localPasswordLogin(email, password)
 }
 
 func (u *User) PublicSignup(email, password string) (model.EmailVerificationDispatchResult, error) {
@@ -238,6 +216,10 @@ func (u *User) PublicSignup(email, password string) (model.EmailVerificationDisp
 }
 
 func (u *User) PublicLogin(email, password string) (model.User, error) {
+	return u.localPasswordLogin(email, password)
+}
+
+func (u *User) localPasswordLogin(email, password string) (model.User, error) {
 	normalizedEmail := normalizeEmail(email)
 	trimmedPassword := strings.TrimSpace(password)
 	if normalizedEmail == "" || trimmedPassword == "" {
@@ -258,9 +240,6 @@ func (u *User) PublicLogin(email, password string) (model.User, error) {
 	}
 	if authProvider != "local" {
 		return model.User{}, model.ErrProviderConflict
-	}
-	if userData.IsAdmin {
-		return model.User{}, model.ErrInvalidCredentials
 	}
 	if strings.TrimSpace(userData.Password) == "" || userData.LocalAuthState == "password_setup_required" {
 		return model.User{}, model.ErrPasswordSetupRequired

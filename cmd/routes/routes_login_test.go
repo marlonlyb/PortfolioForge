@@ -30,6 +30,7 @@ func TestPublicAuthRoutesExposeStandardPublicAuthEndpoints(t *testing.T) {
 		"/api/v1/public/login",
 		"/api/v1/public/signup",
 		"/api/v1/public/login/google",
+		"/api/v1/admin/login",
 	}
 
 	for _, path := range publicRequests {

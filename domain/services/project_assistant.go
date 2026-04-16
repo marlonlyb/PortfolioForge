@@ -18,6 +18,8 @@ var (
 	ErrAssistantUpstream        = errors.New("assistant upstream failure")
 )
 
+const assistantHistoryLimit = 8
+
 type projectAssistantRepository interface {
 	GetAssistantContextBySlug(ctx context.Context, slug string) (model.ProjectAssistantContext, error)
 }
@@ -83,12 +85,14 @@ func (s ProjectAssistant) Answer(ctx context.Context, slug string, request model
 		return model.ProjectAssistantResponse{}, fmt.Errorf("%w: markdown without sections", ErrAssistantUpstream)
 	}
 
+	normalizedHistory := normalizeAssistantHistory(request.History)
+
 	answer, err := s.provider.GenerateAnswer(ctx, ProjectAssistantAnswerInput{
 		ProjectName: project.Name,
 		Language:    normalizeAssistantLanguage(request.Lang),
 		Question:    question,
-		History:     normalizeAssistantHistory(request.History),
-		Sections:    selectRelevantChunks(question, request.History, chunks),
+		History:     normalizedHistory,
+		Sections:    selectRelevantChunks(question, normalizedHistory, chunks),
 	})
 	if err != nil {
 		if errors.Is(err, ErrAssistantUnavailable) {
@@ -118,12 +122,9 @@ func normalizeAssistantHistory(history []model.ProjectAssistantMessage) []model.
 	if len(history) == 0 {
 		return nil
 	}
-	start := 0
-	if len(history) > 8 {
-		start = len(history) - 8
-	}
-	trimmed := make([]model.ProjectAssistantMessage, 0, len(history)-start)
-	for _, item := range history[start:] {
+	reversed := make([]model.ProjectAssistantMessage, 0, min(len(history), assistantHistoryLimit))
+	for index := len(history) - 1; index >= 0 && len(reversed) < assistantHistoryLimit; index-- {
+		item := history[index]
 		role := strings.TrimSpace(strings.ToLower(item.Role))
 		if role != "assistant" && role != "user" {
 			continue
@@ -132,7 +133,14 @@ func normalizeAssistantHistory(history []model.ProjectAssistantMessage) []model.
 		if content == "" {
 			continue
 		}
-		trimmed = append(trimmed, model.ProjectAssistantMessage{Role: role, Content: content})
+		reversed = append(reversed, model.ProjectAssistantMessage{Role: role, Content: content})
+	}
+	if len(reversed) == 0 {
+		return nil
+	}
+	trimmed := make([]model.ProjectAssistantMessage, 0, len(reversed))
+	for index := len(reversed) - 1; index >= 0; index-- {
+		trimmed = append(trimmed, reversed[index])
 	}
 	return trimmed
 }

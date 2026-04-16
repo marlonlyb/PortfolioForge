@@ -47,6 +47,49 @@ export function StoreLayout() {
   const heroLogoUrl = siteSettings?.public_hero_logo_url?.trim();
   const heroLogoAlt = siteSettings?.public_hero_logo_alt?.trim() || 'Public portfolio logo';
 
+  function renderPrimaryNav() {
+    return (
+      <nav className="nav-list" aria-label="Primary">
+        <NavLink
+          className={({ isActive }) =>
+            isActive ? 'nav-link nav-link--active' : 'nav-link'
+          }
+          to="/"
+          end
+        >
+          {t.navHome}
+        </NavLink>
+
+        {user ? (
+          <>
+            {user.is_admin && (
+              <NavLink
+                className={({ isActive }) =>
+                  isActive ? 'nav-link nav-link--active' : 'nav-link'
+                }
+                to="/admin/projects"
+              >
+                {t.navAdmin}
+              </NavLink>
+            )}
+            <button className="nav-link nav-link--logout" onClick={logout} type="button">
+              {t.navLogout}
+            </button>
+          </>
+        ) : (
+          <NavLink
+            className={({ isActive }) =>
+              isActive ? 'nav-link nav-link--active' : 'nav-link'
+            }
+            to="/login"
+          >
+            {t.navLogin}
+          </NavLink>
+        )}
+      </nav>
+    );
+  }
+
   return (
     <div className={isLanding ? 'app-shell app-shell--landing' : 'app-shell'}>
       {isEditorialLanding ? (
@@ -73,54 +116,7 @@ export function StoreLayout() {
                 ))}
               </div>
 
-              <nav className="nav-list" aria-label="Primary">
-                <NavLink
-                  className={({ isActive }) =>
-                    isActive ? 'nav-link nav-link--active' : 'nav-link'
-                  }
-                  to="/"
-                  end
-                >
-                  {t.navHome}
-                </NavLink>
-
-                {user ? (
-                  <>
-                    {user.is_admin && (
-                      <NavLink
-                        className={({ isActive }) =>
-                          isActive ? 'nav-link nav-link--active' : 'nav-link'
-                        }
-                        to="/admin/projects"
-                      >
-                        {t.navAdmin}
-                      </NavLink>
-                    )}
-                    <button className="nav-link nav-link--logout" onClick={logout} type="button">
-                      {t.navLogout}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <NavLink
-                      className={({ isActive }) =>
-                        isActive ? 'nav-link nav-link--active' : 'nav-link'
-                      }
-                      to="/login"
-                    >
-                      {t.navLogin}
-                    </NavLink>
-                    <NavLink
-                      className={({ isActive }) =>
-                        isActive ? 'nav-link nav-link--active' : 'nav-link'
-                      }
-                      to="/signup"
-                    >
-                      {t.navSignup}
-                    </NavLink>
-                  </>
-                )}
-              </nav>
+              {renderPrimaryNav()}
             </div>
 
             <p className="app-header__caption">{t.headerCaption}</p>
@@ -169,54 +165,7 @@ export function StoreLayout() {
                   ))}
                 </div>
 
-                <nav className="nav-list" aria-label="Primary">
-                  <NavLink
-                    className={({ isActive }) =>
-                      isActive ? 'nav-link nav-link--active' : 'nav-link'
-                    }
-                    to="/"
-                    end
-                  >
-                    {t.navHome}
-                  </NavLink>
-
-                  {user ? (
-                    <>
-                      {user.is_admin && (
-                        <NavLink
-                          className={({ isActive }) =>
-                            isActive ? 'nav-link nav-link--active' : 'nav-link'
-                          }
-                          to="/admin/projects"
-                        >
-                          {t.navAdmin}
-                        </NavLink>
-                      )}
-                      <button className="nav-link nav-link--logout" onClick={logout} type="button">
-                        {t.navLogout}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <NavLink
-                        className={({ isActive }) =>
-                          isActive ? 'nav-link nav-link--active' : 'nav-link'
-                        }
-                        to="/login"
-                      >
-                        {t.navLogin}
-                      </NavLink>
-                      <NavLink
-                        className={({ isActive }) =>
-                          isActive ? 'nav-link nav-link--active' : 'nav-link'
-                        }
-                        to="/signup"
-                      >
-                        {t.navSignup}
-                      </NavLink>
-                    </>
-                  )}
-                </nav>
+                {renderPrimaryNav()}
               </div>
 
               <p className="app-header__caption">{t.headerCaption}</p>
