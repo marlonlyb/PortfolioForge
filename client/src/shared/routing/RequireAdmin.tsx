@@ -13,7 +13,11 @@ export function RequireAdmin() {
     return null;
   }
 
-  if (!user?.is_admin) {
+  if (!user) {
+    return <Navigate replace to="/admin/login" />;
+  }
+
+  if (!user.is_admin) {
     return <Navigate replace to="/" />;
   }
 

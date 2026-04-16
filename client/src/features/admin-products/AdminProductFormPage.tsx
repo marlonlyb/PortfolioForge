@@ -111,6 +111,8 @@ const TRANSLATION_FIELD_LABELS: Record<PublicContentFieldKey, string> = {
   business_goal: 'Business Goal',
   problem_statement: 'Problem Statement',
   solution_summary: 'Solution Summary',
+  delivery_scope: 'Delivery Scope',
+  responsibility_scope: 'Responsibility Scope',
   architecture: 'Architecture',
   ai_usage: 'AI Usage',
   integrations: 'Integrations',
@@ -271,6 +273,8 @@ export function AdminProductFormPage() {
   const [businessGoal, setBusinessGoal] = useState('');
   const [problemStatement, setProblemStatement] = useState('');
   const [solutionSummary, setSolutionSummary] = useState('');
+  const [deliveryScope, setDeliveryScope] = useState('');
+  const [responsibilityScope, setResponsibilityScope] = useState('');
   const [architecture, setArchitecture] = useState('');
   const [aiUsage, setAiUsage] = useState('');
   const [integrations, setIntegrations] = useState('');
@@ -334,6 +338,8 @@ export function AdminProductFormPage() {
             setBusinessGoal(project.profile.business_goal ?? '');
             setProblemStatement(project.profile.problem_statement ?? '');
             setSolutionSummary(project.profile.solution_summary ?? '');
+            setDeliveryScope(project.profile.delivery_scope ?? '');
+            setResponsibilityScope(project.profile.responsibility_scope ?? '');
             setArchitecture(project.profile.architecture ?? '');
             setAiUsage(project.profile.ai_usage ?? '');
             setIntegrations(serializeProfileList(project.profile.integrations));
@@ -438,6 +444,8 @@ export function AdminProductFormPage() {
         business_goal: businessGoal || undefined,
         problem_statement: problemStatement || undefined,
         solution_summary: solutionSummary || undefined,
+        delivery_scope: deliveryScope || undefined,
+        responsibility_scope: responsibilityScope || undefined,
         architecture: architecture || undefined,
         ai_usage: aiUsage || undefined,
         integrations: parseProfileList(integrations),
@@ -809,6 +817,26 @@ export function AdminProductFormPage() {
                 rows={4}
                 value={solutionSummary}
                 onChange={(e) => setSolutionSummary(e.target.value)}
+              />
+            </label>
+
+            <label className="admin__label">
+              Delivery Scope
+              <textarea
+                className="admin__textarea"
+                rows={3}
+                value={deliveryScope}
+                onChange={(e) => setDeliveryScope(e.target.value)}
+              />
+            </label>
+
+            <label className="admin__label">
+              Responsibility Scope
+              <textarea
+                className="admin__textarea"
+                rows={3}
+                value={responsibilityScope}
+                onChange={(e) => setResponsibilityScope(e.target.value)}
               />
             </label>
 

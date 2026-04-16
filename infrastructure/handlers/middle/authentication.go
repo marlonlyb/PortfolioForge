@@ -9,16 +9,18 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
+	"github.com/marlonlyb/portfolioforge/domain/ports/user"
 	"github.com/marlonlyb/portfolioforge/infrastructure/handlers/response"
 	"github.com/marlonlyb/portfolioforge/model"
 )
 
 type AuthMiddleware struct {
 	responser response.API
+	users     user.Service
 }
 
-func New() *AuthMiddleware {
-	return &AuthMiddleware{}
+func New(users user.Service) *AuthMiddleware {
+	return &AuthMiddleware{users: users}
 }
 
 // valida si el token es válido, y devuelve los customclaims
@@ -35,9 +37,15 @@ func (am *AuthMiddleware) IsValid(next echo.HandlerFunc) echo.HandlerFunc {
 			return response.ContractError(http.StatusUnauthorized, "authentication_required", "Debes iniciar sesión para continuar")
 		}
 
-		c.Set("userID", claims.UserID)
-		c.Set("email", claims.Email)
-		c.Set("isAdmin", claims.IsAdmin)
+		currentUser, err := am.users.GetByID(claims.UserID)
+		if err != nil {
+			return response.ContractError(http.StatusUnauthorized, "authentication_required", "You must sign in to continue")
+		}
+
+		c.Set("userID", currentUser.ID)
+		c.Set("email", currentUser.Email)
+		c.Set("isAdmin", currentUser.IsAdmin)
+		c.Set("currentUser", currentUser)
 
 		return next(c)
 	}

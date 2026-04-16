@@ -35,7 +35,7 @@ func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (model.Pr
 			p.description, p.category, COALESCE(p.brand, '') AS client_name,
 			p.active, (COALESCE(NULLIF(trim(p.source_markdown_url), ''), '') <> '') AS assistant_available, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
 			COALESCE(pp.business_goal, ''), COALESCE(pp.problem_statement, ''),
-			COALESCE(pp.solution_summary, ''), COALESCE(pp.architecture, ''),
+			COALESCE(pp.solution_summary, ''), COALESCE(pp.delivery_scope, ''), COALESCE(pp.responsibility_scope, ''), COALESCE(pp.architecture, ''),
 			COALESCE(pp.integrations, 'null'), COALESCE(pp.ai_usage, ''),
 			COALESCE(pp.technical_decisions, 'null'), COALESCE(pp.challenges, 'null'),
 			COALESCE(pp.results, 'null'), COALESCE(pp.metrics, 'null'),
@@ -46,7 +46,7 @@ func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (model.Pr
 		&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName,
 		&p.Active, &p.AssistantAvailable, &p.Images, &p.CreatedAt, &p.UpdatedAt,
 		&profile.BusinessGoal, &profile.ProblemStatement,
-		&profile.SolutionSummary, &profile.Architecture,
+		&profile.SolutionSummary, &profile.DeliveryScope, &profile.ResponsibilityScope, &profile.Architecture,
 		&profile.Integrations, &profile.AIUsage,
 		&profile.TechnicalDecisions, &profile.Challenges,
 		&profile.Results, &profile.Metrics,
@@ -93,7 +93,7 @@ func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (model.P
 			p.description, p.category, COALESCE(p.brand, '') AS client_name,
 			p.active, (COALESCE(NULLIF(trim(p.source_markdown_url), ''), '') <> '') AS assistant_available, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
 			COALESCE(pp.business_goal, ''), COALESCE(pp.problem_statement, ''),
-			COALESCE(pp.solution_summary, ''), COALESCE(pp.architecture, ''),
+			COALESCE(pp.solution_summary, ''), COALESCE(pp.delivery_scope, ''), COALESCE(pp.responsibility_scope, ''), COALESCE(pp.architecture, ''),
 			COALESCE(pp.integrations, 'null'), COALESCE(pp.ai_usage, ''),
 			COALESCE(pp.technical_decisions, 'null'), COALESCE(pp.challenges, 'null'),
 			COALESCE(pp.results, 'null'), COALESCE(pp.metrics, 'null'),
@@ -104,7 +104,7 @@ func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (model.P
 		&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName,
 		&p.Active, &p.AssistantAvailable, &p.Images, &p.CreatedAt, &p.UpdatedAt,
 		&profile.BusinessGoal, &profile.ProblemStatement,
-		&profile.SolutionSummary, &profile.Architecture,
+		&profile.SolutionSummary, &profile.DeliveryScope, &profile.ResponsibilityScope, &profile.Architecture,
 		&profile.Integrations, &profile.AIUsage,
 		&profile.TechnicalDecisions, &profile.Challenges,
 		&profile.Results, &profile.Metrics,
@@ -215,7 +215,7 @@ func (r *ProjectRepository) fetchProfile(ctx context.Context, p *model.Project) 
 
 	err := r.db.QueryRow(ctx, `
 		SELECT COALESCE(business_goal, ''), COALESCE(problem_statement, ''),
-			COALESCE(solution_summary, ''), COALESCE(architecture, ''),
+			COALESCE(solution_summary, ''), COALESCE(delivery_scope, ''), COALESCE(responsibility_scope, ''), COALESCE(architecture, ''),
 			COALESCE(integrations, 'null'), COALESCE(ai_usage, ''),
 			COALESCE(technical_decisions, 'null'), COALESCE(challenges, 'null'),
 			COALESCE(results, 'null'), COALESCE(metrics, 'null'),
@@ -223,7 +223,7 @@ func (r *ProjectRepository) fetchProfile(ctx context.Context, p *model.Project) 
 		FROM project_profiles
 		WHERE project_id = $1`, p.ID).Scan(
 		&profile.BusinessGoal, &profile.ProblemStatement,
-		&profile.SolutionSummary, &profile.Architecture,
+		&profile.SolutionSummary, &profile.DeliveryScope, &profile.ResponsibilityScope, &profile.Architecture,
 		&profile.Integrations, &profile.AIUsage,
 		&profile.TechnicalDecisions, &profile.Challenges,
 		&profile.Results, &profile.Metrics,

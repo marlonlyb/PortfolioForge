@@ -22,7 +22,7 @@ El proyecto ya tiene implementado y archivado en SDD:
 - **Base de datos**: PostgreSQL 16
 - **Extensiones DB**: `unaccent`, `pg_trgm`, `vector (pgvector)`
 - **LLM / Embeddings**: OpenAI (`text-embedding-3-small`, `gpt-4o-mini`)
-- **Auth**: JWT Bearer para admin
+- **Auth**: JWT Bearer sessions, entrada pública única `/login` con Google + OTP por email, creación/login local passwordless para usuarios públicos, `/admin/login` oculto para admin local con password, y assistant habilitado solo para sesiones elegibles
 - **Revisión visual local**: Playwright
 
 ## Funcionalidad principal
@@ -43,7 +43,7 @@ La interacción principal del producto. El visitante escribe uno o varios concep
 - resultados de búsqueda
 - catálogo de proyectos
 - detalle de proyecto tipo case study con payload público más liviano por presentación
-- assistant público por proyecto cuando `assistant_available=true`
+- páginas públicas de proyecto siempre accesibles; assistant visible solo para sesiones elegibles cuando `assistant_available=true`
 
 ### Consola admin
 - login con JWT
@@ -97,6 +97,8 @@ psql -d portfolioforge -f sqlmigrations/20260412_0200_search_schema.sql
 psql -d portfolioforge -f sqlmigrations/20260412_0300_search_backfill.sql
 psql -d portfolioforge -f sqlmigrations/20260412_0400_search_embedding_text.sql
 psql -d portfolioforge -f sqlmigrations/20260414_1100_project_assistant_chat.sql
+psql -d portfolioforge -f sqlmigrations/20260415_1000_authenticated_project_assistant.sql
+psql -d portfolioforge -f sqlmigrations/20260415_1100_local_email_verification.sql
 ```
 
 5. Inicia el backend:
@@ -145,12 +147,20 @@ Frontend por defecto:
 | `DB_SSL_MODE` | SSL mode de PostgreSQL | Sí |
 | `ENABLE_SEMANTIC_SEARCH` | Activa capa semántica | No |
 | `OPENAI_API_KEY` | API key de OpenAI | Sí, para embeddings reales, explanations y project assistant |
+| `GOOGLE_CLIENT_ID` | Client ID para verificar Google ID tokens en backend | Sí, para sign-in público con Google |
+| `SMTP_HOST` | Host SMTP para OTP por email | No, pero requerido para entrega real |
+| `SMTP_PORT` | Puerto SMTP para OTP por email | No, pero requerido para entrega real |
+| `SMTP_USERNAME` | Usuario SMTP | No |
+| `SMTP_PASSWORD` | Password SMTP | No |
+| `EMAIL_FROM_ADDRESS` | Remitente usado por los OTP | No, pero requerido para entrega real |
+| `EMAIL_FROM_NAME` | Nombre de remitente para OTP | No |
 
 ### Frontend
 
 | Variable | Descripción | Requerido |
 |----------|-------------|-----------|
 | `VITE_API_BASE_URL` | URL base del backend | No |
+| `VITE_GOOGLE_CLIENT_ID` | Google client ID para renderizar el botón público de sign-in | Sí, para sign-in público con Google |
 
 Si `VITE_API_BASE_URL` no existe, el frontend usa `http://localhost:8080` por defecto.
 
@@ -161,7 +171,10 @@ Si `VITE_API_BASE_URL` no existe, el frontend usa `http://localhost:8080` por de
 - `/search` — resultados de búsqueda
 - `/projects` — catálogo
 - `/projects/:slug` — detalle de proyecto
-- `/login` — acceso admin
+- `/login` — entrada pública única con Google y OTP por email
+- `/admin/login` — login admin oculto del UI público pero accesible por URL directa
+- `/verify-email` — verificación OTP de 6 dígitos que completa el login por email
+- `/complete-profile` — completar `full_name` y `company` antes de usar el assistant
 
 ### Frontend admin
 - `/admin/projects`
@@ -173,10 +186,20 @@ Si `VITE_API_BASE_URL` no existe, el frontend usa `http://localhost:8080` por de
 
 ### API pública
 - `GET /api/v1/public/search?q=...&technologies=...&category=...&client=...`
-- `POST /api/v1/public/login`
+- `POST /api/v1/public/login/email/request`
+- `POST /api/v1/public/login/email/verify`
+- `POST /api/v1/public/login/google`
+- `POST /api/v1/admin/login`
+- `POST /api/v1/public/email-verification/request`
+- `POST /api/v1/public/email-verification/resend`
+- `POST /api/v1/public/email-verification/verify`
 - `GET /api/v1/public/projects`
 - `GET /api/v1/public/projects/:slug`
-- `POST /api/v1/public/projects/:slug/assistant/messages`
+
+### API privada
+- `GET /api/v1/private/me`
+- `PUT /api/v1/private/me/profile`
+- `POST /api/v1/private/projects/:slug/assistant/messages`
 
 ### API admin
 - `GET /api/v1/admin/projects/:id/readiness`
@@ -193,16 +216,19 @@ Si `VITE_API_BASE_URL` no existe, el frontend usa `http://localhost:8080` por de
 
 1. Levanta backend y frontend
 2. Entra a `http://localhost:5173/login`
-3. Inicia sesión con un usuario admin local
-4. Crea tecnologías en `/admin/technologies`
-5. Enriquece un proyecto desde `/admin/projects/:id`
-6. Si el proyecto debe exponer assistant, configura `source_markdown_url` con una URL HTTPS pública que apunte al markdown fuente
-7. Ejecuta re-embed
-8. Prueba búsquedas como:
+3. Usa Google o escribe tu email en `/login` para recibir un OTP y entrar con el flujo público passwordless
+4. Para administración, entra manualmente a `http://localhost:5173/admin/login` con un usuario admin local
+5. Crea tecnologías en `/admin/technologies`
+6. Enriquece un proyecto desde `/admin/projects/:id`
+7. Si el proyecto debe exponer assistant, configura `source_markdown_url` con una URL HTTPS pública que apunte al markdown fuente
+8. Ejecuta re-embed
+9. Prueba búsquedas como:
    - `SIEMENS`
    - `commissioning`
    - `react scada`
-9. Si `assistant_available=true` en el payload público, abre `/projects/:slug` y prueba una pregunta básica del assistant
+10. Si `assistant_available=true` en el payload público, abre `/projects/:slug`, confirma que el assistant no aparece en sesión anónima y luego entra con Google o con OTP por email
+11. Si el usuario público entra por email, valida que reciba un OTP de 6 dígitos, que `/verify-email` complete la sesión y que el assistant siga bloqueado hasta completar perfil
+12. Si el usuario público no tiene `full_name` o `company`, completa `/complete-profile` y valida que recién entonces se habilita el chat
 
 ## Arquitectura
 
@@ -265,7 +291,7 @@ Regla documental vigente para nuevas altas de proyectos:
 - para nuevos markdowns fuente, la recomendación por defecto ahora es `Published=true`; usar `Published=false` solo cuando exista una decisión explícita de mantener el proyecto interno/no público
 - después de importar o editar un proyecto a partir de ese markdown, hay que verificar el resultado real en payload admin/público o en DB; escribir en la base no alcanza como criterio de éxito
 - la verificación mínima obligatoria es campo por campo contra el `.md`: `title`, `active/published`, `client/context`, tecnologías, narrativa del `profile`, listas enriquecidas, métricas y media principal
-- si el proyecto debe tener assistant público, además hay que persistir `source_markdown_url`, verificar `assistant_available=true` en el payload público y confirmar que la URL markdown no se expone públicamente
+- si el proyecto debe tener assistant, además hay que persistir `source_markdown_url`, verificar `assistant_available=true` en el payload público, confirmar que la URL markdown no se expone públicamente y validar el flujo de sign-in elegible (Google verificado + perfil completo, o admin local)
 - si el markdown fuente dice `Published=false`, el proyecto no puede quedar activo ni visible públicamente; si el importador cae en fallback, parsea parcialmente o mezcla assets ajenos, eso debe tratarse como fallo y no como import exitoso
 
 ### Dirección documental actual
@@ -279,4 +305,5 @@ Regla documental vigente para nuevas altas de proyectos:
 ## Troubleshooting
 
 - Si los proyectos públicos devuelven `500` después de traer el último código, revisa migraciones pendientes, especialmente `sqlmigrations/20260414_1100_project_assistant_chat.sql`.
-- Si aparece el botón del assistant pero el chat falla, verifica `source_markdown_url`, que el markdown sea alcanzable por HTTPS desde el backend y que `OPENAI_API_KEY` esté configurada.
+- Si no aparece el assistant en un proyecto habilitado, verifica `assistant_available=true`, que exista una sesión elegible (`can_use_project_assistant=true`) y que el usuario público haya iniciado sesión con Google con email verificado y perfil completo.
+- Si el chat falla después de aparecer, verifica `source_markdown_url`, que el markdown sea alcanzable por HTTPS desde el backend, que `OPENAI_API_KEY` esté configurada y que el request vaya a `POST /api/v1/private/projects/:slug/assistant/messages`.

@@ -7,11 +7,16 @@ import (
 )
 
 // ProjectPublic registers public project read routes.
-func ProjectPublic(e *echo.Echo, h handlers.ProjectPublicHandler, assistant handlers.ProjectAssistantHandlerContract) {
+func ProjectPublic(e *echo.Echo, h handlers.ProjectPublicHandler) {
 	g := e.Group("/api/v1/public/projects")
 
 	g.GET("", h.ListPublished)
 	g.GET("/:slug", h.GetBySlug)
+}
+
+func ProjectPrivate(e *echo.Echo, assistant handlers.ProjectAssistantHandlerContract, middlewares ...echo.MiddlewareFunc) {
+	g := e.Group("/api/v1/private/projects", middlewares...)
+
 	g.POST("/:slug/assistant/messages", assistant.CreateMessage)
 }
 

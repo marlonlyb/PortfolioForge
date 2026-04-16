@@ -4,9 +4,18 @@ import "github.com/labstack/echo/v4"
 
 type UserHandler interface {
 	Create(c echo.Context) error
-	Register(c echo.Context) error
 	GetAll(c echo.Context) error
+	AdminGetByID(c echo.Context) error
+	AdminUpdate(c echo.Context) error
+	AdminDelete(c echo.Context) error
 	Me(c echo.Context) error
+	UpdateProfile(c echo.Context) error
+}
+
+type EmailVerificationHandler interface {
+	Request(c echo.Context) error
+	Resend(c echo.Context) error
+	Verify(c echo.Context) error
 }
 
 // ProjectAdminCatalogHandler defines canonical admin project catalog operations.
@@ -26,7 +35,10 @@ type ProductPublicCompatHandler interface {
 }
 
 type LoginHandler interface {
-	Login(c echo.Context) error
+	AdminLogin(c echo.Context) error
+	RequestEmailLogin(c echo.Context) error
+	VerifyEmailLogin(c echo.Context) error
+	LoginWithGoogle(c echo.Context) error
 }
 
 // SearchHandler defines the interface for the public search endpoint.

@@ -28,6 +28,8 @@ export const PUBLIC_CONTENT_FIELDS = [
   'business_goal',
   'problem_statement',
   'solution_summary',
+  'delivery_scope',
+  'responsibility_scope',
   'architecture',
   'ai_usage',
   'integrations',

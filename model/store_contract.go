@@ -23,10 +23,50 @@ type APIErrorResponse struct {
 }
 
 type StoreUser struct {
-	ID        uuid.UUID `json:"id"`
-	Email     string    `json:"email"`
-	IsAdmin   bool      `json:"is_admin"`
-	CreatedAt time.Time `json:"created_at"`
+	ID                     uuid.UUID `json:"id"`
+	Email                  string    `json:"email"`
+	IsAdmin                bool      `json:"is_admin"`
+	AuthProvider           string    `json:"auth_provider"`
+	EmailVerified          bool      `json:"email_verified"`
+	FullName               string    `json:"full_name,omitempty"`
+	Company                string    `json:"company,omitempty"`
+	ProfileCompleted       bool      `json:"profile_completed"`
+	AssistantEligible      bool      `json:"assistant_eligible"`
+	CanUseProjectAssistant bool      `json:"can_use_project_assistant"`
+	CreatedAt              time.Time `json:"created_at"`
+	LastLoginAt            time.Time `json:"last_login_at,omitempty"`
+}
+
+type AdminUserSummary struct {
+	ID            uuid.UUID  `json:"id"`
+	Email         string     `json:"email"`
+	IsAdmin       bool       `json:"is_admin"`
+	AuthProvider  string     `json:"auth_provider"`
+	EmailVerified bool       `json:"email_verified"`
+	FullName      string     `json:"full_name,omitempty"`
+	Company       string     `json:"company,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     *time.Time `json:"updated_at,omitempty"`
+	LastLoginAt   *time.Time `json:"last_login_at,omitempty"`
+	DeletedAt     *time.Time `json:"deleted_at,omitempty"`
+}
+
+type AdminUserDetail struct {
+	ID            uuid.UUID  `json:"id"`
+	Email         string     `json:"email"`
+	IsAdmin       bool       `json:"is_admin"`
+	AuthProvider  string     `json:"auth_provider"`
+	EmailVerified bool       `json:"email_verified"`
+	FullName      string     `json:"full_name,omitempty"`
+	Company       string     `json:"company,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     *time.Time `json:"updated_at,omitempty"`
+	LastLoginAt   *time.Time `json:"last_login_at,omitempty"`
+	DeletedAt     *time.Time `json:"deleted_at,omitempty"`
+}
+
+type AdminUserUpdateRequest struct {
+	IsAdmin *bool `json:"is_admin"`
 }
 
 // StoreProductVariant is the legacy storage-shaped variant contract.

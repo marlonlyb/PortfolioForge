@@ -33,9 +33,10 @@ PortfolioForge debe ser un portfolio técnico de alta credibilidad con dos capac
 El sistema ya implementa:
 
 - sitio público con landing, búsqueda, catálogo y detalle de proyecto;
+- auth público con una sola entrada `Log in`, Google y OTP por email, más `/admin/login` oculto para admins locales;
 - búsqueda híbrida por evidencia real (filtros estructurados + FTS + fuzzy + semántica);
 - explicaciones resumidas por resultado;
-- project assistant por proyecto expuesto en el detalle público cuando existe markdown fuente configurado;
+- project assistant por proyecto disponible sobre el detalle público, pero visible solo para sesiones elegibles cuando existe markdown fuente configurado;
 - admin de proyectos;
 - admin de tecnologías;
 - enriquecimiento de proyectos con `project_profiles`;
@@ -92,6 +93,7 @@ Quiere:
 
 - buscar experiencia por términos reales;
 - entender rápido problema, solución, arquitectura y resultados;
+- entrar con la menor fricción posible mediante Google o un OTP enviado a su email;
 - validar capacidad técnica sin hablar primero con el autor.
 
 ### 7.2 Administrador / autor del portfolio
@@ -138,7 +140,7 @@ Regla importante: **el flujo manual y el flujo automático ya están alineados c
 - **Summary / Description**
 - **Category**
 - **Client / Context**
-- **Markdown Source URL** (`source_markdown_url`) — solo admin/privado; habilita el assistant cuando existe
+- **Markdown Source URL** (`source_markdown_url`) — solo admin/privado; habilita la capacidad de assistant cuando existe
 - **Main images**
 - **Published**
 
@@ -163,7 +165,7 @@ Regla importante: **el flujo manual y el flujo automático ya están alineados c
 - Los campos actuales de tecnología son: `name`, `category`, `icon`, `brand color`.
 - En el admin actual, `Client / Context` todavía viaja por el campo heredado `brand`, pero el dominio funcional correcto es `client/context`.
 - `source_markdown_url` es privado/admin-only; la API pública no debe exponer esa URL.
-- La API pública sí expone `assistant_available`, derivado de si `source_markdown_url` está presente y no vacío.
+- La API pública sí expone `assistant_available`, derivado de si `source_markdown_url` está presente y no vacío, pero el chat requiere además sesión elegible.
 - `Main images` hoy se representa con media optimizada (`thumbnail_url`, `medium_url`, `full_url`) y una lista legacy derivada para compatibilidad.
 - Para nuevas fuentes markdown generadas o normalizadas, la recomendación editorial por defecto es `Published=true`; `Published=false` debe usarse solo cuando se quiera mantener el proyecto fuera de la API pública.
 - La implementación real de búsqueda/readiness actual está optimizada sobre todo para `title`, `description`, `client/context`, `technologies`, `solution_summary`, `architecture`, `business_goal`, `problem_statement` y `ai_usage`; otros bloques ricos siguen siendo valiosos editorialmente, pero hoy no tienen el mismo peso operativo en código.
@@ -287,7 +289,7 @@ Contrato mínimo de verificación post-import:
 - confirmar que `business_goal`, `problem_statement`, `solution_summary`, `architecture`, `ai_usage` y demás bloques ricos no quedaron vacíos si el markdown sí trae contenido;
 - confirmar que `integrations`, `technical_decisions`, `challenges`, `results`, `timeline` y `metrics` preservaron su contenido;
 - confirmar que la galería y `images` legacy usan assets del proyecto correcto y no quedaron contaminadas con placeholders o assets de otro proyecto;
-- si el proyecto debe tener assistant, confirmar `assistant_available=true` en el payload público y confirmar que `source_markdown_url` solo se vea en admin;
+- si el proyecto debe tener assistant, confirmar `assistant_available=true` en el payload público, confirmar que `source_markdown_url` solo se vea en admin y validar el gating de sesión elegible;
 - si el markdown fuente dice `Published=false`, el resultado correcto es proyecto inactivo y ausencia del slug en la API pública.
 
 ## 12. Flujo objetivo de ingestión desde repositorio/carpeta
@@ -320,8 +322,11 @@ Aunque hoy no se persistan como columnas dedicadas, forman parte del análisis m
 
 Estado actual implementado:
 
-- el detalle público puede exponer un botón de assistant por proyecto;
-- la API pública responde por `POST /api/v1/public/projects/:slug/assistant/messages`;
+- el detalle público mantiene el assistant completamente oculto para visitantes anónimos; solo usuarios autenticados pero aún inelegibles ven CTAs de onboarding, y el chat solo aparece con sesión elegible;
+- `/login` actúa como la única entrada pública y ofrece solo `Log in with Google` + email OTP para usuarios no admin;
+- `/admin/login` permanece disponible solo por URL directa y no se expone desde la navegación pública;
+- las cuentas públicas locales ya no usan password ni sign up separado: el mismo flujo OTP crea o reutiliza la cuenta y autentica al usuario tras verificar el código; el assistant sigue bloqueado hasta completar onboarding/eligibilidad;
+- la API privada responde por `POST /api/v1/private/projects/:slug/assistant/messages` y rechaza usuarios no autenticados o inelegibles;
 - el backend resuelve el proyecto por slug, verifica `source_markdown_url`, descarga el markdown remoto y selecciona secciones relevantes antes de consultar OpenAI;
 - la URL markdown se mantiene privada/admin-only y la señal pública es `assistant_available`.
 

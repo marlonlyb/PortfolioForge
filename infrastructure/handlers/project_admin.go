@@ -54,17 +54,19 @@ func NewProjectAdminHandler(
 }
 
 type EnrichmentProfileReq struct {
-	BusinessGoal       string          `json:"business_goal"`
-	ProblemStatement   string          `json:"problem_statement"`
-	SolutionSummary    string          `json:"solution_summary"`
-	Architecture       string          `json:"architecture"`
-	Integrations       json.RawMessage `json:"integrations"`
-	AIUsage            string          `json:"ai_usage"`
-	TechnicalDecisions json.RawMessage `json:"technical_decisions"`
-	Challenges         json.RawMessage `json:"challenges"`
-	Results            json.RawMessage `json:"results"`
-	Metrics            json.RawMessage `json:"metrics"`
-	Timeline           json.RawMessage `json:"timeline"`
+	BusinessGoal        string          `json:"business_goal"`
+	ProblemStatement    string          `json:"problem_statement"`
+	SolutionSummary     string          `json:"solution_summary"`
+	DeliveryScope       string          `json:"delivery_scope"`
+	ResponsibilityScope string          `json:"responsibility_scope"`
+	Architecture        string          `json:"architecture"`
+	Integrations        json.RawMessage `json:"integrations"`
+	AIUsage             string          `json:"ai_usage"`
+	TechnicalDecisions  json.RawMessage `json:"technical_decisions"`
+	Challenges          json.RawMessage `json:"challenges"`
+	Results             json.RawMessage `json:"results"`
+	Metrics             json.RawMessage `json:"metrics"`
+	Timeline            json.RawMessage `json:"timeline"`
 }
 
 type EnrichmentReq struct {
@@ -131,18 +133,20 @@ func (h *ProjectAdminHandler) UpdateProjectEnrichment(c echo.Context) error {
 
 	nextProject := previousProject
 	nextProject.Profile = &model.ProjectProfile{
-		ProjectID:          projectID,
-		BusinessGoal:       req.Profile.BusinessGoal,
-		ProblemStatement:   req.Profile.ProblemStatement,
-		SolutionSummary:    req.Profile.SolutionSummary,
-		Architecture:       req.Profile.Architecture,
-		Integrations:       req.Profile.Integrations,
-		AIUsage:            req.Profile.AIUsage,
-		TechnicalDecisions: req.Profile.TechnicalDecisions,
-		Challenges:         req.Profile.Challenges,
-		Results:            req.Profile.Results,
-		Metrics:            req.Profile.Metrics,
-		Timeline:           req.Profile.Timeline,
+		ProjectID:           projectID,
+		BusinessGoal:        req.Profile.BusinessGoal,
+		ProblemStatement:    req.Profile.ProblemStatement,
+		SolutionSummary:     req.Profile.SolutionSummary,
+		DeliveryScope:       req.Profile.DeliveryScope,
+		ResponsibilityScope: req.Profile.ResponsibilityScope,
+		Architecture:        req.Profile.Architecture,
+		Integrations:        req.Profile.Integrations,
+		AIUsage:             req.Profile.AIUsage,
+		TechnicalDecisions:  req.Profile.TechnicalDecisions,
+		Challenges:          req.Profile.Challenges,
+		Results:             req.Profile.Results,
+		Metrics:             req.Profile.Metrics,
+		Timeline:            req.Profile.Timeline,
 	}
 
 	if err := h.localization.SyncFromSpanish(ctx, projectID, localization.BuildProjectFieldMap(previousProject), localization.BuildProjectFieldMap(nextProject)); err != nil {
@@ -206,13 +210,15 @@ func (h *ProjectAdminHandler) executeEnrichmentTx(ctx context.Context, tx projec
 	upsertQuery := `
 		INSERT INTO project_profiles (
 			project_id, business_goal, problem_statement, solution_summary,
-			architecture, integrations, ai_usage, technical_decisions,
+			delivery_scope, responsibility_scope, architecture, integrations, ai_usage, technical_decisions,
 			challenges, results, metrics, timeline, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
 		ON CONFLICT (project_id) DO UPDATE SET
 			business_goal = EXCLUDED.business_goal,
 			problem_statement = EXCLUDED.problem_statement,
 			solution_summary = EXCLUDED.solution_summary,
+			delivery_scope = EXCLUDED.delivery_scope,
+			responsibility_scope = EXCLUDED.responsibility_scope,
 			architecture = EXCLUDED.architecture,
 			integrations = EXCLUDED.integrations,
 			ai_usage = EXCLUDED.ai_usage,
@@ -228,6 +234,8 @@ func (h *ProjectAdminHandler) executeEnrichmentTx(ctx context.Context, tx projec
 		req.Profile.BusinessGoal,
 		req.Profile.ProblemStatement,
 		req.Profile.SolutionSummary,
+		req.Profile.DeliveryScope,
+		req.Profile.ResponsibilityScope,
 		req.Profile.Architecture,
 		req.Profile.Integrations,
 		req.Profile.AIUsage,

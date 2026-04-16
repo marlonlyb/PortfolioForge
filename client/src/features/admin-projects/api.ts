@@ -68,6 +68,8 @@ export interface UpdateAdminProjectStatusPayload {
 
 export interface UpdateProjectEnrichmentProfilePayload {
   solution_summary?: string;
+  delivery_scope?: string;
+  responsibility_scope?: string;
   architecture?: string;
   business_goal?: string;
   problem_statement?: string;

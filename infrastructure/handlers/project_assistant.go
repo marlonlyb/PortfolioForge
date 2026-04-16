@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
 	"github.com/marlonlyb/portfolioforge/domain/services"
@@ -20,23 +21,31 @@ func NewProjectAssistantHandler(service services.ProjectAssistant) *ProjectAssis
 }
 
 func (h *ProjectAssistantHandler) CreateMessage(c echo.Context) error {
+	currentUser, ok := c.Get("currentUser").(model.User)
+	if !ok || currentUser.ID == uuid.Nil {
+		return response.ContractError(401, "authentication_required", "You must sign in to continue")
+	}
+	if !currentUser.CanUseProjectAssistant {
+		return response.ContractError(403, "assistant_ineligible", "Complete the required sign-in and profile steps to use the assistant")
+	}
+
 	slug := strings.TrimSpace(c.Param("slug"))
 	var request model.ProjectAssistantRequest
 	if err := c.Bind(&request); err != nil {
-		return response.ContractError(400, "validation_error", "Datos inválidos para el assistant")
+		return response.ContractError(400, "validation_error", "Invalid assistant payload")
 	}
 
 	answer, err := h.service.Answer(c.Request().Context(), slug, request)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrAssistantInvalidQuestion):
-			return response.ContractError(400, "validation_error", "La pregunta debe tener entre 2 y 2000 caracteres")
+			return response.ContractError(400, "validation_error", "The question must contain between 2 and 2000 characters")
 		case errors.Is(err, services.ErrAssistantProjectNotFound):
-			return response.ContractError(404, "not_found", "Proyecto no encontrado")
+			return response.ContractError(404, "not_found", "Project not found")
 		case errors.Is(err, services.ErrAssistantUnavailable):
-			return response.ContractError(409, "assistant_unavailable", "El assistant no está disponible para este proyecto")
+			return response.ContractError(409, "assistant_unavailable", "The assistant is not available for this project")
 		default:
-			return response.ContractError(502, "assistant_upstream_error", "No fue posible generar la respuesta del assistant")
+			return response.ContractError(502, "assistant_upstream_error", "Unable to generate the assistant response")
 		}
 	}
 

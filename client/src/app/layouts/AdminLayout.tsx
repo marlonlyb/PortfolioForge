@@ -4,6 +4,7 @@ import { useSession } from '../providers/SessionProvider';
 
 const adminLinks = [
   { to: '/admin/projects', label: 'Projects' },
+  { to: '/admin/users', label: 'Users' },
   { to: '/admin/technologies', label: 'Technologies' },
   { to: '/admin/settings', label: 'Settings' },
 ] as const;

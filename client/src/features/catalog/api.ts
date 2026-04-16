@@ -25,5 +25,5 @@ export function sendProjectAssistantMessage(
   slug: string,
   payload: ProjectAssistantRequest,
 ): Promise<ProjectAssistantResponse> {
-  return httpPost<ProjectAssistantResponse>(`/api/v1/public/projects/${slug}/assistant/messages`, payload);
+  return httpPost<ProjectAssistantResponse>(`/api/v1/private/projects/${slug}/assistant/messages`, payload);
 }

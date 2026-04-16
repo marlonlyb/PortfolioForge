@@ -51,7 +51,7 @@ Y además debe producir, aunque sea como secciones de análisis fuente todavía 
 
 Ese archivo debe quedar dentro del repositorio/carpeta analizada y convertirse en la fuente de verdad para la creación del proyecto en PortfolioForge.
 
-Si ese markdown va a alimentar el assistant público del proyecto, además debe existir una URL pública HTTPS estable para servirlo en runtime.
+Si ese markdown va a alimentar el assistant del proyecto, además debe existir una URL pública HTTPS estable para servirlo en runtime. Las páginas públicas siguen siendo públicas, pero el chat solo se habilita para sesiones elegibles.
 
 Ruta recomendada dentro del proyecto analizado:
 
@@ -278,7 +278,7 @@ Regla crítica adicional para assistant:
 
 - si existe markdown fuente utilizable para el assistant, el flujo debe establecer una URL pública HTTPS para servirlo;
 - esa URL debe persistirse en `source_markdown_url` durante create/update del proyecto;
-- la ausencia de esa URL implica que el proyecto puede quedar bien importado editorialmente, pero sin assistant público habilitado.
+- la ausencia de esa URL implica que el proyecto puede quedar bien importado editorialmente, pero sin assistant habilitable.
 
 Regla crítica adicional:
 
@@ -436,7 +436,7 @@ Chequeos operativos esperados:
 
 - revisar `GET /api/v1/admin/products/:id` o DB para el estado completo;
 - revisar `GET /api/v1/public/projects/:slug?lang=es` solo si el resultado quedó activo;
-- si existe markdown URL, probar `POST /api/v1/public/projects/:slug/assistant/messages` con una pregunta básica y esperar respuesta útil;
+- si existe markdown URL, validar primero que el payload público mantenga `assistant_available=true` sin exponer `source_markdown_url`, luego probar `POST /api/v1/private/projects/:slug/assistant/messages` con una sesión elegible y una pregunta básica;
 - si el markdown dice `Published=false`, el chequeo correcto es `404` en el detalle público y ausencia del slug en el listado público.
 
 Reglas duras:
@@ -479,7 +479,7 @@ Hoy el workflow recomendado es:
 4. crear tecnologías faltantes en `/admin/technologies`;
 5. cargar el proyecto en PortfolioForge a partir del `.md`, siguiendo `docs/MANUAL-PROJECT-INGESTION-WORKFLOW.md` para el mapeo al admin actual;
 6. si el markdown debe habilitar assistant, publicar el archivo en una URL HTTPS y persistirla en `source_markdown_url`;
-7. verificar campo por campo el resultado real de la importación, incluyendo assistant;
+7. verificar campo por campo el resultado real de la importación, incluyendo assistant y su gating autenticado;
 8. revisar readiness y publicar cuando esté listo.
 
 ## 9. Prompt operativo recomendado
@@ -506,12 +506,12 @@ Reglas:
 - no improvisar contenido fuera de la evidencia real;
 - si el archivo `.md` ya existe, usarlo como entrada principal y solo reanalizar la carpeta si hace falta actualizarlo;
 - mapear los campos editoriales al contrato real actual de PortfolioForge;
-- publicar el markdown fuente en una URL HTTPS y persistirla en `source_markdown_url` cuando se quiera assistant público;
+- publicar el markdown fuente en una URL HTTPS y persistirla en `source_markdown_url` cuando se quiera assistant;
 - resolver tecnologías por nombre hacia `technology_ids`;
 - usar `Main images` como compatibilidad, pero respetar `Media items` como contrato editorial canónico;
 - tratar `Client / Context` como mapping a `brand` legacy;
 - tratar `Published` como mapping a `active`;
-- verificar después de importar el payload admin/público o DB contra el `.md`; además comprobar `assistant_available`, ausencia pública de `source_markdown_url` y respuesta básica del endpoint assistant cuando aplique; si hay fallback parcial o media contaminada, declararlo fallo;
+- verificar después de importar el payload admin/público o DB contra el `.md`; además comprobar `assistant_available`, ausencia pública de `source_markdown_url`, invisibilidad del chat en sesión anónima y respuesta básica del endpoint assistant privado con una sesión elegible cuando aplique; si hay fallback parcial o media contaminada, declararlo fallo;
 - mantener el criterio técnico + gestión + assistant-readiness definido en la documentación.
 ```
 

@@ -2,10 +2,13 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
+	infraemail "github.com/marlonlyb/portfolioforge/infrastructure/email"
 )
 
 func loadEnv() error {
@@ -74,4 +77,35 @@ func validateEnvironments() error {
 // This is an optional env var — it is NOT validated in validateEnvironments().
 func IsSemanticSearchEnabled() bool {
 	return strings.ToLower(os.Getenv("ENABLE_SEMANTIC_SEARCH")) == "true"
+}
+
+func LoadSMTPConfigFromEnv() (infraemail.SMTPConfig, bool, error) {
+	host := strings.TrimSpace(os.Getenv("SMTP_HOST"))
+	portRaw := strings.TrimSpace(os.Getenv("SMTP_PORT"))
+	username := strings.TrimSpace(os.Getenv("SMTP_USERNAME"))
+	password := os.Getenv("SMTP_PASSWORD")
+	fromAddress := strings.TrimSpace(os.Getenv("EMAIL_FROM_ADDRESS"))
+	fromName := strings.TrimSpace(os.Getenv("EMAIL_FROM_NAME"))
+
+	if host == "" && portRaw == "" && fromAddress == "" && username == "" && password == "" {
+		return infraemail.SMTPConfig{}, false, nil
+	}
+
+	if host == "" || portRaw == "" || fromAddress == "" {
+		return infraemail.SMTPConfig{}, false, errors.New("SMTP_HOST, SMTP_PORT, and EMAIL_FROM_ADDRESS are required when SMTP is configured")
+	}
+
+	port, err := strconv.Atoi(portRaw)
+	if err != nil || port <= 0 {
+		return infraemail.SMTPConfig{}, false, fmt.Errorf("SMTP_PORT must be a positive integer")
+	}
+
+	return infraemail.SMTPConfig{
+		Host:        host,
+		Port:        port,
+		Username:    username,
+		Password:    password,
+		FromAddress: fromAddress,
+		FromName:    fromName,
+	}, true, nil
 }

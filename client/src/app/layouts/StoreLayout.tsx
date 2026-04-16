@@ -107,7 +107,7 @@ export function StoreLayout() {
                     }
                     to="/login"
                   >
-                    {t.navAdmin}
+                    {t.navLogin}
                   </NavLink>
                 )}
               </nav>
@@ -193,7 +193,7 @@ export function StoreLayout() {
                       }
                       to="/login"
                     >
-                      {t.navAdmin}
+                      {t.navLogin}
                     </NavLink>
                   )}
                 </nav>

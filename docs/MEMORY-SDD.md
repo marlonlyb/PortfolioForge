@@ -418,21 +418,23 @@ Actualización posterior de estándar documental:
 - para nuevos markdowns fuente y templates recomendados, `Published=true` pasa a ser el default editorial;
 - `Published=false` sigue siendo autoritativo cuando se use de forma explícita y debe reflejarse como `active=false` sin excepciones.
 
-## 21. Change SDD archivado: `project-assistant-chat`
+## 21. Changes SDD archivados: `project-assistant-chat` + `authenticated-project-assistant`
 
-El change `project-assistant-chat` quedó implementado y archivado.
+El change `project-assistant-chat` introdujo la capacidad de assistant por proyecto y luego `authenticated-project-assistant` redefinió su contrato de acceso final.
 
-Resultado consolidado:
+Resultado consolidado vigente:
 
-- se agregó assistant por proyecto en el detalle público;
-- el backend expone `POST /api/v1/public/projects/:slug/assistant/messages`;
+- el detalle del proyecto sigue siendo público;
+- la API pública expone `assistant_available` como capacidad del proyecto derivada de `source_markdown_url` y no debe filtrar la URL privada;
+- el backend expone el envío de mensajes del assistant solo en la ruta privada autenticada `POST /api/v1/private/projects/:slug/assistant/messages`;
 - el assistant usa OpenAI solo desde backend y responde grounded en markdown fuente remoto del proyecto;
-- `source_markdown_url` quedó como campo admin/privado;
-- la API pública expone `assistant_available` derivado de ese campo y no debe filtrar la URL privada.
+- usuarios públicos entran por Google o por OTP de email passwordless desde `/login`;
+- admins locales conservan elegibilidad por el flujo oculto `/admin/login` con email/password;
+- el assistant queda oculto para usuarios signed out y solo se habilita para sesiones elegibles.
 
 ## 22. Revisión visual local con Playwright
 
-Se incorporó revisión visual/local basada en Playwright para cubrir flujos reales del frontend, incluyendo catálogo, detalle de proyecto y presencia del assistant en UI pública cuando corresponde.
+Se incorporó revisión visual/local basada en Playwright para cubrir flujos reales del frontend, incluyendo catálogo, detalle de proyecto y visibilidad del assistant solo para sesiones autenticadas y elegibles cuando corresponde.
 
 Aprendizaje práctico:
 

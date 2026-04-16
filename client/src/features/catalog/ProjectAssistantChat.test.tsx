@@ -45,6 +45,7 @@ describe('ProjectAssistantChat', () => {
 
     expect(await screen.findByText('Grounded answer.')).toBeInTheDocument();
     expect(screen.getByText('How does the architecture work?')).toBeInTheDocument();
+    expect(window.sessionStorage.getItem('assistant_history:portfolioforge')).toContain('Grounded answer.');
   });
 
   it('restores history and shows backend errors', async () => {
@@ -53,9 +54,14 @@ describe('ProjectAssistantChat', () => {
       message: 'Assistant unavailable.',
     }));
 
+    window.sessionStorage.setItem('assistant_history:portfolioforge', JSON.stringify([
+      { role: 'assistant', content: 'Restored answer.' },
+    ]));
+
     render(<ProjectAssistantChat slug="portfolioforge" enabled lang="en" />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Ask project assistant' }));
+    expect(screen.getByText('Restored answer.')).toBeInTheDocument();
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Hi there' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 

@@ -194,7 +194,7 @@ Campo real: `source_markdown_url`
 **Qué hace**
 - se guarda solo en admin/privado;
 - no debe exponerse en el payload público del proyecto;
-- cuando existe y no está vacío, el frontend público puede mostrar el entrypoint del project assistant mediante `assistant_available=true`.
+- cuando existe y no está vacío, el frontend público puede declarar capacidad de assistant mediante `assistant_available=true`, pero el chat solo debe mostrarse a sesiones elegibles.
 
 **Cuándo completarlo**
 - complétalo cuando el proyecto tenga markdown fuente público y ese proyecto deba exponer assistant en el detalle público;
@@ -207,7 +207,7 @@ Campo real: `source_markdown_url`
 - debe contener el contenido esperado del case study para grounding del assistant.
 
 **Regla operativa**
-- la visibilidad del assistant se deriva de este campo; no existe un toggle público separado.
+- la capacidad del assistant se deriva de este campo; no existe un toggle público separado, pero el uso real exige autenticación elegible.
 
 ---
 
@@ -479,7 +479,7 @@ Validación mínima obligatoria:
 - `GET /api/v1/admin/products/:id` o revisión equivalente en DB para confirmar campos base y media;
 - `GET /api/v1/public/projects/:slug?lang=es` si `active=true`;
 - si el proyecto debe tener assistant, verificar que admin/DB conserve `source_markdown_url`, que el payload público exponga `assistant_available=true` y que no filtre `source_markdown_url`;
-- si el proyecto debe tener assistant, probar `POST /api/v1/public/projects/:slug/assistant/messages` con una pregunta simple;
+- si el proyecto debe tener assistant, probar `POST /api/v1/private/projects/:slug/assistant/messages` con una sesión elegible y una pregunta simple;
 - si el markdown dice `Published=false`, confirmar lo contrario: endpoint público `404` y ausencia del slug en `GET /api/v1/public/projects`.
 
 Checklist campo por campo:
@@ -496,7 +496,8 @@ Checklist campo por campo:
 - [ ] la imagen principal y las primeras imágenes no están contaminadas con assets ajenos o placeholders
 - [ ] el payload público no expone `source_markdown_url`
 - [ ] `assistant_available` coincide con la presencia real de `source_markdown_url`
-- [ ] el assistant responde al menos una pregunta básica cuando está habilitado
+- [ ] el assistant permanece oculto en sesión anónima
+- [ ] el assistant responde al menos una pregunta básica cuando se usa con sesión elegible
 
 Regla de fallo:
 
@@ -527,7 +528,7 @@ entonces la carga debe tratarse como **fallida**, aunque la escritura en DB haya
 - [ ] payload público verificado si el proyecto queda activo
 - [ ] `assistant_available` verificado si existe markdown fuente
 - [ ] `source_markdown_url` sigue siendo admin-only
-- [ ] assistant probado con una pregunta simple si está habilitado
+- [ ] assistant probado con una pregunta simple si está habilitado y existe sesión elegible
 - [ ] media principal y galería sin assets ajenos ni contaminación de otro proyecto
 
 ## 8. Ejemplo de criterio editorial

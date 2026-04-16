@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { sendProjectAssistantMessage } from './api';
 import { AppError } from '../../shared/api/errors';
 import type { ProjectAssistantMessage } from '../../shared/types/project';
+import { getAssistantHistory, setAssistantHistory } from '../../shared/storage';
 
 interface ProjectAssistantChatProps {
   slug: string;
@@ -13,9 +14,17 @@ interface ProjectAssistantChatProps {
 export function ProjectAssistantChat({ slug, enabled, lang }: ProjectAssistantChatProps) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState('');
-  const [history, setHistory] = useState<ProjectAssistantMessage[]>([]);
+  const [history, setHistory] = useState<ProjectAssistantMessage[]>(() => getAssistantHistory(slug));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHistory(getAssistantHistory(slug));
+  }, [slug]);
+
+  useEffect(() => {
+    setAssistantHistory(slug, history);
+  }, [history, slug]);
 
   if (!enabled) {
     return null;

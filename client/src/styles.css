@@ -1165,10 +1165,83 @@ p {
   margin: 0 auto;
 }
 
+.auth-page__shell {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.auth-page__stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-page__stack:has(.auth-page__panel:only-child) {
+  gap: 0;
+}
+
+.auth-page__panel {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+}
+
+.auth-page__panel--primary {
+  border-color: rgba(255, 141, 58, 0.22);
+  background:
+    radial-gradient(circle at top right, rgba(255, 141, 58, 0.12), transparent 38%),
+    linear-gradient(180deg, rgba(25, 21, 31, 0.96), rgba(17, 14, 21, 0.96));
+}
+
+.auth-page__panel--secondary {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.auth-page__panel h2 {
+  margin: 0;
+}
+
+.auth-page__tabs {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.auth-page__tab {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: #d6d8e1;
+  border-radius: 999px;
+  padding: 0.55rem 0.9rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.auth-page__tab--active {
+  border-color: rgba(255, 141, 58, 0.35);
+  background: rgba(255, 141, 58, 0.12);
+  color: #fff;
+}
+
+.auth-page__google-block {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.auth-page__google-button-wrap {
+  min-height: 44px;
+}
+
+.auth-page__google-copy,
+.auth-page__helper {
+  color: #9aa4b8;
+  font-size: 0.92rem;
+}
+
 .auth-page__redirect-note {
   color: #49566e;
   font-size: 0.9rem;
-  margin-bottom: 1rem;
+  margin: 0;
 }
 
 .auth-page__error {
@@ -1222,9 +1295,13 @@ p {
 }
 
 .auth-page__alt {
-  margin-top: 1.25rem;
+  margin: 0;
   color: #49566e;
   font-size: 0.9rem;
+}
+
+.auth-page__alt--footer {
+  margin-top: 0.25rem;
 }
 
 .auth-page__alt a {

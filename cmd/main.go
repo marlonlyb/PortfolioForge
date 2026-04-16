@@ -5,10 +5,13 @@ import (
 	"os"
 
 	"github.com/marlonlyb/portfolioforge/domain/ports/embedding"
+	"github.com/marlonlyb/portfolioforge/domain/ports/mailer"
 	searchPorts "github.com/marlonlyb/portfolioforge/domain/ports/search"
 	"github.com/marlonlyb/portfolioforge/domain/services"
+	infraemail "github.com/marlonlyb/portfolioforge/infrastructure/email"
 	infraEmbedding "github.com/marlonlyb/portfolioforge/infrastructure/embedding"
 	"github.com/marlonlyb/portfolioforge/infrastructure/explanation"
+	"github.com/marlonlyb/portfolioforge/infrastructure/googleauth"
 	"github.com/marlonlyb/portfolioforge/infrastructure/handlers"
 	"github.com/marlonlyb/portfolioforge/infrastructure/localization"
 	"github.com/marlonlyb/portfolioforge/infrastructure/postgres"
@@ -27,20 +30,32 @@ func main() {
 		log.Fatal(err)
 	}
 
+	smtpConfig, smtpEnabled, err := LoadSMTPConfigFromEnv()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	dbPool, err := NewDBConnection()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	var verificationMailer mailer.VerificationMailer = infraemail.NewNoopMailer()
+	if smtpEnabled {
+		verificationMailer = infraemail.NewSMTPMailer(smtpConfig)
+	}
+
 	uRepository := postgres.NewUser(dbPool)
-	uService := services.NewUser(uRepository)
+	uService := services.NewUser(uRepository, verificationMailer)
 	uHandlers := handlers.NewUser(uService)
+	verificationHandlers := handlers.NewEmailVerification(uService)
 
 	projectCatalogRepository := postgres.NewProjectCatalogRepository(dbPool)
 	projectCatalogService := services.NewProjectCatalog(projectCatalogRepository)
 	productPublicCompatService := services.NewPublicProductCompat(projectCatalogRepository)
 
-	lService := services.NewLogin(uService)
+	googleVerifier := googleauth.NewVerifierFromEnv()
+	lService := services.NewLogin(uService, googleVerifier)
 	lHandlers := handlers.NewLogin(lService)
 
 	// Project (public read-side)
@@ -90,7 +105,7 @@ func main() {
 	projAdminHandlers := handlers.NewProjectAdminHandler(dbPool, embeddingProv, semanticEnabled, projRepository, projectLocalizationService)
 	siteSettingsHandlers := handlers.NewSiteSettingsHandler(siteSettingsRepository)
 
-	httpServer := NewServer(uHandlers, projectCatalogHandlers, productPublicCompatHandlers, lHandlers, projHandlers, assistantHandlers, searchHandlers, searchAdminHandlers, techHandlers, projAdminHandlers, siteSettingsHandlers)
+	httpServer := NewServer(uService, uHandlers, verificationHandlers, projectCatalogHandlers, productPublicCompatHandlers, lHandlers, projHandlers, assistantHandlers, searchHandlers, searchAdminHandlers, techHandlers, projAdminHandlers, siteSettingsHandlers)
 	httpServer.Initialize()
 
 }

@@ -70,6 +70,8 @@ func BuildProjectFieldMap(project model.Project) map[string]json.RawMessage {
 		fields["business_goal"] = mustMarshal("")
 		fields["problem_statement"] = mustMarshal("")
 		fields["solution_summary"] = mustMarshal("")
+		fields["delivery_scope"] = mustMarshal("")
+		fields["responsibility_scope"] = mustMarshal("")
 		fields["architecture"] = mustMarshal("")
 		fields["ai_usage"] = mustMarshal("")
 		fields["integrations"] = mustMarshal([]string{})
@@ -84,6 +86,8 @@ func BuildProjectFieldMap(project model.Project) map[string]json.RawMessage {
 	fields["business_goal"] = normalizeRaw(profile.BusinessGoal)
 	fields["problem_statement"] = normalizeRaw(profile.ProblemStatement)
 	fields["solution_summary"] = normalizeRaw(profile.SolutionSummary)
+	fields["delivery_scope"] = normalizeRaw(profile.DeliveryScope)
+	fields["responsibility_scope"] = normalizeRaw(profile.ResponsibilityScope)
 	fields["architecture"] = normalizeRaw(profile.Architecture)
 	fields["ai_usage"] = normalizeRaw(profile.AIUsage)
 	fields["integrations"] = normalizeJSONOrDefault(profile.Integrations, []string{})
@@ -321,6 +325,12 @@ func applyLocalizedFields(project *model.Project, rows []model.ProjectLocalizati
 		case "solution_summary":
 			ensureProfile(project)
 			project.Profile.SolutionSummary = decodeString(row.Value, project.Profile.SolutionSummary)
+		case "delivery_scope":
+			ensureProfile(project)
+			project.Profile.DeliveryScope = decodeString(row.Value, project.Profile.DeliveryScope)
+		case "responsibility_scope":
+			ensureProfile(project)
+			project.Profile.ResponsibilityScope = decodeString(row.Value, project.Profile.ResponsibilityScope)
 		case "architecture":
 			ensureProfile(project)
 			project.Profile.Architecture = decodeString(row.Value, project.Profile.Architecture)

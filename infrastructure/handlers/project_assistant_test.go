@@ -55,7 +55,7 @@ func TestProjectAssistantHandlerCreateMessageReturnsAnswerOnly(t *testing.T) {
 	))
 
 	body := `{"question":"¿Cómo está implementada la arquitectura?","history":[{"role":"assistant","content":"Resumen previo"}],"lang":"ca"}`
-	rec := performAssistantRequest(t, handler, body)
+	rec := performAssistantRequest(t, handler, body, model.User{ID: uuid.New(), AuthProvider: "google", EmailVerified: true, FullName: "Ada Lovelace", Company: "Analytical Engines", ProfileCompleted: true, AssistantEligible: true, CanUseProjectAssistant: true})
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
@@ -80,6 +80,50 @@ func TestProjectAssistantHandlerCreateMessageReturnsAnswerOnly(t *testing.T) {
 	}
 	if len(provider.input.History) != 1 || provider.input.History[0].Content != "Resumen previo" {
 		t.Fatalf("history = %#v", provider.input.History)
+	}
+}
+
+func TestProjectAssistantHandlerCreateMessageRejectsUnauthenticatedAccess(t *testing.T) {
+	handler := NewProjectAssistantHandler(services.NewProjectAssistant(
+		&stubAssistantHandlerRepo{context: model.ProjectAssistantContext{ID: uuid.New(), Name: "PortfolioForge", Active: true, SourceMarkdownURL: "https://mlbautomation.com/docs.md"}},
+		&stubAssistantHandlerRetriever{chunks: []services.MarkdownChunkAlias{{Heading: "Architecture", Body: "Uses Go."}}},
+		&stubAssistantHandlerProvider{resp: "Should not be used."},
+	))
+
+	rec := performAssistantRequest(t, handler, `{"question":"How does it work?"}`, model.User{})
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+
+	var payload model.APIErrorResponse
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Error.Code != "authentication_required" {
+		t.Fatalf("error code = %q, want authentication_required", payload.Error.Code)
+	}
+}
+
+func TestProjectAssistantHandlerCreateMessageRejectsIneligibleUser(t *testing.T) {
+	handler := NewProjectAssistantHandler(services.NewProjectAssistant(
+		&stubAssistantHandlerRepo{context: model.ProjectAssistantContext{ID: uuid.New(), Name: "PortfolioForge", Active: true, SourceMarkdownURL: "https://mlbautomation.com/docs.md"}},
+		&stubAssistantHandlerRetriever{chunks: []services.MarkdownChunkAlias{{Heading: "Architecture", Body: "Uses Go."}}},
+		&stubAssistantHandlerProvider{resp: "Should not be used."},
+	))
+
+	rec := performAssistantRequest(t, handler, `{"question":"How does it work?"}`, model.User{ID: uuid.New(), AuthProvider: "google", EmailVerified: true})
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+
+	var payload model.APIErrorResponse
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Error.Code != "assistant_ineligible" {
+		t.Fatalf("error code = %q, want assistant_ineligible", payload.Error.Code)
 	}
 }
 
@@ -131,7 +175,7 @@ func TestProjectAssistantHandlerCreateMessageMapsErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rec := performAssistantRequest(t, NewProjectAssistantHandler(tt.service), tt.body)
+			rec := performAssistantRequest(t, NewProjectAssistantHandler(tt.service), tt.body, model.User{ID: uuid.New(), AuthProvider: "google", EmailVerified: true, FullName: "Ada Lovelace", Company: "Analytical Engines", ProfileCompleted: true, AssistantEligible: true, CanUseProjectAssistant: true})
 			if rec.Code != tt.wantStatus {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.wantStatus)
 			}
@@ -147,17 +191,37 @@ func TestProjectAssistantHandlerCreateMessageMapsErrors(t *testing.T) {
 	}
 }
 
-func performAssistantRequest(t *testing.T, handler *ProjectAssistantHandler, body string) *httptest.ResponseRecorder {
+func TestPerformAssistantRequestTargetsPrivateAssistantRoute(t *testing.T) {
+	provider := &stubAssistantHandlerProvider{resp: "ok"}
+	handler := NewProjectAssistantHandler(services.NewProjectAssistant(
+		&stubAssistantHandlerRepo{context: model.ProjectAssistantContext{ID: uuid.New(), Name: "PortfolioForge", Active: true, SourceMarkdownURL: "https://mlbautomation.com/docs.md"}},
+		&stubAssistantHandlerRetriever{chunks: []services.MarkdownChunkAlias{{Heading: "Architecture", Body: "Uses Go."}}},
+		provider,
+	))
+
+	rec := performAssistantRequest(t, handler, `{"question":"How does it work?"}`, model.User{ID: uuid.New(), AuthProvider: "google", EmailVerified: true, FullName: "Ada Lovelace", Company: "Analytical Engines", ProfileCompleted: true, AssistantEligible: true, CanUseProjectAssistant: true})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+}
+
+func performAssistantRequest(t *testing.T, handler *ProjectAssistantHandler, body string, currentUser model.User) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/public/projects/portfolioforge/assistant/messages", bytes.NewBufferString(body))
+	privatePath := "/api/v1/private/projects/portfolioforge/assistant/messages"
+	req := httptest.NewRequest(http.MethodPost, privatePath, bytes.NewBufferString(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e := echo.New()
 	e.HTTPErrorHandler = func(err error, c echo.Context) { c.Error(err) }
 	c := e.NewContext(req, rec)
-	c.SetPath("/api/v1/public/projects/:slug/assistant/messages")
+	c.SetPath("/api/v1/private/projects/:slug/assistant/messages")
 	c.SetParamNames("slug")
 	c.SetParamValues("portfolioforge")
+	if req.URL.Path != privatePath {
+		t.Fatalf("request path = %q, want %q", req.URL.Path, privatePath)
+	}
+	c.Set("currentUser", currentUser)
 
 	if err := handler.CreateMessage(c); err != nil {
 		response.HTTPErrorHandler(err, c)

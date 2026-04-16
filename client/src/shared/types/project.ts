@@ -37,6 +37,8 @@ export interface ProjectProfile {
   business_goal?: string;
   problem_statement?: string;
   solution_summary?: string;
+  delivery_scope?: string;
+  responsibility_scope?: string;
   architecture?: string;
   integrations: ProjectProfileStructuredList;
   ai_usage?: string;

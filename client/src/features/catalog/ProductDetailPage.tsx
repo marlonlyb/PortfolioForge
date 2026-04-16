@@ -3,6 +3,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import useEmblaCarousel from 'embla-carousel-react';
 
 import { useLocale } from '../../app/providers/LocaleProvider';
+import { useSession } from '../../app/providers/SessionProvider';
 import { fetchProjectBySlug } from './api';
 import { searchProjects } from '../search/api';
 import type { Project } from '../../shared/types/project';
@@ -44,6 +45,14 @@ interface DetailListSectionData {
   title: string;
   items: string[];
   accent?: 'default' | 'highlight';
+}
+
+interface DetailLayerData {
+  title: string;
+  textSections: DetailSectionData[];
+  listSections?: DetailListSectionData[];
+  metrics?: KeyValueEntry[];
+  metricsTitle?: string;
 }
 
 interface GalleryImage {
@@ -155,10 +164,62 @@ function CaseStudySection({ title, content }: CaseStudySectionProps) {
   );
 }
 
+function DetailLayer({ title, textSections, listSections = [], metrics = [], metricsTitle = 'Metrics' }: DetailLayerData) {
+  if (textSections.length === 0 && listSections.length === 0 && metrics.length === 0) {
+    return null;
+  }
+
+  return (
+    <article className="card detail__layer">
+      <div className="detail__column-intro">
+        <p className="eyebrow">Case study</p>
+        <h3 className="detail__column-title">{title}</h3>
+      </div>
+
+      <div className="detail__main-stack">
+        {textSections.map((section) => (
+          <CaseStudySection key={section.title} title={section.title} content={buildExcerpt(section.content, 300)} />
+        ))}
+
+        {listSections.map((section) => (
+          <article
+            key={section.title}
+            className={section.accent === 'highlight'
+              ? 'detail__aside-panel detail__aside-panel--results'
+              : 'detail__aside-panel'}
+          >
+            <p className="eyebrow">{section.title}</p>
+            <ul className={section.accent === 'highlight' ? 'detail__list detail__list--results' : 'detail__list'}>
+              {section.items.map((item, index) => (
+                <li key={`${section.title}-${index}`}>{item}</li>
+              ))}
+            </ul>
+          </article>
+        ))}
+
+        {metrics.length > 0 ? (
+          <article className="detail__aside-panel detail__aside-panel--metrics">
+            <p className="eyebrow">{metricsTitle}</p>
+            <dl className="detail__metrics">
+              {metrics.map((metric) => (
+                <div key={metric.label} className="detail__metric">
+                  <dt>{metric.label}</dt>
+                  <dd>{metric.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </article>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
 export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const { locale, t } = useLocale();
+  const { user, loading: sessionLoading } = useSession();
   const [galleryViewportRef, galleryViewportApi] = useEmblaCarousel({
     align: 'start',
     loop: false,
@@ -217,7 +278,7 @@ export function ProductDetailPage() {
   }, [locale, slug, t.detailNotFound]);
 
   useEffect(() => {
-    if (!project?.id || !sessionStorage.getItem('auth_token')) {
+    if (!project?.id || !sessionStorage.getItem('auth_token') || sessionLoading || !user?.is_admin) {
       setAdminSourceMarkdownURL(null);
       return;
     }
@@ -238,7 +299,7 @@ export function ProductDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [project?.id]);
+  }, [project?.id, sessionLoading, user?.is_admin]);
 
   useEffect(() => {
     if (locationMatchContext) {
@@ -307,6 +368,8 @@ export function ProductDetailPage() {
   const businessGoal = project?.profile?.business_goal?.trim();
   const problemStatement = project?.profile?.problem_statement?.trim();
   const solutionSummary = project?.profile?.solution_summary?.trim();
+  const deliveryScope = project?.profile?.delivery_scope?.trim();
+  const responsibilityScope = project?.profile?.responsibility_scope?.trim();
   const architecture = project?.profile?.architecture?.trim();
   const aiUsage = project?.profile?.ai_usage?.trim();
   const integrations = getRenderableList(project?.profile?.integrations);
@@ -324,6 +387,8 @@ export function ProductDetailPage() {
   const technologySummary = formatTechnologySummary(technologies);
   const visibleHeroTechnologies = technologies.slice(0, 4);
   const remainingHeroTechnologies = Math.max(technologies.length - visibleHeroTechnologies.length, 0);
+  const showAssistantChat = Boolean(project?.assistant_available && user?.can_use_project_assistant);
+  const showAssistantAccessCard = Boolean(project?.assistant_available && user) && !sessionLoading && !showAssistantChat;
   const heroFacts = [
     hasText(project?.client_name) ? { label: t.detailClient, value: project.client_name.trim() } : null,
     lastUpdated ? { label: t.detailUpdated, value: lastUpdated } : null,
@@ -335,20 +400,33 @@ export function ProductDetailPage() {
     { label: t.detailUpdated, value: lastUpdated ?? t.detailRecentlyCurated },
     { label: t.detailTechnologies, value: technologySummary ?? t.detailNotSpecified },
   ].filter((item) => item.value.trim().length > 0);
-  const narrativeSections: DetailSectionData[] = [
+  const strategySections: DetailSectionData[] = [
     hasText(businessGoal) ? { title: t.detailBusinessGoal, content: businessGoal } : null,
     hasText(problemStatement) ? { title: t.detailProblem, content: problemStatement } : null,
     hasText(solutionSummary) ? { title: t.detailSolution, content: solutionSummary } : null,
-    hasText(architecture) ? { title: t.detailArchitecture, content: architecture } : null,
-    hasText(aiUsage) ? { title: t.detailAIUsage, content: aiUsage } : null,
   ].filter((section): section is DetailSectionData => Boolean(section));
-  const sidebarSections: DetailListSectionData[] = [
-    integrations.length > 0 ? { title: t.detailIntegrations, items: integrations } : null,
-    technicalDecisions.length > 0 ? { title: t.detailTechnicalDecisions, items: technicalDecisions } : null,
+  const executionTextSections: DetailSectionData[] = [
+    hasText(deliveryScope) ? { title: t.detailDeliveryScope, content: deliveryScope } : null,
+    hasText(responsibilityScope) ? { title: t.detailResponsibilityScope, content: responsibilityScope } : null,
+  ].filter((section): section is DetailSectionData => Boolean(section));
+  const executionListSections: DetailListSectionData[] = [
     challenges.length > 0 ? { title: t.detailChallenges, items: challenges } : null,
     results.length > 0 ? { title: t.detailResults, items: results, accent: 'highlight' } : null,
     timeline.length > 0 ? { title: t.detailTimeline, items: timeline } : null,
   ].filter((section): section is DetailListSectionData => Boolean(section));
+  const technicalTextSections: DetailSectionData[] = [
+    hasText(architecture) ? { title: t.detailArchitecture, content: architecture } : null,
+    hasText(aiUsage) ? { title: t.detailAIUsage, content: aiUsage } : null,
+  ].filter((section): section is DetailSectionData => Boolean(section));
+  const technicalListSections: DetailListSectionData[] = [
+    integrations.length > 0 ? { title: t.detailIntegrations, items: integrations } : null,
+    technicalDecisions.length > 0 ? { title: t.detailTechnicalDecisions, items: technicalDecisions } : null,
+  ].filter((section): section is DetailListSectionData => Boolean(section));
+  const detailLayers: DetailLayerData[] = [
+    { title: t.detailStrategyLayer, textSections: strategySections },
+    { title: t.detailExecutionLayer, textSections: executionTextSections, listSections: executionListSections },
+    { title: t.detailTechnicalLayer, textSections: technicalTextSections, listSections: technicalListSections, metrics, metricsTitle: t.detailMetrics },
+  ];
 
   useEffect(() => {
     if (!galleryViewportApi) return undefined;
@@ -591,25 +669,18 @@ export function ProductDetailPage() {
 
         <div className="detail__content-layout">
           <div className="detail__main-column">
-            <div className="detail__column-intro">
-              <p className="eyebrow">Case study</p>
-              <h3 className="detail__column-title">Narrativa principal</h3>
-            </div>
-
             <div className="detail__main-stack">
-              {narrativeSections.map((section) => (
-                  <CaseStudySection key={section.title} title={section.title} content={buildExcerpt(section.content, 300)} />
-                ))}
-              </div>
-            </div>
+              {detailLayers.map((layer) => (
+                <DetailLayer
+                  key={layer.title}
+                  title={layer.title}
+                  textSections={layer.textSections}
+                  listSections={layer.listSections}
+                  metrics={layer.metrics}
+                  metricsTitle={layer.metricsTitle}
+                />
+              ))}
 
-          <aside className="detail__side-column">
-            <div className="detail__column-intro detail__column-intro--side">
-              <p className="eyebrow">Evidence</p>
-              <h3 className="detail__column-title">Analítica y soporte</h3>
-            </div>
-
-            <div className="detail__side-stack">
               {showSearchMatchContext ? (
                 <article className="detail__aside-panel detail__match-context card" aria-label="Por qué coincide con la búsqueda">
                   <p className="eyebrow">Por qué coincide</p>
@@ -642,41 +713,44 @@ export function ProductDetailPage() {
                   ) : null}
                 </article>
               ) : null}
-
-              {sidebarSections.map((section) => (
-                <article
-                  key={section.title}
-                  className={section.accent === 'highlight'
-                    ? 'detail__aside-panel detail__aside-panel--results card'
-                    : 'detail__aside-panel card'}
-                >
-                  <p className="eyebrow">{section.title}</p>
-                  <ul className={section.accent === 'highlight' ? 'detail__list detail__list--results' : 'detail__list'}>
-                    {section.items.map((item, index) => (
-                      <li key={`${section.title}-${index}`}>{item}</li>
-                    ))}
-                  </ul>
-                </article>
-              ))}
-
-              {metrics.length > 0 ? (
-                <article className="detail__aside-panel detail__aside-panel--metrics card">
-                  <p className="eyebrow">{t.detailMetrics}</p>
-                  <dl className="detail__metrics">
-                    {metrics.map((metric) => (
-                      <div key={metric.label} className="detail__metric">
-                        <dt>{metric.label}</dt>
-                        <dd>{metric.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </article>
-              ) : null}
             </div>
-          </aside>
+          </div>
         </div>
         </section>
-      <ProjectAssistantChat slug={project.slug} enabled={project.assistant_available} lang={locale} />
+      {showAssistantAccessCard ? (
+        <section className="card assistant-chat__panel" aria-label="Assistant access requirements">
+          <div className="assistant-chat__header">
+            <p className="eyebrow">Project assistant</p>
+			{!user ? (
+				<>
+				  <p className="assistant-chat__copy">Log in to unlock project-specific chat.</p>
+				  <Link className="btn btn--primary" to="/login" state={{ from: location.pathname }}>
+				    Log in
+				  </Link>
+				</>
+			) : user.auth_provider === 'local' && !user.email_verified ? (
+				<>
+				  <p className="assistant-chat__copy">Verify your email to unlock assistant eligibility for your local account.</p>
+				  <Link className="btn btn--primary" to="/verify-email" state={{ from: location.pathname, email: user.email }}>
+				    Verify email
+				  </Link>
+				</>
+			) : !user.profile_completed ? (
+              <>
+                <p className="assistant-chat__copy">Complete your profile with your full name and company to enable the assistant.</p>
+                <Link className="btn btn--primary" to="/complete-profile" state={{ from: location.pathname }}>
+                  Complete profile
+                </Link>
+              </>
+            ) : !user.email_verified && user.auth_provider === 'google' ? (
+              <p className="assistant-chat__copy">Google sign-in requires a verified email before the assistant can be enabled.</p>
+            ) : (
+              <p className="assistant-chat__copy">{t.detailAssistantLocalRestriction}</p>
+            )}
+          </div>
+        </section>
+      ) : null}
+      <ProjectAssistantChat slug={project.slug} enabled={showAssistantChat} lang={locale} />
       {activeLightboxImage ? (
         <div className="detail__lightbox" role="dialog" aria-modal="true" aria-label="Image preview" onClick={() => setLightboxIndex(null)}>
           <button type="button" className="detail__lightbox-close" aria-label="Close image preview" onClick={() => setLightboxIndex(null)}>
