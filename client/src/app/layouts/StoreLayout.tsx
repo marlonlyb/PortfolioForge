@@ -7,13 +7,39 @@ import { PUBLIC_LOCALE_LABELS, type PublicLocale } from '../../shared/i18n/confi
 import { fetchPublicSiteSettings } from '../../shared/api/siteSettings';
 import type { SiteSettings } from '../../shared/types/siteSettings';
 
+export interface StoreHeaderContent {
+  title: string;
+  summary: string;
+  caption: string;
+}
+
+export interface StoreLayoutOutletContext {
+  setHeaderContent: (value: StoreHeaderContent | null) => void;
+}
+
+const PROJECT_DETAIL_ROUTE_PATTERN = /^\/projects\/[^/]+\/?$/;
+
 export function StoreLayout() {
   const { user, logout } = useSession();
   const { locale, setLocale, t } = useLocale();
   const location = useLocation();
   const isLanding = location.pathname === '/' || location.pathname.startsWith('/projects/');
   const isEditorialLanding = location.pathname === '/';
+  const isProjectDetailRoute = PROJECT_DETAIL_ROUTE_PATTERN.test(location.pathname);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+  const [contextualHeader, setContextualHeader] = useState<StoreHeaderContent | null>(null);
+
+  const defaultHeader: StoreHeaderContent = {
+    title: t.headerTitle,
+    summary: t.headerSummary,
+    caption: t.headerCaption,
+  };
+  const hasContextualDetailHeader = isProjectDetailRoute && contextualHeader !== null;
+  const activeHeader = hasContextualDetailHeader ? contextualHeader : defaultHeader;
+  const showHeaderSummary = activeHeader.summary.trim().length > 0;
+  const headerClassName = hasContextualDetailHeader
+    ? 'app-header app-header--store app-header--detail-compact'
+    : 'app-header app-header--store';
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -43,6 +69,12 @@ export function StoreLayout() {
       cancelled = true;
     };
   }, [isEditorialLanding]);
+
+  useEffect(() => {
+    if (!isProjectDetailRoute) {
+      setContextualHeader(null);
+    }
+  }, [isProjectDetailRoute]);
 
   const heroLogoUrl = siteSettings?.public_hero_logo_url?.trim();
   const heroLogoAlt = siteSettings?.public_hero_logo_alt?.trim() || 'Public portfolio logo';
@@ -138,16 +170,16 @@ export function StoreLayout() {
             </div>
           </aside>
 
-          <Outlet />
+          <Outlet context={{ setHeaderContent: setContextualHeader }} />
         </div>
       ) : (
         <>
-          <header className={isLanding ? 'app-header app-header--store' : 'app-header app-header--store'}>
+          <header className={headerClassName}>
             <div className="app-header__brand">
               <NavLink className="app-header__home" to="/">
-                <h1>{t.headerTitle}</h1>
+                <h1>{activeHeader.title}</h1>
               </NavLink>
-              <p className="app-header__summary">{t.headerSummary}</p>
+              {showHeaderSummary ? <p className="app-header__summary">{activeHeader.summary}</p> : null}
             </div>
 
             <div className="app-header__actions">
@@ -168,12 +200,12 @@ export function StoreLayout() {
                 {renderPrimaryNav()}
               </div>
 
-              <p className="app-header__caption">{t.headerCaption}</p>
+              <p className="app-header__caption">{activeHeader.caption}</p>
             </div>
           </header>
 
           <main className={isLanding ? 'app-content app-content--landing' : 'app-content'}>
-            <Outlet />
+            <Outlet context={{ setHeaderContent: setContextualHeader }} />
           </main>
         </>
       )}

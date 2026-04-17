@@ -181,8 +181,8 @@ const authMessages: Record<PublicLocale, Pick<Messages, AuthMessageKey>> = {
 
 const baseMessages: Record<PublicLocale, CoreMessages> = {
   es: {
-    headerTitle: 'Portfolio editorial de proyectos',
-    headerSummary: 'Arquitectura, producto y sistemas de IA presentados como case studies públicos.',
+    headerTitle: 'Portfolio de proyectos y casos de estudio',
+    headerSummary: 'Una selección de proyectos presentados desde la estrategia, la ejecución y el criterio técnico.',
     navHome: 'Inicio',
     navLogin: 'Login',
     navSearch: 'Buscar',
@@ -262,8 +262,8 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailVisualUnavailable: 'Visual del case study no disponible',
   },
   ca: {
-    headerTitle: 'Portfoli editorial de projectes',
-    headerSummary: 'Arquitectura, producte i sistemes d’IA presentats com a case studies públics.',
+    headerTitle: 'Portfoli de projectes i casos d’estudi',
+    headerSummary: 'Una selecció de projectes presentats des de l’estratègia, l’execució i el criteri tècnic.',
     navHome: 'Inici',
     navLogin: 'Login',
     navSearch: 'Cercar',
@@ -343,8 +343,8 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailVisualUnavailable: 'Visual del case study no disponible',
   },
   en: {
-    headerTitle: 'Editorial project portfolio',
-    headerSummary: 'Architecture, product, and AI systems presented as public case studies.',
+    headerTitle: 'Project portfolio and case studies',
+    headerSummary: 'A selection of projects presented through strategy, execution, and technical judgment.',
     navHome: 'Home',
     navLogin: 'Login',
     navSearch: 'Search',
@@ -424,8 +424,8 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailVisualUnavailable: 'Case study visual unavailable',
   },
   de: {
-    headerTitle: 'Editoriales Projektportfolio',
-    headerSummary: 'Architektur, Produkt und KI-Systeme als öffentliche Case Studies präsentiert.',
+    headerTitle: 'Projektportfolio und Fallstudien',
+    headerSummary: 'Eine Auswahl von Projekten, dargestellt aus Strategie, Umsetzung und technischer Perspektive.',
     navHome: 'Start',
     navLogin: 'Login',
     navSearch: 'Suche',

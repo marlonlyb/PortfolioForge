@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useOutletContext, useParams } from 'react-router-dom';
 import useEmblaCarousel from 'embla-carousel-react';
 
 import { useLocale } from '../../app/providers/LocaleProvider';
 import { useSession } from '../../app/providers/SessionProvider';
+import type { StoreHeaderContent, StoreLayoutOutletContext } from '../../app/layouts/StoreLayout';
 import { fetchProjectBySlug } from './api';
 import { searchProjects } from '../search/api';
 import type { Project } from '../../shared/types/project';
@@ -97,18 +98,19 @@ function formatTimestamp(timestamp?: number): string | null {
   }).format(new Date(timestamp * 1000));
 }
 
-function formatTechnologySummary(technologies: Project['technologies']): string | null {
-  if (!technologies || technologies.length === 0) return null;
+function buildProjectHeaderContent(
+  project: Project,
+  fallbackCaption: string,
+): StoreHeaderContent {
+  const captionParts = [project.category, project.client_name]
+    .map((value) => value?.trim() ?? '')
+    .filter((value) => value.length > 0);
 
-  const [first, second, third, ...rest] = technologies;
-  const visible = [first, second, third].filter((technology): technology is NonNullable<typeof technology> => Boolean(technology));
-  const visibleNames = visible.map((technology) => technology.name);
-
-  if (rest.length === 0) {
-    return visibleNames.join(' · ');
-  }
-
-  return `${visibleNames.join(' · ')} +${rest.length}`;
+  return {
+    title: project.name.trim(),
+    summary: '',
+    caption: captionParts.join(' · ') || fallbackCaption,
+  };
 }
 
 function buildExcerpt(value?: string | null, maxLength = 280): string {
@@ -220,6 +222,8 @@ export function ProductDetailPage() {
   const location = useLocation();
   const { locale, t } = useLocale();
   const { user, loading: sessionLoading } = useSession();
+  const outletContext = useOutletContext<StoreLayoutOutletContext | undefined>();
+  const setHeaderContent = outletContext?.setHeaderContent;
   const [galleryViewportRef, galleryViewportApi] = useEmblaCarousel({
     align: 'start',
     loop: false,
@@ -384,21 +388,16 @@ export function ProductDetailPage() {
   const hasEvidence = searchEvidence.length > 0;
   const showSearchMatchContext = hasExplanation || hasEvidence;
   const lastUpdated = formatTimestamp(project?.updated_at);
-  const technologySummary = formatTechnologySummary(technologies);
-  const visibleHeroTechnologies = technologies.slice(0, 4);
-  const remainingHeroTechnologies = Math.max(technologies.length - visibleHeroTechnologies.length, 0);
   const showAssistantChat = Boolean(project?.assistant_available && user?.can_use_project_assistant);
   const showAssistantAccessCard = Boolean(project?.assistant_available && user) && !sessionLoading && !showAssistantChat;
   const heroFacts = [
     hasText(project?.client_name) ? { label: t.detailClient, value: project.client_name.trim() } : null,
     lastUpdated ? { label: t.detailUpdated, value: lastUpdated } : null,
-    technologySummary ? { label: t.detailTechnologies, value: technologySummary } : null,
   ].filter((item): item is KeyValueEntry => Boolean(item));
   const overviewItems = [
     { label: t.detailCategory, value: project?.category ?? '' },
     { label: t.detailClient, value: project?.client_name ?? t.detailIndependent },
     { label: t.detailUpdated, value: lastUpdated ?? t.detailRecentlyCurated },
-    { label: t.detailTechnologies, value: technologySummary ?? t.detailNotSpecified },
   ].filter((item) => item.value.trim().length > 0);
   const strategySections: DetailSectionData[] = [
     hasText(businessGoal) ? { title: t.detailBusinessGoal, content: businessGoal } : null,
@@ -427,6 +426,27 @@ export function ProductDetailPage() {
     { title: t.detailExecutionLayer, textSections: executionTextSections, listSections: executionListSections },
     { title: t.detailTechnicalLayer, textSections: technicalTextSections, listSections: technicalListSections, metrics, metricsTitle: t.detailMetrics },
   ];
+
+  useEffect(() => {
+    setHeaderContent?.(null);
+
+    return () => {
+      setHeaderContent?.(null);
+    };
+  }, [locale, setHeaderContent, slug]);
+
+  useEffect(() => {
+    if (!project || loading || error) {
+      setHeaderContent?.(null);
+      return;
+    }
+
+    if (!setHeaderContent) {
+      return;
+    }
+
+    setHeaderContent(buildProjectHeaderContent(project, t.headerCaption));
+  }, [error, loading, project, setHeaderContent, t.headerCaption]);
 
   useEffect(() => {
     if (!galleryViewportApi) return undefined;
@@ -525,7 +545,9 @@ export function ProductDetailPage() {
                 {hasText(project.client_name) ? <p className="detail__context detail__context--hero">{t.detailClientContext}</p> : null}
               </div>
 
-              <h2 className="detail__title">{project.name}</h2>
+              {hasText(project.description) ? (
+                <p className="detail__summary detail__summary--hero">{project.description.trim()}</p>
+              ) : null}
 
               {heroFacts.length > 0 ? (
                 <dl className="detail__hero-facts" aria-label="Project highlights">
@@ -539,27 +561,21 @@ export function ProductDetailPage() {
               ) : null}
             </div>
 
-            <p className="detail__summary detail__summary--hero">{buildExcerpt(project.description, 320)}</p>
-
             {adminSourceMarkdownURL ? (
               <p className="detail__admin-source">
                 <a href={adminSourceMarkdownURL} target="_blank" rel="noreferrer">Admin markdown source</a>
               </p>
             ) : null}
 
-            {visibleHeroTechnologies.length > 0 ? (
+            {technologies.length > 0 ? (
               <div className="detail__hero-tech">
                 <p className="detail__hero-tech-label">{t.detailTechnologies}</p>
                 <div className="detail__chips detail__chips--hero" aria-label="Technologies used">
-                  {visibleHeroTechnologies.map((technology) => (
+                  {technologies.map((technology) => (
                     <span key={technology.id} className="detail__chip">
                       {technology.name}
                     </span>
                   ))}
-
-                  {remainingHeroTechnologies > 0 ? (
-                    <span className="detail__chip detail__chip--muted">+{remainingHeroTechnologies}</span>
-                  ) : null}
                 </div>
               </div>
             ) : null}

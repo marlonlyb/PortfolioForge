@@ -1,10 +1,13 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LocaleProvider } from '../../app/providers/LocaleProvider';
 import { SessionProvider } from '../../app/providers/SessionProvider';
+import { StoreLayout } from '../../app/layouts/StoreLayout';
 import type { AdminProjectDetail } from '../../shared/types/admin-project';
+import { AppError, API_ERROR_CODES } from '../../shared/api/errors';
 import type { Project } from '../../shared/types/project';
 import { fetchAdminProjectById } from '../admin-projects/api';
 import { CompleteProfilePage } from '../auth/CompleteProfilePage';
@@ -109,12 +112,21 @@ function buildProject(overrides: Partial<Project> = {}): Project {
 }
 
 function renderDetailPage() {
+  return renderDetailRoute();
+}
+
+function renderDetailRoute(detailElement: ReactNode = <ProductDetailPage />) {
   return render(
     <MemoryRouter initialEntries={['/projects/portfolioforge']}>
       <SessionProvider>
         <LocaleProvider>
           <Routes>
-            <Route path="/projects/:slug" element={<ProductDetailPage />} />
+            <Route path="/" element={<StoreLayout />}>
+              <Route index element={<div>landing content</div>} />
+              <Route path="projects/:slug" element={detailElement} />
+              <Route path="search" element={<div>search page</div>} />
+              <Route path="login" element={<div>login page</div>} />
+            </Route>
           </Routes>
         </LocaleProvider>
       </SessionProvider>
@@ -128,14 +140,28 @@ function renderAssistantFlow() {
       <SessionProvider>
         <LocaleProvider>
           <Routes>
-            <Route path="/projects/:slug" element={<ProductDetailPage />} />
-            <Route path="/complete-profile" element={<CompleteProfilePage />} />
-            <Route path="/verify-email" element={<p>verify email destination</p>} />
+            <Route path="/" element={<StoreLayout />}>
+              <Route index element={<div>landing content</div>} />
+              <Route path="projects/:slug" element={<ProductDetailPage />} />
+              <Route path="complete-profile" element={<CompleteProfilePage />} />
+              <Route path="verify-email" element={<p>verify email destination</p>} />
+            </Route>
           </Routes>
         </LocaleProvider>
       </SessionProvider>
     </MemoryRouter>,
   );
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
 }
 
 function mockProfileCompletionFlow(initialUser: SessionUser, refreshedUser: SessionUser) {
@@ -185,6 +211,8 @@ describe('ProductDetailPage', () => {
     vi.unstubAllGlobals();
     window.localStorage.clear();
     window.sessionStorage.clear();
+    window.localStorage.setItem('portfolioforge.locale', 'en');
+    window.scrollTo = vi.fn();
   });
 
   afterEach(() => {
@@ -197,7 +225,7 @@ describe('ProductDetailPage', () => {
 
     renderDetailPage();
 
-    expect(await screen.findByRole('heading', { name: 'PortfolioForge' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
     expect(screen.getByText('Detailed project description.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ask project assistant' })).not.toBeInTheDocument();
     expect(screen.queryByText('Project assistant')).not.toBeInTheDocument();
@@ -219,7 +247,7 @@ describe('ProductDetailPage', () => {
 
     renderDetailPage();
 
-    expect(await screen.findByRole('heading', { name: 'PortfolioForge' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ask project assistant' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Complete profile' })).toBeInTheDocument();
   });
@@ -231,7 +259,7 @@ describe('ProductDetailPage', () => {
 
     renderDetailPage();
 
-    expect(await screen.findByRole('heading', { name: 'PortfolioForge' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Ask project assistant' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Complete profile' })).not.toBeInTheDocument();
   });
@@ -248,7 +276,7 @@ describe('ProductDetailPage', () => {
 
     renderDetailPage();
 
-    expect(await screen.findByRole('heading', { name: 'PortfolioForge' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
     expect(screen.getByText('Verify your email to keep your local account eligible for the assistant.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Verify email' })).toBeInTheDocument();
   });
@@ -271,7 +299,7 @@ describe('ProductDetailPage', () => {
 
     renderAssistantFlow();
 
-    expect(await screen.findByRole('heading', { name: 'PortfolioForge' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('link', { name: 'Complete profile' }));
 
@@ -281,7 +309,7 @@ describe('ProductDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Company'), { target: { value: 'Analytical Engines' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save profile' }));
 
-    expect(await screen.findByRole('heading', { name: 'PortfolioForge' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Ask project assistant' }));
 
@@ -317,7 +345,7 @@ describe('ProductDetailPage', () => {
 
     renderDetailPage();
 
-    expect(await screen.findByRole('heading', { name: 'PortfolioForge' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
     const adminLink = await screen.findByRole('link', { name: 'Admin markdown source' });
     expect(adminLink).toHaveAttribute('href', 'https://mlbautomation.com/docs.md');
 
@@ -326,14 +354,206 @@ describe('ProductDetailPage', () => {
     });
   });
 
-  	it('hides the assistant entrypoint when markdown is absent or cleared', async () => {
+	it('renders medium variants in the gallery and high variants in the lightbox', async () => {
+		mockedFetchProjectBySlug.mockResolvedValue(buildProject({
+			media: [{
+				id: 'media-1',
+				project_id: 'project-1',
+				media_type: 'image',
+				low_url: 'https://cdn.example.com/project-low.webp',
+				medium_url: 'https://cdn.example.com/project-medium.webp',
+				high_url: 'https://cdn.example.com/project-high.webp',
+				fallback_url: 'https://cdn.example.com/project-fallback.webp',
+				alt_text: 'Project hero',
+				caption: 'Hero image',
+				sort_order: 0,
+				featured: true,
+			}],
+		}));
+
+		renderDetailPage();
+
+		await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' });
+		const galleryImage = screen.getByRole('img', { name: 'Project hero' });
+		expect(galleryImage).toHaveAttribute('src', 'https://cdn.example.com/project-medium.webp');
+
+		fireEvent.click(screen.getByRole('button', { name: 'Ver completa' }));
+
+		const dialog = await screen.findByRole('dialog', { name: 'Image preview' });
+		expect(within(dialog).getByRole('img', { name: 'Project hero' })).toHaveAttribute(
+			'src',
+			'https://cdn.example.com/project-high.webp',
+		);
+	});
+
+   	it('hides the assistant entrypoint when markdown is absent or cleared', async () => {
 	  mockedFetchProjectBySlug.mockResolvedValue(buildProject({ assistant_available: false }));
 
 	  renderDetailPage();
 
-	  expect(await screen.findByRole('heading', { name: 'PortfolioForge' })).toBeInTheDocument();
+	  expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
 	  expect(screen.queryByRole('button', { name: 'Ask project assistant' })).not.toBeInTheDocument();
 	  expect(screen.queryByRole('link', { name: 'Sign in with Google' })).not.toBeInTheDocument();
 	  expect(mockedFetchAdminProjectById).not.toHaveBeenCalled();
+	});
+
+	it('shows the generic store header while loading and promotes project context after resolution', async () => {
+	  const deferred = createDeferred<Project>();
+	  mockedFetchProjectBySlug.mockReturnValue(deferred.promise);
+
+	  renderDetailPage();
+
+	  expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio and case studies' })).toBeInTheDocument();
+	  expect(screen.getByText('A selection of projects presented through strategy, execution, and technical judgment.')).toBeInTheDocument();
+	  expect(screen.getByText('Curated public archive')).toBeInTheDocument();
+	  expect(screen.getByText('Loading project…')).toBeInTheDocument();
+	  await waitFor(() => {
+	    expect(mockedFetchProjectBySlug).toHaveBeenCalled();
+	  });
+	  const initialFetchCount = mockedFetchProjectBySlug.mock.calls.length;
+
+	  deferred.resolve(buildProject({
+	    client_name: 'Analytical Engines',
+	    category: 'platform',
+	  }));
+
+	  expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
+	  expect(mockedFetchProjectBySlug).toHaveBeenCalledTimes(initialFetchCount);
+	  expect(mockedFetchProjectBySlug).toHaveBeenCalledWith('portfolioforge', 'en');
+	  expect(screen.getByText('Detailed project description.', { selector: '.detail__summary--hero' })).toBeInTheDocument();
+	  expect(screen.queryByText('Detailed project description.', { selector: '.app-header__summary' })).not.toBeInTheDocument();
+	  expect(screen.getByText('platform · Analytical Engines')).toBeInTheDocument();
+	});
+
+	it('falls back to the generic store header when the detail request fails', async () => {
+	  mockedFetchProjectBySlug.mockRejectedValue(
+	    new AppError(404, { code: API_ERROR_CODES.NOT_FOUND, message: 'Project not found' }),
+	  );
+
+	  renderDetailPage();
+
+	  expect(await screen.findByText('Project not found')).toBeInTheDocument();
+	  expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio and case studies' })).toBeInTheDocument();
+	  expect(screen.getByText('Curated public archive')).toBeInTheDocument();
+	});
+
+	it('moves the descriptive summary into the hero and keeps technologies there as the authoritative surface', async () => {
+	  mockedFetchProjectBySlug.mockResolvedValue(buildProject({
+	    client_name: 'Analytical Engines',
+	    technologies: [
+	      { id: 'tech-1', name: 'React', slug: 'react', category: 'frontend' },
+	      { id: 'tech-2', name: 'TypeScript', slug: 'typescript', category: 'language' },
+	      { id: 'tech-3', name: 'Vite', slug: 'vite', category: 'tooling' },
+	      { id: 'tech-4', name: 'Vitest', slug: 'vitest', category: 'testing' },
+	      { id: 'tech-5', name: 'Playwright', slug: 'playwright', category: 'testing' },
+	    ],
+	    media: [{
+	      id: 'media-1',
+	      project_id: 'project-1',
+	      media_type: 'image',
+	      low_url: 'https://cdn.example.com/project-low.webp',
+	      medium_url: 'https://cdn.example.com/project-medium.webp',
+	      high_url: 'https://cdn.example.com/project-high.webp',
+	      fallback_url: 'https://cdn.example.com/project-fallback.webp',
+	      alt_text: 'Project hero',
+	      caption: 'Hero image',
+	      sort_order: 0,
+	      featured: true,
+	    }],
+	  }));
+
+	  renderDetailPage();
+
+	  expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
+	  const heroFacts = screen.getByLabelText('Project highlights');
+	  const heroCard = heroFacts.closest('article');
+	  const heroSummary = screen.getByText('Detailed project description.', { selector: '.detail__summary--hero' });
+	  expect(heroCard).not.toBeNull();
+	  expect(screen.queryByRole('heading', { level: 2, name: 'PortfolioForge' })).not.toBeInTheDocument();
+	  expect(screen.queryByText('Detailed project description.', { selector: '.app-header__summary' })).not.toBeInTheDocument();
+	  expect(within(heroCard as HTMLElement).getByText('Detailed project description.')).toBeInTheDocument();
+	  expect(
+	    heroSummary.compareDocumentPosition(heroFacts) & Node.DOCUMENT_POSITION_FOLLOWING,
+	  ).toBeTruthy();
+	  expect(screen.getByRole('link', { name: '← Back to projects' })).toBeInTheDocument();
+	  expect(screen.getByLabelText('Project highlights')).toBeInTheDocument();
+	  expect(screen.getByRole('button', { name: 'Ver completa' })).toBeInTheDocument();
+	  expect(screen.getByText('React')).toBeInTheDocument();
+	  expect(screen.getByText('TypeScript')).toBeInTheDocument();
+	  expect(screen.getByText('Vite')).toBeInTheDocument();
+	  expect(screen.getByText('Vitest')).toBeInTheDocument();
+	  expect(screen.getByText('Playwright')).toBeInTheDocument();
+	  expect(screen.queryByText('+1')).not.toBeInTheDocument();
+	  expect(screen.queryAllByText('Technologies').length).toBe(1);
+	});
+
+	it('clears stale project header content during slug and route transitions', async () => {
+	  mockedFetchProjectBySlug.mockImplementation(async (slug) => {
+	    if (slug === 'alpha') {
+	      return buildProject({
+	        id: 'project-alpha',
+	        name: 'Alpha',
+	        slug: 'alpha',
+	        description: 'Alpha summary.',
+	        category: 'alpha category',
+	      });
+	    }
+
+	    if (slug === 'beta') {
+	      return buildProject({
+	        id: 'project-beta',
+	        name: 'Beta',
+	        slug: 'beta',
+	        description: 'Beta summary.',
+	        category: 'beta category',
+	      });
+	    }
+
+	    throw new Error(`Unexpected slug: ${slug}`);
+	  });
+
+	  function DetailHarness() {
+	    return (
+	      <>
+	        <nav>
+	          <Link to="/projects/beta">Go to beta</Link>
+	          <Link to="/login">Leave detail</Link>
+	        </nav>
+	        <ProductDetailPage />
+	      </>
+	    );
+	  }
+
+	  render(
+	    <MemoryRouter initialEntries={['/projects/alpha']}>
+	      <SessionProvider>
+	        <LocaleProvider>
+	          <Routes>
+	            <Route path="/" element={<StoreLayout />}>
+	              <Route path="projects/:slug" element={<DetailHarness />} />
+	              <Route path="login" element={<div>login page</div>} />
+	            </Route>
+	          </Routes>
+	        </LocaleProvider>
+	      </SessionProvider>
+	    </MemoryRouter>,
+	  );
+
+	  expect(await screen.findByRole('heading', { level: 1, name: 'Alpha' })).toBeInTheDocument();
+
+	  fireEvent.click(screen.getByRole('link', { name: 'Go to beta' }));
+
+	  await waitFor(() => {
+	    expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio and case studies' })).toBeInTheDocument();
+	  });
+
+	  expect(await screen.findByRole('heading', { level: 1, name: 'Beta' })).toBeInTheDocument();
+
+	  fireEvent.click(screen.getByRole('link', { name: 'Leave detail' }));
+
+	  await waitFor(() => {
+	    expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio and case studies' })).toBeInTheDocument();
+	  });
+	  expect(screen.getByText('login page')).toBeInTheDocument();
 	});
 });
