@@ -8,6 +8,18 @@ El agente **no debe modificar PortfolioForge** ni poblar la UI. Su único entreg
 
 - **un único archivo `.md` canónico del proyecto**.
 
+## 1.1 Documentos vigentes para este flujo
+
+Para las funciones relacionadas con markdown canónico y carga runtime del proyecto, los documentos vigentes dentro del repo son:
+
+- `docs/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md` — genera el markdown canónico;
+- `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md` — usa ese markdown para poblar o actualizar la UI/DB runtime;
+- `docs/PRD.md` — define el marco del producto y la relación entre markdown, UI/DB, búsqueda y assistant.
+
+Regla explícita:
+
+- documentos parecidos ubicados fuera de `docs/`, especialmente los workflows legacy en `/home/marlon_ly/Workspace/`, no deben considerarse fuente de verdad ni guía operativa principal para este flujo.
+
 ---
 
 ## 2. Regla principal
@@ -26,6 +38,8 @@ El resultado final debe ser exactamente:
 
 - **un solo `.md` canónico**.
 
+La carga posterior de la UI **no pertenece** a esta guía y debe seguir exclusivamente `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`.
+
 ---
 
 ## 3. Para qué se usará ese `.md`
@@ -33,7 +47,7 @@ El resultado final debe ser exactamente:
 Ese markdown tendrá dos usos posteriores:
 
 1. **publicarse en una URL** para el chatbot / assistant mediante `source_markdown_url`;
-2. **servir como fuente resumida** para poblar los campos del proyecto en la UI de PortfolioForge.
+2. **servir como fuente resumida** para poblar los campos del proyecto en la UI de PortfolioForge, siguiendo `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`.
 
 Por eso el documento debe ser:
 
@@ -500,6 +514,12 @@ Genera **solo** el archivo canónico `<nombre_del_proyecto>.md`.
 Ese archivo debe quedar listo para:
 
 1. publicarse luego en una URL para `source_markdown_url`;
-2. servir como base editorial para poblar el proyecto en PortfolioForge.
+2. servir como base editorial para poblar el proyecto en PortfolioForge mediante `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`.
+
+Regla de cierre:
+
+- para generar este `.md`, esta guía y `docs/PRD.md` son la referencia vigente;
+- para poblar la UI desde este `.md`, la referencia vigente es `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`;
+- no deben usarse como especificación operativa principal documentos legacy ubicados fuera de `docs/`.
 
 Si la evidencia no alcanza para producir un markdown canónico confiable, debes declararlo explícitamente en `Validation Notes` en lugar de inventar contenido.

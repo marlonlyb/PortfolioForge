@@ -13,6 +13,18 @@ Su objetivo no es solo “mostrar trabajos”, sino operar un sistema editorial 
 
 El producto actual ya funciona como portfolio público, consola admin de curación y runtime de búsqueda/assistant. La dirección vigente consolida al `.md` canónico como fuente editorial principal para altas y actualizaciones.
 
+## 1.1 Documentos normativos vigentes
+
+Para el flujo editorial y operativo de proyectos, los únicos documentos normativos vigentes dentro del repo son:
+
+- `docs/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md` — cómo generar el markdown canónico;
+- `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md` — cómo poblar o actualizar la UI/DB runtime desde ese markdown;
+- `docs/PRD.md` — marco de producto, arquitectura y reglas de relación entre markdown, UI/DB, búsqueda y assistant.
+
+Regla explícita:
+
+- cualquier documento similar ubicado fuera de `docs/`, especialmente los workflows en `/home/marlon_ly/Workspace/`, debe tratarse como **legacy informativo** y **no** como fuente de verdad operativa.
+
 ---
 
 ## 2. Principios del producto real
@@ -247,6 +259,8 @@ Debe cumplir estos roles:
 
 ### Regla operativa
 
+La generación del markdown canónico debe seguir `docs/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`.
+
 Si ya existe un markdown canónico confiable para un proyecto, ese archivo debe leerse primero y tratarse como fuente de verdad editorial. Re-analizar el repositorio completo solo se justifica cuando:
 
 - el `.md` no existe;
@@ -287,6 +301,8 @@ La UI/DB persiste una versión resumida y estructurada del proyecto:
 - media optimizada;
 - localizaciones;
 - readiness y search document.
+
+La compresión editorial y el mapping campo por campo deben seguir `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`.
 
 ### 9.2 UI/DB → Búsqueda
 
@@ -391,8 +407,8 @@ Regla editorial: cualquier nuevo markdown canónico debe redactarse de manera qu
 ## 11.3 Flujo de markdown canónico
 
 1. analizar repo/carpeta fuente;
-2. producir un único `.md` canónico del proyecto;
-3. usar ese `.md` para poblar el proyecto en PortfolioForge;
+2. producir un único `.md` canónico del proyecto siguiendo `docs/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`;
+3. usar ese `.md` para poblar el proyecto en PortfolioForge siguiendo `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`;
 4. si se quiere assistant, publicar ese `.md` en una URL HTTPS;
 5. guardar esa URL en `source_markdown_url`.
 
@@ -534,10 +550,14 @@ El markdown canónico debe:
 
 Para crear proyectos equivalentes en PortfolioForge, la referencia correcta es:
 
-1. generar o actualizar un **único markdown canónico** por proyecto;
-2. usar ese markdown para poblar el runtime estructurado;
+1. generar o actualizar un **único markdown canónico** por proyecto, usando `docs/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`;
+2. usar ese markdown para poblar el runtime estructurado, usando `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`;
 3. mantener el detalle editorial organizado por **Estrategia / Ejecución / Técnica**;
 4. publicar el markdown en una URL HTTPS si el proyecto usará assistant;
 5. verificar siempre coherencia entre markdown, UI/DB, búsqueda y assistant.
 
 Ese es el contrato real del producto hoy.
+
+Regla final de gobierno documental:
+
+- para estas funciones, no deben usarse como referencia operativa principal documentos legacy fuera de `docs/`, aunque se conserven por contexto histórico.
