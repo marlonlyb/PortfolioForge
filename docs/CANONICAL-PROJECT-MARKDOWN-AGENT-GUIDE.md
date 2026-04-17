@@ -41,6 +41,12 @@ Por eso el documento debe ser:
 - fácilmente mapeable a campos estructurados;
 - suficientemente rico para responder preguntas en el assistant.
 
+Y además debe ser **seguro para publicación**:
+
+- no debe exponer información sensible, contractual, personal u operativa innecesaria;
+- debe redactar o generalizar detalles que sirvan para comprender el caso, pero no para revelar datos privados del cliente o del proyecto;
+- debe tratar el repositorio fuente como evidencia de trabajo, no como material a volcar literalmente en el markdown final.
+
 ---
 
 ## 4. Premisas editoriales obligatorias
@@ -93,6 +99,7 @@ Convierte la evidencia en narrativa canónica:
 - elimina ruido o detalles accidentales;
 - consolida naming;
 - distingue hechos de interpretación;
+- sanitiza datos sensibles o confidenciales antes de escribir;
 - convierte listas dispersas en bloques reutilizables;
 - organiza el contenido según las tres capas requeridas.
 
@@ -149,6 +156,12 @@ El markdown debe incluir, como mínimo, estas secciones y este orden lógico.
 
 Si falta evidencia para alguna sección, no la inventes: marca la ausencia de forma explícita y breve.
 
+Notas obligatorias sobre privacidad:
+
+- `Client / Context` puede usar el nombre del cliente solo si ya es público o está explícitamente autorizado; si no, debe describirse el contexto operativo de forma genérica.
+- `Repository Source` no debe exponer rutas internas ni nombres de carpetas privadas. Si el repositorio no es público, usa una fórmula genérica como `private repository analyzed`.
+- No agregues secciones como `Evidence Sources`, anexos de trazabilidad documental, listados de archivos internos ni `Stakeholders` con nombres propios.
+
 ---
 
 ## 7. Mapeo obligatorio hacia PortfolioForge
@@ -176,6 +189,11 @@ El agente debe escribir el markdown pensando en este mapeo posterior:
 | Timeline | `timeline` |
 | Technologies | relación con `technology_ids` |
 | Media | `media[]` + fallback `images[]` |
+
+Regla de sanitización del mapeo:
+
+- `Client / Context` debe priorizar contexto operativo sobre razón social si el nombre del cliente no es público.
+- Cualquier referencia a personas debe escribirse por rol o función, nunca por nombre propio, correo o teléfono.
 
 ---
 
@@ -253,13 +271,59 @@ Escribe métricas como:
 
 - `key: value`
 
+Usa solo formatos seguros para publicación:
+
+- porcentajes;
+- ratios;
+- variaciones comparativas;
+- unidades operativas no sensibles;
+- comparaciones antes/después.
+
+No incluyas:
+
+- montos de inversión;
+- costos, tarifas o presupuestos exactos;
+- números de cotización, propuesta, factura u orden de compra;
+- identificadores documentales usados solo internamente.
+
 Ejemplos:
 
 - `users_supported: 120/day`
 - `latency: <200ms`
 - `commissioning_time_reduction: 30%`
 
-## 9.5 Tono
+Mejores ejemplos cuando el dato puede ser sensible:
+
+- `manual_intervention_reduction: 40%`
+- `commissioning_time_reduction: 30%`
+- `validation_cycles: 2x faster than previous setup`
+- `simultaneous_crane_contexts_supported: 2 operating modes`
+
+## 9.5 Sanitización obligatoria
+
+Antes de escribir el markdown final, transforma o elimina cualquier dato sensible.
+
+No mostrar literalmente:
+
+- nombres y apellidos de stakeholders, operadores, supervisores o contrapartes;
+- correos, teléfonos, firmas, usuarios o identificadores personales;
+- números de cotización, presupuestos, propuestas, informes, órdenes de compra o tickets;
+- montos económicos absolutos o condiciones comerciales;
+- rutas internas, nombres exactos de archivos privados, backups, carpetas del cliente o referencias documentales crudas;
+- `Evidence Sources`, listados de archivos usados, ni trazabilidad documental detallada;
+- IPs internas, hostnames, credenciales, tokens, serial numbers o identificadores de activos;
+- logs, tramas, dumps o payloads crudos cuando revelen datos operativos sensibles;
+- volúmenes exactos de operación, capacidad instalada o fechas internas si no son necesarias para entender el caso.
+
+Reemplazar por:
+
+- roles o funciones en vez de nombres propios (`contraparte técnica`, `supervisión de planta`, `proveedor de integración`);
+- tipos documentales genéricos (`propuesta técnica inicial`, `informe de validación`, `manual del sistema`);
+- porcentajes, ratios o comparativas en vez de montos absolutos;
+- descripciones editoriales de evidencia en vez de rutas o nombres de archivo;
+- contexto operativo genérico cuando el nombre del cliente o de terceros no deba publicarse.
+
+## 9.6 Tono
 
 - factual;
 - técnico;
@@ -280,13 +344,22 @@ Si el repositorio fuente tiene media reutilizable o si la evidencia permite defi
 - `featured`
 - `sort_order`
 
+Semántica real en PortfolioForge:
+
+- `low`: card / miniatura del catálogo;
+- `medium`: imagen principal del detalle / galería;
+- `high`: vista ampliada / lightbox;
+- `featured`: define qué asset aparece primero;
+- `sort_order`: orden restante después de `featured`.
+
 Reglas:
 
 1. prioriza imágenes realmente útiles para explicar el proyecto;
 2. evita placeholders o assets genéricos;
 3. evita media que no pertenezca claramente al proyecto;
 4. si no hay media suficiente, deja explícito el gap;
-5. si hay suficiente material, intenta dejar definido un set de al menos 5 assets relevantes.
+5. si hay suficiente material, intenta dejar definido un set de al menos 5 assets relevantes;
+6. no uses etiquetas ambiguas como `Main images` si solo enumeran una variante; documenta cada asset con `low | medium | high`.
 
 ---
 
@@ -299,7 +372,12 @@ El agente no debe:
 - mezclar proyectos distintos;
 - convertir el markdown en documentación interna del repo;
 - copiar código extenso innecesario;
-- producir un documento genérico sin mapeo claro a PortfolioForge.
+- producir un documento genérico sin mapeo claro a PortfolioForge;
+- incluir nombres propios de stakeholders o terceros cuando baste el rol;
+- incluir números de documentos, cotizaciones, presupuestos, propuestas o tickets internos;
+- incluir montos económicos exactos o condiciones comerciales;
+- incluir secciones de `Evidence Sources`, rutas internas, listados de archivos o anexos de trazabilidad sensible;
+- exponer secretos, infraestructura interna o datos operativos no necesarios para comprender el caso.
 
 ---
 
@@ -314,7 +392,11 @@ Antes de considerar terminado el `.md`, verifica que:
 5. `Delivery Scope` y `Responsibility Scope` están diferenciados;
 6. media y tecnologías están normalizadas si existe evidencia;
 7. no se exponen suposiciones como hechos;
-8. el documento serviría tanto para assistant como para carga manual en UI.
+8. el documento serviría tanto para assistant como para carga manual en UI;
+9. no aparecen nombres propios, IDs documentales, montos exactos ni rutas internas innecesarias;
+10. no existe una sección `Evidence Sources` ni trazabilidad documental sensible;
+11. las métricas están expresadas como porcentajes, ratios, comparativas o unidades operativas seguras;
+12. si `Repository Source` aparece, está sanitizado y no expone rutas privadas.
 
 ---
 
@@ -328,7 +410,9 @@ La tarea debe considerarse fallida si ocurre cualquiera de estas condiciones:
 - el contenido depende de especulación fuerte;
 - la media propuesta está contaminada con assets ajenos;
 - el texto final es solo un README reescrito y no un caso editorial canónico;
-- el resultado está pensado para documentación del repo, no para PortfolioForge.
+- el resultado está pensado para documentación del repo, no para PortfolioForge;
+- el markdown expone nombres personales, identificadores documentales, montos exactos o rutas internas sensibles;
+- el documento incluye `Evidence Sources` o trazabilidad documental cruda como si fuera un anexo interno.
 
 ---
 
@@ -341,8 +425,8 @@ La tarea debe considerarse fallida si ocurre cualquiera de estas condiciones:
 - Slug: <project-slug>
 - Published: true
 - Category: <category>
-- Client / Context: <client or context>
-- Repository Source: <repo path or URL>
+- Client / Context: <public client name if already public, otherwise generic operating context>
+- Repository Source: <public repo URL if already public, otherwise "private repository analyzed">
 
 ## Summary
 <2-4 párrafos con síntesis editorial>
@@ -401,6 +485,7 @@ La tarea debe considerarse fallida si ocurre cualquiera de estas condiciones:
 ## Validation Notes
 - confirmed_from_readme: yes/no
 - confirmed_from_code: yes/no
+- privacy_sanitized: yes/no
 - gaps_or_uncertainties: ...
 ```
 

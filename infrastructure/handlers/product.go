@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 
@@ -33,6 +34,9 @@ func (h *ProjectCatalog) Create(c echo.Context) error {
 	var req model.AdminProjectWrite
 
 	if err := c.Bind(&req); err != nil {
+		if bindErr := mapProjectCatalogBindError(err); bindErr != nil {
+			return bindErr
+		}
 		return h.responser.BindFailed(c, "handlers-Product-Create-c.Bind()", err)
 	}
 
@@ -225,6 +229,9 @@ func (h *ProjectCatalog) Update(c echo.Context) error {
 	var req model.AdminProjectWrite
 
 	if err = c.Bind(&req); err != nil {
+		if bindErr := mapProjectCatalogBindError(err); bindErr != nil {
+			return bindErr
+		}
 		return h.responser.BindFailed(c, "handlers-Product-Update-c.Bind()", err)
 	}
 
@@ -315,23 +322,23 @@ func buildProjectMediaPayload(projectID uuid.UUID, rawMedia []model.AdminProject
 
 	media := make([]model.ProjectMedia, 0, len(rawMedia))
 	for _, item := range rawMedia {
-		if strings.TrimSpace(item.ThumbnailURL) == "" && strings.TrimSpace(item.MediumURL) == "" && strings.TrimSpace(item.FullURL) == "" && strings.TrimSpace(item.URL) == "" {
+		if strings.TrimSpace(item.LowURL) == "" && strings.TrimSpace(item.MediumURL) == "" && strings.TrimSpace(item.HighURL) == "" && strings.TrimSpace(item.FallbackURL) == "" {
 			continue
 		}
 
 		mediaID, _ := uuid.Parse(item.ID)
 		media = append(media, model.ProjectMedia{
-			ID:           mediaID,
-			ProjectID:    projectID,
-			MediaType:    item.MediaType,
-			URL:          item.URL,
-			ThumbnailURL: item.ThumbnailURL,
-			MediumURL:    item.MediumURL,
-			FullURL:      item.FullURL,
-			Caption:      item.Caption,
-			AltText:      item.AltText,
-			SortOrder:    item.SortOrder,
-			Featured:     item.Featured,
+			ID:          mediaID,
+			ProjectID:   projectID,
+			MediaType:   item.MediaType,
+			FallbackURL: item.FallbackURL,
+			LowURL:      item.LowURL,
+			MediumURL:   item.MediumURL,
+			HighURL:     item.HighURL,
+			Caption:     item.Caption,
+			AltText:     item.AltText,
+			SortOrder:   item.SortOrder,
+			Featured:    item.Featured,
 		})
 	}
 
@@ -373,6 +380,20 @@ func assignProjectMediaProjectID(projectID uuid.UUID, media []model.ProjectMedia
 	}
 
 	return media
+}
+
+func mapProjectCatalogBindError(err error) *model.ContractError {
+	var legacyErr *model.LegacyProjectMediaKeyError
+	if errors.As(err, &legacyErr) {
+		return response.ContractError(
+			400,
+			"validation_error",
+			fmt.Sprintf("La variante de media %q ya no es válida. Usa %q.", legacyErr.Key, legacyErr.Replacement),
+			model.APIErrorDetail{Field: "media", Issue: "legacy_key:" + legacyErr.Key},
+		)
+	}
+
+	return nil
 }
 
 func (h *ProjectCatalog) Delete(c echo.Context) error {

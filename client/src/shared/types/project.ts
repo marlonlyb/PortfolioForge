@@ -64,10 +64,10 @@ export interface ProjectMedia {
   id: string;
   project_id: string;
   media_type: string;
-  url?: string;
-  thumbnail_url?: string;
+  fallback_url?: string;
+  low_url?: string;
   medium_url?: string;
-  full_url?: string;
+  high_url?: string;
   caption?: string;
   alt_text?: string;
   sort_order: number;

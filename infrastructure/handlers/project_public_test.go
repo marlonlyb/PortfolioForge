@@ -73,6 +73,17 @@ func TestProjectPublicGetBySlugReturnsAssistantAvailabilityOnly(t *testing.T) {
 		Status:             "published",
 		Active:             true,
 		AssistantAvailable: true,
+		Media: []model.ProjectMedia{{
+			ID:          uuid.New(),
+			ProjectID:   uuid.New(),
+			MediaType:   "image",
+			LowURL:      "https://cdn.example.com/project-low.webp",
+			MediumURL:   "https://cdn.example.com/project-medium.webp",
+			HighURL:     "https://cdn.example.com/project-high.webp",
+			FallbackURL: "https://cdn.example.com/project-fallback.webp",
+			SortOrder:   0,
+			Featured:    true,
+		}},
 	}}), localization.NewService(nil, nil))
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/public/projects/portfolioforge", nil)
@@ -97,6 +108,36 @@ func TestProjectPublicGetBySlugReturnsAssistantAvailabilityOnly(t *testing.T) {
 	}
 	if _, exists := data["source_markdown_url"]; exists {
 		t.Fatal("source_markdown_url leaked in public response")
+	}
+
+	media, ok := data["media"].([]any)
+	if !ok || len(media) != 1 {
+		t.Fatalf("media = %#v", data["media"])
+	}
+	item, ok := media[0].(map[string]any)
+	if !ok {
+		t.Fatalf("media item = %#v", media[0])
+	}
+	if item["low_url"] != "https://cdn.example.com/project-low.webp" {
+		t.Fatalf("low_url = %#v", item["low_url"])
+	}
+	if item["medium_url"] != "https://cdn.example.com/project-medium.webp" {
+		t.Fatalf("medium_url = %#v", item["medium_url"])
+	}
+	if item["high_url"] != "https://cdn.example.com/project-high.webp" {
+		t.Fatalf("high_url = %#v", item["high_url"])
+	}
+	if item["fallback_url"] != "https://cdn.example.com/project-fallback.webp" {
+		t.Fatalf("fallback_url = %#v", item["fallback_url"])
+	}
+	if _, exists := item["thumbnail_url"]; exists {
+		t.Fatalf("thumbnail_url leaked in public media response: %#v", item)
+	}
+	if _, exists := item["full_url"]; exists {
+		t.Fatalf("full_url leaked in public media response: %#v", item)
+	}
+	if _, exists := item["url"]; exists {
+		t.Fatalf("url leaked in public media response: %#v", item)
 	}
 }
 

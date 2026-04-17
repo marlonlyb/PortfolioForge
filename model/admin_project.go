@@ -2,13 +2,13 @@ package model
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
 )
 
 // AdminProjectWrite is the canonical admin write contract for projects.
-// Legacy aliases remain accepted during the products->projects transition.
 type AdminProjectWrite struct {
 	ID                uuid.UUID                  `json:"id,omitempty"`
 	Name              string                     `json:"name"`
@@ -31,16 +31,52 @@ type AdminProjectWrite struct {
 }
 
 type AdminProjectMediaInput struct {
-	ID           string `json:"id"`
-	MediaType    string `json:"media_type"`
-	URL          string `json:"url"`
-	ThumbnailURL string `json:"thumbnail_url"`
-	MediumURL    string `json:"medium_url"`
-	FullURL      string `json:"full_url"`
-	Caption      string `json:"caption"`
-	AltText      string `json:"alt_text"`
-	SortOrder    int    `json:"sort_order"`
-	Featured     bool   `json:"featured"`
+	ID          string `json:"id"`
+	MediaType   string `json:"media_type"`
+	FallbackURL string `json:"fallback_url"`
+	LowURL      string `json:"low_url"`
+	MediumURL   string `json:"medium_url"`
+	HighURL     string `json:"high_url"`
+	Caption     string `json:"caption"`
+	AltText     string `json:"alt_text"`
+	SortOrder   int    `json:"sort_order"`
+	Featured    bool   `json:"featured"`
+}
+
+type LegacyProjectMediaKeyError struct {
+	Key         string
+	Replacement string
+}
+
+func (e *LegacyProjectMediaKeyError) Error() string {
+	return fmt.Sprintf("legacy project media key %q is not supported; use %q", e.Key, e.Replacement)
+}
+
+func (m *AdminProjectMediaInput) UnmarshalJSON(data []byte) error {
+	type adminProjectMediaInputAlias AdminProjectMediaInput
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	legacyKeys := map[string]string{
+		"url":           "fallback_url",
+		"thumbnail_url": "low_url",
+		"full_url":      "high_url",
+	}
+	for key, replacement := range legacyKeys {
+		if _, exists := raw[key]; exists {
+			return &LegacyProjectMediaKeyError{Key: key, Replacement: replacement}
+		}
+	}
+
+	var alias adminProjectMediaInputAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+
+	*m = AdminProjectMediaInput(alias)
+	return nil
 }
 
 type AdminProjectVariantInput struct {

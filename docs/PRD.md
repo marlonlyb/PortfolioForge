@@ -117,7 +117,7 @@ El repositorio actual implementa o soporta:
 - assistant/chat por proyecto grounded en markdown remoto;
 - `source_markdown_url` privado en admin y `assistant_available` derivado en público;
 - enriquecimiento estructurado mediante `project_profiles`;
-- media optimizada por variantes `thumbnail/medium/full`;
+- media optimizada por variantes `low_url` / `medium_url` / `high_url` con `fallback_url` como respaldo final;
 - localización persistida por proyecto y campo;
 - auto-traducción desde español base y override manual;
 - readiness de búsqueda;
@@ -200,9 +200,10 @@ Campos reales:
 
 Contrato vigente por ítem:
 
-- `thumbnail_url`
+- `low_url`
 - `medium_url`
-- `full_url`
+- `high_url`
+- `fallback_url`
 - `caption`
 - `alt_text`
 - `featured`
@@ -413,7 +414,7 @@ Condiciones típicas de elegibilidad del usuario:
 
 1. el admin carga `media[]` con variantes optimizadas;
 2. define `featured` y `sort_order`;
-3. el frontend usa `thumbnail` para cards, `medium` para hero/galería y `full` para lightbox;
+3. el frontend usa `low_url` para cards, `medium_url` para hero/galería y `high_url` para lightbox, con `fallback_url` como último respaldo;
 4. `images` queda como derivado de compatibilidad.
 
 ## 11.6 Flujo de localización
@@ -484,9 +485,10 @@ Esto importa porque la UI serializa/deserializa estos bloques desde texto plano 
 
 Contrato editorial recomendado por imagen:
 
-- `low`
-- `medium`
-- `high`
+- `low_url`
+- `medium_url`
+- `high_url`
+- `fallback_url`
 - `caption`
 - `alt_text`
 - `featured`
@@ -494,13 +496,17 @@ Contrato editorial recomendado por imagen:
 
 Uso recomendado:
 
-- `low` para catálogo/miniatura;
-- `medium` para detalle y galería principal;
-- `high` para ampliación.
+- `low_url` para catálogo/miniatura;
+- `medium_url` para detalle y galería principal;
+- `high_url` para ampliación;
+- `fallback_url` como respaldo final cuando falte la variante preferida.
 
 Convención pública vigente de ejemplo:
 
-`https://mlbautomation.com/dev/portfolioforge/<project-slug>/imagen0N_<low|medium|high>.webp`
+- `low_url` → `https://mlbautomation.com/dev/portfolioforge/<project-slug>/imagen0N_low.webp`
+- `medium_url` → `https://mlbautomation.com/dev/portfolioforge/<project-slug>/imagen0N_medium.webp`
+- `high_url` → `https://mlbautomation.com/dev/portfolioforge/<project-slug>/imagen0N_high.webp`
+- `fallback_url` → asset base/original cuando aplique.
 
 ## 13.4 Convenciones de authoring del markdown
 

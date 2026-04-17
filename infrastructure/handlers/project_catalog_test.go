@@ -126,6 +126,149 @@ func TestProjectCatalogUpdateClearsSourceMarkdownURL(t *testing.T) {
 	}
 }
 
+func TestProjectCatalogUpdateRejectsLegacyMediaKeys(t *testing.T) {
+	tests := []struct {
+		name        string
+		legacyKey   string
+		legacyValue string
+		wantMessage string
+	}{
+		{
+			name:        "thumbnail url",
+			legacyKey:   "thumbnail_url",
+			legacyValue: "https://cdn.example.com/project-low.webp",
+			wantMessage: "La variante de media \"thumbnail_url\" ya no es válida. Usa \"low_url\".",
+		},
+		{
+			name:        "full url",
+			legacyKey:   "full_url",
+			legacyValue: "https://cdn.example.com/project-high.webp",
+			wantMessage: "La variante de media \"full_url\" ya no es válida. Usa \"high_url\".",
+		},
+		{
+			name:        "url",
+			legacyKey:   "url",
+			legacyValue: "https://cdn.example.com/project-fallback.webp",
+			wantMessage: "La variante de media \"url\" ya no es válida. Usa \"fallback_url\".",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			projectID := uuid.New()
+			service := &stubProjectCatalogService{current: model.AdminProject{ID: projectID, Name: "PortfolioForge", Slug: "portfolioforge", Description: "Original", Category: "platform", Active: true}}
+			handler := &ProjectCatalog{service: service, responser: *response.New()}
+
+			rec := performProjectCatalogUpdate(t, handler, projectID, map[string]any{
+				"name":        "PortfolioForge",
+				"description": "Updated project",
+				"category":    "platform",
+				"images":      []string{},
+				"active":      true,
+				"media": []map[string]any{{
+					"id":         uuid.NewString(),
+					"media_type": "image",
+					tt.legacyKey: tt.legacyValue,
+				}},
+			})
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+			}
+
+			var payload map[string]any
+			if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+
+			errorPayload, ok := payload["error"].(map[string]any)
+			if !ok {
+				t.Fatalf("error payload = %#v", payload)
+			}
+			if errorPayload["code"] != "validation_error" {
+				t.Fatalf("error code = %#v", errorPayload["code"])
+			}
+			if errorPayload["message"] != tt.wantMessage {
+				t.Fatalf("error message = %#v", errorPayload["message"])
+			}
+		})
+	}
+}
+
+func TestProjectCatalogGetByIDReturnsCanonicalMediaKeys(t *testing.T) {
+	projectID := uuid.New()
+	service := &stubProjectCatalogService{current: model.AdminProject{
+		ID:          projectID,
+		Name:        "PortfolioForge",
+		Slug:        "portfolioforge",
+		Description: "Original",
+		Category:    "platform",
+		Active:      true,
+		Media: []model.ProjectMedia{{
+			ID:          uuid.New(),
+			ProjectID:   projectID,
+			MediaType:   "image",
+			LowURL:      "https://cdn.example.com/project-low.webp",
+			MediumURL:   "https://cdn.example.com/project-medium.webp",
+			HighURL:     "https://cdn.example.com/project-high.webp",
+			FallbackURL: "https://cdn.example.com/project-fallback.webp",
+			SortOrder:   0,
+			Featured:    true,
+		}},
+	}}
+	handler := &ProjectCatalog{service: service, responser: *response.New()}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/projects/"+projectID.String(), nil)
+	rec := httptest.NewRecorder()
+	e := echo.New()
+	c := e.NewContext(req, rec)
+	c.SetPath("/api/v1/admin/projects/:id")
+	c.SetParamNames("id")
+	c.SetParamValues(projectID.String())
+
+	if err := handler.GetByID(c); err != nil {
+		response.HTTPErrorHandler(err, c)
+	}
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var payload map[string]map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	media, ok := payload["data"]["media"].([]any)
+	if !ok || len(media) != 1 {
+		t.Fatalf("media = %#v", payload["data"]["media"])
+	}
+	item, ok := media[0].(map[string]any)
+	if !ok {
+		t.Fatalf("media item = %#v", media[0])
+	}
+	if item["low_url"] != "https://cdn.example.com/project-low.webp" {
+		t.Fatalf("low_url = %#v", item["low_url"])
+	}
+	if item["medium_url"] != "https://cdn.example.com/project-medium.webp" {
+		t.Fatalf("medium_url = %#v", item["medium_url"])
+	}
+	if item["high_url"] != "https://cdn.example.com/project-high.webp" {
+		t.Fatalf("high_url = %#v", item["high_url"])
+	}
+	if item["fallback_url"] != "https://cdn.example.com/project-fallback.webp" {
+		t.Fatalf("fallback_url = %#v", item["fallback_url"])
+	}
+	if _, exists := item["thumbnail_url"]; exists {
+		t.Fatalf("thumbnail_url leaked in admin media response: %#v", item)
+	}
+	if _, exists := item["full_url"]; exists {
+		t.Fatalf("full_url leaked in admin media response: %#v", item)
+	}
+	if _, exists := item["url"]; exists {
+		t.Fatalf("url leaked in admin media response: %#v", item)
+	}
+}
+
 func performProjectCatalogUpdate(t *testing.T, handler *ProjectCatalog, projectID uuid.UUID, body map[string]any) *httptest.ResponseRecorder {
 	t.Helper()
 	encoded, err := json.Marshal(body)

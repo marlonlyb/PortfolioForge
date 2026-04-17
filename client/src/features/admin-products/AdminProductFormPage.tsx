@@ -44,10 +44,10 @@ function createEmptyMediaItem(sortOrder = 0): MediaFormItem {
     id: `new-${sortOrder}-${Date.now()}`,
     project_id: '',
     media_type: 'image',
-    thumbnail_url: '',
+    low_url: '',
     medium_url: '',
-    full_url: '',
-    url: '',
+    high_url: '',
+    fallback_url: '',
     caption: '',
     alt_text: '',
     sort_order: sortOrder,
@@ -60,10 +60,10 @@ function createFallbackMediaItems(images: string[]): MediaFormItem[] {
     .filter((image) => image.trim().length > 0)
     .map((image, index) => ({
       ...createEmptyMediaItem(index),
-      url: image,
-      thumbnail_url: image,
+      fallback_url: image,
+      low_url: image,
       medium_url: image,
-      full_url: image,
+      high_url: image,
       featured: index === 0,
     }));
 
@@ -75,15 +75,15 @@ function normalizeMediaItems(items: MediaFormItem[]): MediaFormItem[] {
     .map((item, index) => ({
       ...item,
       media_type: item.media_type?.trim() || 'image',
-      url: item.url?.trim() || '',
-      thumbnail_url: item.thumbnail_url?.trim() || '',
+      fallback_url: item.fallback_url?.trim() || '',
+      low_url: item.low_url?.trim() || '',
       medium_url: item.medium_url?.trim() || '',
-      full_url: item.full_url?.trim() || '',
+      high_url: item.high_url?.trim() || '',
       caption: item.caption?.trim() || '',
       alt_text: item.alt_text?.trim() || '',
       sort_order: Number.isFinite(item.sort_order) ? item.sort_order : index,
     }))
-    .filter((item) => item.thumbnail_url || item.medium_url || item.full_url || item.url);
+    .filter((item) => item.low_url || item.medium_url || item.high_url || item.fallback_url);
 
   if (normalized.length === 0) {
     return [];
@@ -100,7 +100,7 @@ function normalizeMediaItems(items: MediaFormItem[]): MediaFormItem[] {
 
 function buildLegacyImagesFromMedia(items: MediaFormItem[]): string[] {
   return normalizeMediaItems(items)
-    .map((item) => item.medium_url || item.full_url || item.thumbnail_url || item.url || '')
+    .map((item) => item.medium_url || item.high_url || item.low_url || item.fallback_url || '')
     .filter((item) => item.length > 0);
 }
 
@@ -683,9 +683,9 @@ export function AdminProductFormPage() {
                         className="admin__input"
                         type="url"
                         placeholder="https://cdn.example.com/project_low.webp"
-                        value={item.thumbnail_url ?? ''}
+                        value={item.low_url ?? ''}
                         onChange={(event) => setMediaItems((prev) => prev.map((entry, entryIndex) => (
-                          entryIndex === index ? { ...entry, thumbnail_url: event.target.value } : entry
+                          entryIndex === index ? { ...entry, low_url: event.target.value } : entry
                         )))}
                       />
                     </label>
@@ -709,22 +709,22 @@ export function AdminProductFormPage() {
                         className="admin__input"
                         type="url"
                         placeholder="https://cdn.example.com/project_high.webp"
-                        value={item.full_url ?? ''}
+                        value={item.high_url ?? ''}
                         onChange={(event) => setMediaItems((prev) => prev.map((entry, entryIndex) => (
-                          entryIndex === index ? { ...entry, full_url: event.target.value } : entry
+                          entryIndex === index ? { ...entry, high_url: event.target.value } : entry
                         )))}
                       />
                     </label>
 
                     <label className="admin__label">
-                      Legacy / fallback URL (optional)
+                      Fallback URL (optional)
                       <input
                         className="admin__input"
                         type="url"
                         placeholder="https://cdn.example.com/project-original.jpg"
-                        value={item.url ?? ''}
+                        value={item.fallback_url ?? ''}
                         onChange={(event) => setMediaItems((prev) => prev.map((entry, entryIndex) => (
-                          entryIndex === index ? { ...entry, url: event.target.value } : entry
+                          entryIndex === index ? { ...entry, fallback_url: event.target.value } : entry
                         )))}
                       />
                     </label>

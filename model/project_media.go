@@ -7,29 +7,29 @@ import (
 )
 
 type ProjectMedia struct {
-	ID           uuid.UUID `json:"id"`
-	ProjectID    uuid.UUID `json:"project_id"`
-	MediaType    string    `json:"media_type"` // image|video|diagram|document
-	URL          string    `json:"url,omitempty"`
-	ThumbnailURL string    `json:"thumbnail_url,omitempty"`
-	MediumURL    string    `json:"medium_url,omitempty"`
-	FullURL      string    `json:"full_url,omitempty"`
-	Caption      string    `json:"caption,omitempty"`
-	AltText      string    `json:"alt_text,omitempty"`
-	SortOrder    int       `json:"sort_order"`
-	Featured     bool      `json:"featured"`
+	ID          uuid.UUID `json:"id"`
+	ProjectID   uuid.UUID `json:"project_id"`
+	MediaType   string    `json:"media_type"` // image|video|diagram|document
+	FallbackURL string    `json:"fallback_url,omitempty"`
+	LowURL      string    `json:"low_url,omitempty"`
+	MediumURL   string    `json:"medium_url,omitempty"`
+	HighURL     string    `json:"high_url,omitempty"`
+	Caption     string    `json:"caption,omitempty"`
+	AltText     string    `json:"alt_text,omitempty"`
+	SortOrder   int       `json:"sort_order"`
+	Featured    bool      `json:"featured"`
 }
 
 func (m ProjectMedia) ThumbnailSrc() string {
-	return firstNonEmpty(m.ThumbnailURL, m.MediumURL, m.FullURL, m.URL)
+	return firstNonEmpty(m.LowURL, m.MediumURL, m.HighURL, m.FallbackURL)
 }
 
 func (m ProjectMedia) MediumSrc() string {
-	return firstNonEmpty(m.MediumURL, m.FullURL, m.ThumbnailURL, m.URL)
+	return firstNonEmpty(m.MediumURL, m.HighURL, m.LowURL, m.FallbackURL)
 }
 
 func (m ProjectMedia) FullSrc() string {
-	return firstNonEmpty(m.FullURL, m.MediumURL, m.ThumbnailURL, m.URL)
+	return firstNonEmpty(m.HighURL, m.MediumURL, m.LowURL, m.FallbackURL)
 }
 
 func BuildProjectImageList(media []ProjectMedia, fallback []string) []string {
@@ -71,14 +71,14 @@ func BuildLegacyProjectMedia(projectID uuid.UUID, images []string) []ProjectMedi
 		}
 
 		media = append(media, ProjectMedia{
-			ProjectID:    projectID,
-			MediaType:    "image",
-			URL:          trimmed,
-			ThumbnailURL: trimmed,
-			MediumURL:    trimmed,
-			FullURL:      trimmed,
-			SortOrder:    index,
-			Featured:     index == 0,
+			ProjectID:   projectID,
+			MediaType:   "image",
+			FallbackURL: trimmed,
+			LowURL:      trimmed,
+			MediumURL:   trimmed,
+			HighURL:     trimmed,
+			SortOrder:   index,
+			Featured:    index == 0,
 		})
 	}
 

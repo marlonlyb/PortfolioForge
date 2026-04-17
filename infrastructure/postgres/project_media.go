@@ -39,10 +39,10 @@ func fetchProjectMedia(ctx context.Context, queryer projectMediaQueryer, project
 			&item.ID,
 			&item.ProjectID,
 			&item.MediaType,
-			&item.URL,
-			&item.ThumbnailURL,
+			&item.FallbackURL,
+			&item.LowURL,
 			&item.MediumURL,
-			&item.FullURL,
+			&item.HighURL,
 			&item.Caption,
 			&item.AltText,
 			&item.SortOrder,
@@ -101,10 +101,10 @@ func replaceProjectMedia(ctx context.Context, execer projectMediaExecer, project
 			item.ID,
 			projectID,
 			item.MediaType,
-			item.URL,
-			item.ThumbnailURL,
+			item.FallbackURL,
+			item.LowURL,
 			item.MediumURL,
-			item.FullURL,
+			item.HighURL,
 			item.Caption,
 			item.AltText,
 			item.SortOrder,
@@ -119,27 +119,27 @@ func replaceProjectMedia(ctx context.Context, execer projectMediaExecer, project
 
 func normalizeProjectMedia(item model.ProjectMedia) model.ProjectMedia {
 	item.MediaType = strings.TrimSpace(item.MediaType)
-	item.URL = strings.TrimSpace(item.URL)
-	item.ThumbnailURL = strings.TrimSpace(item.ThumbnailURL)
+	item.FallbackURL = strings.TrimSpace(item.FallbackURL)
+	item.LowURL = strings.TrimSpace(item.LowURL)
 	item.MediumURL = strings.TrimSpace(item.MediumURL)
-	item.FullURL = strings.TrimSpace(item.FullURL)
+	item.HighURL = strings.TrimSpace(item.HighURL)
 	item.Caption = strings.TrimSpace(item.Caption)
 	item.AltText = strings.TrimSpace(item.AltText)
 
-	if item.ThumbnailURL == "" {
-		item.ThumbnailURL = firstMediaValue(item.MediumURL, item.FullURL, item.URL)
+	if item.LowURL == "" {
+		item.LowURL = firstMediaValue(item.MediumURL, item.HighURL, item.FallbackURL)
 	}
 	if item.MediumURL == "" {
-		item.MediumURL = firstMediaValue(item.FullURL, item.ThumbnailURL, item.URL)
+		item.MediumURL = firstMediaValue(item.HighURL, item.LowURL, item.FallbackURL)
 	}
-	if item.FullURL == "" {
-		item.FullURL = firstMediaValue(item.URL, item.MediumURL, item.ThumbnailURL)
+	if item.HighURL == "" {
+		item.HighURL = firstMediaValue(item.FallbackURL, item.MediumURL, item.LowURL)
 	}
-	if item.URL == "" {
-		item.URL = item.FullURL
+	if item.FallbackURL == "" {
+		item.FallbackURL = item.HighURL
 	}
-	if item.ThumbnailURL == "" {
-		item.ThumbnailURL = firstMediaValue(item.MediumURL, item.FullURL, item.URL)
+	if item.LowURL == "" {
+		item.LowURL = firstMediaValue(item.MediumURL, item.HighURL, item.FallbackURL)
 	}
 
 	return item
