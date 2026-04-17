@@ -1,0 +1,191 @@
+{
+  "kind": "portfolioforge-runtime-ingestion-v1",
+  "project_slug": "printer-05-controls-migration",
+  "generated_from": {
+    "source_of_truth": "canonical_markdown_only",
+    "source_markdown_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/printer-05-controls-migration.md"
+  },
+  "notes": [
+    "Este artefacto prepara el caso para la UI/admin runtime sin reanalizar el repositorio fuente.",
+    "Antes de llamar a PUT /api/v1/admin/projects/:id/enrichment hay que resolver technology_ids reales en el entorno destino.",
+    "Las URLs de media siguen la convención pública canónica del repo para el slug printer-05-controls-migration y deben verificarse contra los assets realmente publicados antes de importar."
+  ],
+  "create_admin_project_payload": {
+    "name": "Printer 05 Controls Migration",
+    "description": "Programa de modernización por fases para Printer 05 en una línea de conversión de empaques corrugados. El caso resume la migración gradual de HMI, PLC y subsistemas servo desde plataformas obsoletas hacia Allen-Bradley, Ethernet/IP y SEW Eurodrive, con pruebas de laboratorio y validación supervisada para reducir el riesgo de comisionamiento.",
+    "category": "industrial automation",
+    "brand": "Modernización de una línea de producción de empaques corrugados para una celda de impresión flexográfica",
+    "source_markdown_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/printer-05-controls-migration.md",
+    "images": [
+      "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen01_medium.webp",
+      "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen02_medium.webp",
+      "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen03_medium.webp",
+      "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen04_medium.webp",
+      "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen05_medium.webp"
+    ],
+    "media": [
+      {
+        "id": "",
+        "project_id": "",
+        "media_type": "image",
+        "low_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen01_low.webp",
+        "medium_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen01_medium.webp",
+        "high_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen01_high.webp",
+        "fallback_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen01_medium.webp",
+        "caption": "Vista general de un gabinete de control de Printer 05 usada para documentar condiciones de campo durante la modernización del PLC.",
+        "alt_text": "Gabinete de control industrial con breakers, terminales y distribución de potencia dentro de Printer 05.",
+        "sort_order": 0,
+        "featured": true
+      },
+      {
+        "id": "",
+        "project_id": "",
+        "media_type": "image",
+        "low_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen02_low.webp",
+        "medium_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen02_medium.webp",
+        "high_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen02_high.webp",
+        "fallback_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen02_medium.webp",
+        "caption": "Rack SLC500 legado documentado como parte de la evidencia para la migración de control.",
+        "alt_text": "Primer plano de un rack PLC legado con módulos de E/S y cableado etiquetado.",
+        "sort_order": 1,
+        "featured": false
+      },
+      {
+        "id": "",
+        "project_id": "",
+        "media_type": "image",
+        "low_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen03_low.webp",
+        "medium_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen03_medium.webp",
+        "high_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen03_high.webp",
+        "fallback_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen03_medium.webp",
+        "caption": "Estado del gabinete servo existente capturado para planificar el reemplazo del sistema de movimiento.",
+        "alt_text": "Gabinete industrial abierto con electrónica servo legada, cableado y hardware de control de movimiento.",
+        "sort_order": 2,
+        "featured": false
+      },
+      {
+        "id": "",
+        "project_id": "",
+        "media_type": "image",
+        "low_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen04_low.webp",
+        "medium_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen04_medium.webp",
+        "high_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen04_high.webp",
+        "fallback_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen04_medium.webp",
+        "caption": "Referencia de ingeniería usada para comparar hardware de movimiento legado con el enfoque de reemplazo seleccionado.",
+        "alt_text": "Ficha técnica comparativa con dimensiones de motor, datos de torque y notas de compatibilidad resaltadas.",
+        "sort_order": 3,
+        "featured": false
+      },
+      {
+        "id": "",
+        "project_id": "",
+        "media_type": "image",
+        "low_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen05_low.webp",
+        "medium_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen05_medium.webp",
+        "high_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen05_high.webp",
+        "fallback_url": "https://mlbautomation.com/dev/portfolioforge/printer-05-controls-migration/imagen05_medium.webp",
+        "caption": "Visual de concepto usado para comunicar la sustitución de paneles legacy por hardware PanelView Plus.",
+        "alt_text": "Gráfico de propuesta que muestra el reemplazo de una HMI legacy por un panel industrial touchscreen más nuevo.",
+        "sort_order": 4,
+        "featured": false
+      }
+    ],
+    "active": true
+  },
+  "technology_resolution_candidates": [
+    {
+      "name": "Allen-Bradley PanelView Plus 6 1000",
+      "slug": "allen-bradley-panelview-plus-6-1000",
+      "category": "hmi"
+    },
+    {
+      "name": "CompactLogix",
+      "slug": "compactlogix",
+      "category": "plc"
+    },
+    {
+      "name": "Ethernet/IP",
+      "slug": "ethernet-ip",
+      "category": "industrial-network"
+    },
+    {
+      "name": "SLC500",
+      "slug": "slc500",
+      "category": "plc"
+    },
+    {
+      "name": "SEW Eurodrive servo system",
+      "slug": "sew-eurodrive-servo-system",
+      "category": "motion-control"
+    },
+    {
+      "name": "Fanuc servo system",
+      "slug": "fanuc-servo-system",
+      "category": "motion-control"
+    }
+  ],
+  "update_project_enrichment_payload_template": {
+    "profile": {
+      "business_goal": "Reducir el riesgo de obsolescencia en una celda de impresión crítica para producción modernizando interfaces de operador, hardware de control y subsistemas de movimiento por fases validables antes del uso pleno en planta.",
+      "problem_statement": "Printer 05 dependía de plataformas legacy discontinuadas en HMI, PLC y motion control, incluyendo SLC500, Remote I/O y subsistemas Fanuc. Eso elevaba el riesgo de mantenimiento, compatibilidad y soporte a largo plazo para la operación de la línea.",
+      "solution_summary": "Entregar un programa de migración de controles por módulos que actualiza HMI, PLC y subsistemas servo seleccionados, incorpora hardware de comunicación de transición cuando hace falta y usa pruebas de laboratorio, validación en máquina y acompañamiento supervisado para reducir riesgo de corte.",
+      "delivery_scope": "- Migración de HMI para el módulo introducer\n- Migración de HMI para el módulo stacker\n- Migración de HMI y hardware auxiliar de comunicación para el módulo die-cut\n- Migración de servo para el módulo die-cut y el print module 3\n- Migración de PLC para introducer, print modules 1-4 y die-cut",
+      "responsibility_scope": "- Definición técnica de la migración por módulo\n- Programación PLC y soporte de commissioning cuando está explicitado\n- Migración de pantallas HMI y configuración de controladores Allen-Bradley\n- Programación y startup de reemplazos servo documentados\n- Pruebas de laboratorio, pruebas en máquina, validación supervisada y acompañamiento inicial de producción",
+      "architecture": "La arquitectura documentada es una pila de control industrial modular distribuida por subsistemas de Printer 05. La modernización migra combinaciones legacy de paneles, PLC y motion control hacia HMIs Allen-Bradley PanelView Plus, PLC Allen-Bradley/CompactLogix, comunicaciones Ethernet/IP y, en los alcances de movimiento documentados, paquetes servo SEW Eurodrive que reemplazan hardware Fanuc legado.",
+      "ai_usage": "No se evidenció uso de IA en el repositorio analizado.",
+      "integrations": [
+        "name: Allen-Bradley PanelView Plus 6 1000 | type: HMI platform | direction: operator-to-controller | note: plataforma objetivo repetida para reemplazar paneles legacy",
+        "name: CompactLogix | type: PLC platform | direction: machine control | note: reemplazo explícito del hardware SLC500 obsoleto",
+        "name: Ethernet/IP | type: industrial communication protocol | direction: HMI-to-PLC | note: protocolo referenciado en la migración principal de PLC",
+        "name: DH+/DH-485/Remote I/O communication module | type: legacy bridging hardware | direction: panel-to-legacy network | note: hardware auxiliar documentado para la migración del die-cut",
+        "name: SEW Eurodrive | type: servo platform | direction: motion control | note: plataforma objetivo en los reemplazos servo evidenciados"
+      ],
+      "technical_decisions": [
+        "decision: ejecutar migraciones por subsistema en vez de un retrofit total | why: la máquina combina dominios de control con obsolescencia y criticidad distintas | tradeoff: el programa dura más y convive temporalmente con plataformas mixtas",
+        "decision: estandarizar HMIs hacia PanelView Plus | why: el repositorio la posiciona repetidamente como interfaz objetivo | tradeoff: exige recreación de pantallas y validación de compatibilidad con controladores",
+        "decision: reemplazar SLC500 por CompactLogix | why: la propuesta lo define como hardware obsoleto y a CompactLogix como plataforma siguiente | tradeoff: requiere migración de lógica PLC y revalidación de comunicaciones",
+        "decision: sostener operabilidad con pruebas de laboratorio y validación en campo antes del handover | why: los alcances principales incluyen testing y supervisión | tradeoff: aumenta el esfuerzo de commissioning, pero baja el riesgo del corte",
+        "decision: usar hardware de comunicación de transición cuando persisten interfaces legacy | why: la migración del die-cut documenta un módulo específico para Remote I/O | tradeoff: la arquitectura transitoria es más compleja que una migración nativa completa a Ethernet/IP"
+      ],
+      "challenges": [
+        "challenge: la modernización debía cubrir múltiples subsistemas y no un único gabinete | mitigation: el material muestra propuestas por módulo y por fase | status: evidenced",
+        "challenge: las plataformas legacy provenían de generaciones y vendors diferentes | mitigation: se estandarizó hacia Allen-Bradley para HMI/PLC y SEW Eurodrive para motion donde aplica | status: evidenced",
+        "challenge: el cutover debía ocurrir sobre un activo productivo en operación | mitigation: los alcances principales incluyen laboratorio, pruebas en máquina y ventanas supervisadas | status: evidenced"
+      ],
+      "results": [
+        "result: se definió una hoja de ruta de modernización por fases para HMI, PLC y motion control de Printer 05 | impact: permitió ejecutar por etapas en vez de reemplazar el sistema completo de una sola vez | evidence: propuestas técnicas fechadas en 2013, 2020 y 2021",
+        "result: se consolidó un patrón repetible de validación para alcances principales | impact: redujo la incertidumbre del commissioning antes de volver a producción | evidence: las propuestas repiten laboratorio, pruebas en máquina y supervisión",
+        "result: la arquitectura objetivo se orientó a plataformas Rockwell actuales para las capas principales de automatización | impact: mejora mantenibilidad y consistencia tecnológica a largo plazo | evidence: referencias repetidas a PanelView Plus, CompactLogix y Ethernet/IP",
+        "result: no se encontró un paquete formal de KPIs post-commissioning ni acta final de aceptación | impact: los resultados operativos deben tratarse como no verificados más allá del alcance documentado | evidence: revisión del repositorio analizado para esta tarea"
+      ],
+      "metrics": {
+        "documented_modernization_scopes": 7,
+        "documented_program_span_years": 8,
+        "major_validation_stages_per_primary_scope": 3,
+        "print_modules_explicitly_covered_in_plc_scope": 4,
+        "ai_usage_evidenced": 0
+      },
+      "timeline": [
+        "phase: 2013 HMI modernization inicial | objective: reemplazar paneles de operador legacy en introducer, stacker y alcance vinculado al die-cut | outcome: quedaron documentadas propuestas de migración HMI y un módulo auxiliar de comunicación para integración",
+        "phase: 2020 refresh del die-cut | objective: continuar la modernización del die-cut a nivel HMI y servo | outcome: quedaron documentados alcances separados para migración HMI y reemplazo de servo",
+        "phase: 2021 consolidación de plataforma de control | objective: migrar el control legacy SLC500 y completar actualizaciones servo adicionales | outcome: quedó definida la migración PLC para introducer, print modules 1-4 y die-cut, más la migración servo de print module 3"
+      ]
+    },
+    "technology_ids": [
+      "<resolve:allen-bradley-panelview-plus-6-1000>",
+      "<resolve:compactlogix>",
+      "<resolve:ethernet-ip>",
+      "<resolve:slc500>",
+      "<resolve:sew-eurodrive-servo-system>",
+      "<resolve:fanuc-servo-system>"
+    ]
+  },
+  "post_import_checklist": [
+    "Verificar name, description, category y brand/context contra este JSON y el markdown canónico.",
+    "Resolver technology_ids reales antes de guardar enrichment.",
+    "Confirmar que media, images y featured no queden contaminados con assets ajenos.",
+    "Guardar y comprobar source_markdown_url solo en admin/privado.",
+    "Verificar assistant_available=true en el payload público si source_markdown_url queda persistido.",
+    "Refrescar búsqueda y re-embed después de persistir el contenido indexable."
+  ]
+}
