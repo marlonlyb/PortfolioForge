@@ -278,25 +278,64 @@ client/src/
 - para proyectos analizados desde repositorio/carpeta, `90. dev_portfolioforge/<Project_Name>.md` pasa a ser la fuente editorial canónica para crear el proyecto en PortfolioForge
 - cuando ese markdown ya existe, la UI debe entenderse como la capa actual de persistencia/ejecución del contenido definido allí, no como la fuente primaria de autoría
 - si el markdown fuente ya existe, volver a analizar el repo completo debe ser secundario y solo justificarse cuando haya evidencia nueva o desactualización real
+- el markdown canónico local y su copia publicada en `source_markdown_url` deben mantenerse en castellano y alineados; no debe quedar la URL remota en otro idioma si la base editorial oficial es `es`
+- la convención oficial de publicación del markdown canónico es `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`
+- si se corrige la base en castellano de un proyecto, hay que regenerar después las locales derivadas (`ca`, `en`, `de`)
 - `source_markdown_url` solo existe en admin/privado; la API pública expone `assistant_available` derivado de ese campo
 - las tablas `orders`, `order_items` y `product_variants` siguen en la base heredada pero no forman parte del portfolio activo
 
 ## Documentación
 
+Documentos normativos vigentes dentro del repo:
+
 - `docs/PRD.md` — fuente de verdad del producto
-- `docs/MEMORY-SDD.md` — memoria resumida del trabajo realizado desde `/sdd-init`
-- `docs/MANUAL-PROJECT-INGESTION-WORKFLOW.md` — guía para cargar manualmente proyectos en la UI actual
-- `docs/AUTOMATIC-PROJECT-INGESTION-WORKFLOW.md` — workflow para analizar un repo/carpeta y generar el markdown fuente del proyecto
+- `docs/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md` — cómo generar el markdown canónico
+- `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md` — cómo poblar o actualizar la UI/DB desde ese markdown
+
+Regla:
+
+- cualquier workflow similar fuera de `docs/` debe tratarse como material legacy/informativo, no como especificación operativa vigente.
 
 Regla documental vigente para nuevas altas de proyectos:
 
 - si existe `90. dev_portfolioforge/<Project_Name>.md` dentro del repo/carpeta analizada, ese archivo debe ser el punto de partida preferido para crear el proyecto en PortfolioForge
+- ese markdown y su copia publicada para `source_markdown_url` deben estar en castellano como fuente editorial primaria
+- la URL remota publicada debe construirse siempre con el mismo slug del proyecto: `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`
 - la carga manual en UI debe limitarse a persistir y revisar lo que el markdown fuente ya define, evitando re-redactar o reinventar contenido sin evidencia nueva
 - para nuevos markdowns fuente, la recomendación por defecto ahora es `Published=true`; usar `Published=false` solo cuando exista una decisión explícita de mantener el proyecto interno/no público
 - después de importar o editar un proyecto a partir de ese markdown, hay que verificar el resultado real en payload admin/público o en DB; escribir en la base no alcanza como criterio de éxito
 - la verificación mínima obligatoria es campo por campo contra el `.md`: `title`, `active/published`, `client/context`, tecnologías, narrativa del `profile`, listas enriquecidas, métricas y media principal
 - si el proyecto debe tener assistant, además hay que persistir `source_markdown_url`, verificar `assistant_available=true` en el payload público, confirmar que la URL markdown no se expone públicamente y validar el flujo de sign-in elegible (Google verificado + perfil completo, o admin local)
+- si el canonical o el runtime base estaban en otro idioma por error, primero se corrige el castellano y luego se regeneran `ca`, `en` y `de`
 - si el markdown fuente dice `Published=false`, el proyecto no puede quedar activo ni visible públicamente; si el importador cae en fallback, parsea parcialmente o mezcla assets ajenos, eso debe tratarse como fallo y no como import exitoso
+
+### Publicación del markdown canónico
+
+El repo ya incluye un subcomando para publicar por FTPS el canonical generado dentro de `90. dev_portfolioforge`:
+
+```bash
+go run ./cmd canonical-publish --case-dir "<ruta-del-caso>"
+```
+
+Comportamiento:
+
+- detecta el directorio `90. dev_portfolioforge/<slug>/`
+- publica toda la carpeta del slug, no solo el `.md`
+- valida luego la URL pública final
+
+Variables de entorno esperadas:
+
+- `PF_FTP_HOST`
+- `PF_FTP_PORT`
+- `PF_FTP_USER`
+- `PF_FTP_PASSWORD`
+- `PF_PUBLIC_BASE`
+- `PF_FTP_REMOTE_BASE` (opcional; por defecto `/` para cuentas FTP ya restringidas a la carpeta remota correcta)
+
+Uso recomendado:
+
+- si hay más de un slug dentro de `90. dev_portfolioforge`, usar `--slug <slug>`
+- usar `--dry-run` para verificar destino remoto y URL pública antes de subir
 
 ### Dirección documental actual
 

@@ -29,6 +29,7 @@ type Server struct {
 	techHandler    *handlers.TechnologyHandler
 	projAdminH     *handlers.ProjectAdminHandler
 	siteConfigH    *handlers.SiteSettingsHandler
+	workflowH      *handlers.CaseStudyWorkflowHandler
 }
 
 func NewServer(
@@ -45,6 +46,7 @@ func NewServer(
 	techHandler *handlers.TechnologyHandler,
 	projAdminH *handlers.ProjectAdminHandler,
 	siteConfigH *handlers.SiteSettingsHandler,
+	workflowH *handlers.CaseStudyWorkflowHandler,
 ) *Server {
 
 	return &Server{
@@ -61,6 +63,7 @@ func NewServer(
 		techHandler:    techHandler,
 		projAdminH:     projAdminH,
 		siteConfigH:    siteConfigH,
+		workflowH:      workflowH,
 	}
 }
 
@@ -91,6 +94,7 @@ func (s *Server) Initialize() {
 	routes.ProjectAdmin(e, s.projAdminH, authMiddleware.IsValid, authMiddleware.IsAdmin)
 	routes.SiteSettingsPublic(e, s.siteConfigH)
 	routes.SiteSettingsAdmin(e, s.siteConfigH, authMiddleware.IsValid, authMiddleware.IsAdmin)
+	routes.CaseStudyWorkflowAdmin(e, s.workflowH, authMiddleware.IsValid, authMiddleware.IsAdmin)
 
 	routes.SearchPublic(e, s.sHandler)
 	routes.SearchAdmin(e, s.searchAdminH, authMiddleware.IsValid, authMiddleware.IsAdmin)

@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 
 import { AppError } from '../../shared/api/errors';
 import { fetchAdminSiteSettings, updateAdminSiteSettings } from '../../shared/api/siteSettings';
@@ -64,6 +65,21 @@ export function AdminSiteSettingsPage() {
 
   return (
     <section className="card-stack">
+      <article className="card">
+        <p className="eyebrow">Settings hub</p>
+        <h2>Case-study workflow</h2>
+        <p className="admin__helper-copy">
+          Publish an existing canonical case-study source, create/update the admin project,
+          then run localization and re-embed with persisted status and logs.
+        </p>
+
+        <div className="admin__form-actions">
+          <Link className="btn btn--secondary" to="/admin/settings/case-studies">
+            Open workflow
+          </Link>
+        </div>
+      </article>
+
       <article className="card">
         <p className="eyebrow">Admin</p>
         <h2>Public branding</h2>
