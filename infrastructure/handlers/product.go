@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
@@ -15,6 +14,7 @@ import (
 	project "github.com/marlonlyb/portfolioforge/domain/ports/project"
 	"github.com/marlonlyb/portfolioforge/infrastructure/handlers/response"
 	"github.com/marlonlyb/portfolioforge/infrastructure/localization"
+	"github.com/marlonlyb/portfolioforge/internal/markdownpolicy"
 	"github.com/marlonlyb/portfolioforge/model"
 )
 
@@ -110,11 +110,8 @@ func validateCreateProductRequest(name, category, clientName, sourceMarkdownURL 
 		return response.ContractError(400, "validation_error", "La URL markdown no puede exceder 2048 caracteres", model.APIErrorDetail{Field: "source_markdown_url", Issue: "max_length:2048"})
 	}
 
-	if strings.TrimSpace(sourceMarkdownURL) != "" {
-		parsed, err := url.Parse(strings.TrimSpace(sourceMarkdownURL))
-		if err != nil || parsed.Scheme != "https" || strings.TrimSpace(parsed.Host) == "" {
-			return response.ContractError(400, "validation_error", "La URL markdown debe ser una URL HTTPS válida", model.APIErrorDetail{Field: "source_markdown_url", Issue: "invalid_url"})
-		}
+	if err := markdownpolicy.ValidateSourceURL(sourceMarkdownURL); err != nil {
+		return response.ContractError(400, "validation_error", "La URL markdown debe ser una URL HTTPS válida en mlbautomation.com o www.mlbautomation.com", model.APIErrorDetail{Field: "source_markdown_url", Issue: "invalid_url"})
 	}
 
 	return nil

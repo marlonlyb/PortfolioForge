@@ -893,11 +893,11 @@ export function AdminProductFormPage() {
               <textarea
                 className="admin__textarea"
                 rows={4}
-                placeholder={'Stripe\nHubSpot\nOpenAI API'}
+                placeholder={'[\n  {\n    "name": "CAN Bus",\n    "type": "fieldbus",\n    "note": "Backbone entre la medición y el monitoreo"\n  }\n]'}
                 value={integrations}
                 onChange={(e) => setIntegrations(e.target.value)}
               />
-              <span className="admin__field-hint">Una línea por integración.</span>
+              <span className="admin__field-hint">Usa un array JSON canónico. Cada elemento puede ser texto simple o un objeto plano con subcampos.</span>
             </label>
 
             <label className="admin__label">
@@ -905,11 +905,11 @@ export function AdminProductFormPage() {
               <textarea
                 className="admin__textarea"
                 rows={4}
-                placeholder={'Arquitectura orientada a eventos\nWorkers asíncronos para integraciones'}
+                placeholder={'[\n  {\n    "decision": "Exponer datos por Ethernet/UDP",\n    "why": "Preparación para consumo externo futuro",\n    "tradeoff": "Mayor superficie de integración"\n  }\n]'}
                 value={technicalDecisions}
                 onChange={(e) => setTechnicalDecisions(e.target.value)}
               />
-              <span className="admin__field-hint">Una línea por decisión técnica.</span>
+              <span className="admin__field-hint">Usa un array JSON canónico para preservar decisión, motivo y tradeoffs sin pérdida.</span>
             </label>
 
             <label className="admin__label">
@@ -917,11 +917,11 @@ export function AdminProductFormPage() {
               <textarea
                 className="admin__textarea"
                 rows={4}
-                placeholder={'Latencia en integraciones externas\nNormalización de datos legacy'}
+                placeholder={'[\n  {\n    "challenge": "La comunicación USB sobre UTP no era confiable",\n    "mitigation": "Migrar a CAN",\n    "status": "resolved"\n  }\n]'}
                 value={challenges}
                 onChange={(e) => setChallenges(e.target.value)}
               />
-              <span className="admin__field-hint">Una línea por desafío.</span>
+              <span className="admin__field-hint">Usa un array JSON canónico. Así se conservan challenge, mitigation y status intactos.</span>
             </label>
 
             <label className="admin__label">
@@ -929,11 +929,11 @@ export function AdminProductFormPage() {
               <textarea
                 className="admin__textarea"
                 rows={4}
-                placeholder={'Menor tiempo de respuesta\nMayor activación de usuarios'}
+                placeholder={'[\n  {\n    "result": "Se instaló visualización en dos pantallas",\n    "impact": "Mayor claridad operativa",\n    "evidence": "Informe de instalación"\n  }\n]'}
                 value={results}
                 onChange={(e) => setResults(e.target.value)}
               />
-              <span className="admin__field-hint">Una línea por resultado.</span>
+              <span className="admin__field-hint">Usa un array JSON canónico para preservar result, impact y evidence sin resumirlos.</span>
             </label>
 
             <label className="admin__label">
@@ -941,11 +941,11 @@ export function AdminProductFormPage() {
               <textarea
                 className="admin__textarea"
                 rows={5}
-                placeholder={'conversion_rate: +18%\nresponse_time: -42%\nusers_impacted: 1200'}
+                placeholder={'{\n  "conversion_rate": "+18%",\n  "response_time": "-42%",\n  "users_impacted": 1200\n}'}
                 value={metrics}
                 onChange={(e) => setMetrics(e.target.value)}
               />
-              <span className="admin__field-hint">Formato: clave: valor, una métrica por línea.</span>
+              <span className="admin__field-hint">Usa un objeto JSON plano. Se conservan strings, números y booleanos.</span>
             </label>
 
             <label className="admin__label">
@@ -953,11 +953,11 @@ export function AdminProductFormPage() {
               <textarea
                 className="admin__textarea"
                 rows={4}
-                placeholder={'Discovery\nMVP\nRollout\nOptimización'}
+                placeholder={'[\n  {\n    "phase": "Instalación",\n    "objective": "Entregar el retrofit",\n    "outcome": "Sistema documentado"\n  }\n]'}
                 value={timeline}
                 onChange={(e) => setTimeline(e.target.value)}
               />
-              <span className="admin__field-hint">Una línea por hito o etapa.</span>
+              <span className="admin__field-hint">Usa un array JSON canónico para conservar phase, objective y outcome por etapa.</span>
             </label>
           </div>
 

@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 
+import { useLocale } from '../../app/providers/LocaleProvider';
 import type { SearchResult } from '../../shared/types/search';
 import {
+  type ProjectDetailLocationState,
   buildSearchMatchContext,
   formatEvidenceField,
   formatMatchType,
@@ -15,6 +17,7 @@ const MAX_SUMMARY_LENGTH = 120;
 interface SearchResultCardProps {
   result: SearchResult;
   index: number;
+  detailState?: ProjectDetailLocationState;
 }
 
 function truncateSummary(text: string | null): string {
@@ -23,7 +26,8 @@ function truncateSummary(text: string | null): string {
   return `${text.slice(0, MAX_SUMMARY_LENGTH)}…`;
 }
 
-export function SearchResultCard({ result, index }: SearchResultCardProps) {
+export function SearchResultCard({ result, index, detailState }: SearchResultCardProps) {
+  const { t } = useLocale();
   const visibleTechs = result.technologies.slice(0, MAX_TECHS_VISIBLE);
   const overflowCount = result.technologies.length - MAX_TECHS_VISIBLE;
   const delay = Math.min(index * 50, 500);
@@ -32,12 +36,18 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
   const hasExplanation = Boolean(searchMatchContext?.explanation?.trim());
   const hasEvidence = evidence.length > 0;
   const showMatchDetails = hasExplanation || hasEvidence;
+  const navigationState = searchMatchContext || detailState
+    ? {
+      ...detailState,
+      searchMatchContext,
+    }
+    : undefined;
 
   return (
     <Link
       className="search-results__card"
       to={`/projects/${result.slug}`}
-      state={searchMatchContext ? { searchMatchContext } : undefined}
+      state={navigationState}
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="search-results__card-media">
@@ -45,7 +55,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
           <img className="search-results__card-image" src={result.hero_image} alt={result.title} loading="lazy" />
         ) : (
           <div className="search-results__card-image search-results__card-image--placeholder">
-            Project visual
+            {t.searchResultProjectVisual}
           </div>
         )}
       </div>
@@ -73,13 +83,13 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
               </span>
             ))}
             {overflowCount > 0 && (
-              <span className="search-results__card-tech-more">+{overflowCount} más</span>
+              <span className="search-results__card-tech-more">+{overflowCount} {t.searchResultMoreTechnologies}</span>
             )}
           </div>
         )}
         {showMatchDetails && (
-          <section className="search-results__card-match-details" aria-label="Detalles de coincidencia">
-            <p className="search-results__card-match-title">Por qué coincide</p>
+          <section className="search-results__card-match-details" aria-label={t.searchResultMatchDetailsAria}>
+            <p className="search-results__card-match-title">{t.searchContextTitle}</p>
 
             {hasExplanation && searchMatchContext?.explanation && (
               <p className="search-results__card-explanation">{searchMatchContext.explanation}</p>
@@ -87,7 +97,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
 
             {hasEvidence && (
               <div className="search-results__card-evidence">
-                <p className="search-results__card-evidence-title">Evidencia utilizada</p>
+                <p className="search-results__card-evidence-title">{t.searchContextEvidenceTitle}</p>
                 <ul className="search-results__card-evidence-list">
                   {evidence.map((evidenceItem, evidenceIndex) => (
                     <li
@@ -96,10 +106,10 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
                     >
                       <div className="search-results__card-evidence-meta">
                         <span className="search-results__card-evidence-field">
-                          {formatEvidenceField(evidenceItem.field)}
+                          {formatEvidenceField(evidenceItem.field, t)}
                         </span>
                         <span className="search-results__card-evidence-type">
-                          {formatMatchType(evidenceItem.match_type)}
+                          {formatMatchType(evidenceItem.match_type, t)}
                         </span>
                       </div>
 
@@ -116,7 +126,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
           </section>
         )}
 
-        <span className="search-results__card-link">Open case study</span>
+        <span className="search-results__card-link">{t.searchResultOpenCaseStudy}</span>
       </div>
     </Link>
   );

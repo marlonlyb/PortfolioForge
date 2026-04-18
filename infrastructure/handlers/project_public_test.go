@@ -178,6 +178,43 @@ func TestProjectPublicGetBySlugReturnsAssistantUnavailableWhenMarkdownMissing(t 
 	}
 }
 
+func TestProjectPublicGetBySlugReturnsAssistantUnavailableWhenPolicyFiltered(t *testing.T) {
+	handler := NewProjectPublic(services.NewProject(&stubPublicProjectRepo{project: model.Project{
+		ID:                 uuid.New(),
+		Name:               "PortfolioForge",
+		Slug:               "portfolioforge",
+		Description:        "Detailed project",
+		Category:           "platform",
+		Status:             "published",
+		Active:             true,
+		AssistantAvailable: false,
+	}}), localization.NewService(nil, nil))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/public/projects/portfolioforge", nil)
+	rec := httptest.NewRecorder()
+	e := echo.New()
+	c := e.NewContext(req, rec)
+	c.SetPath("/api/v1/public/projects/:slug")
+	c.SetParamNames("slug")
+	c.SetParamValues("portfolioforge")
+
+	if err := handler.GetBySlug(c); err != nil {
+		t.Fatalf("GetBySlug() error = %v", err)
+	}
+
+	var body map[string]map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	data := body["data"]
+	if data["assistant_available"] != false {
+		t.Fatalf("assistant_available = %#v, want false", data["assistant_available"])
+	}
+	if _, exists := data["source_markdown_url"]; exists {
+		t.Fatal("source_markdown_url leaked in public response")
+	}
+}
+
 func TestProjectPublicGetBySlugLocalizesPublicFields(t *testing.T) {
 	projectID := uuid.New()
 	handler := NewProjectPublic(

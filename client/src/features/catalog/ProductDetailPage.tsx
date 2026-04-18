@@ -12,6 +12,7 @@ import { AppError } from '../../shared/api/errors';
 import { fetchAdminProjectById } from '../admin-projects/api';
 import { ProjectAssistantChat } from './ProjectAssistantChat';
 import {
+  buildSearchResultsPath,
   buildProjectSearchMatchContext,
   buildSearchMatchContext,
   formatEvidenceField,
@@ -26,6 +27,11 @@ import {
   getProjectMediaFull,
   getProjectMediaMedium,
 } from '../../shared/lib/projectMedia';
+import {
+  PROJECT_PROFILE_LIST_KIND,
+  summarizeProjectProfileList,
+  type ProjectProfileListKind,
+} from '../../shared/lib/projectProfileSummaries';
 
 interface CaseStudySectionProps {
   title: string;
@@ -89,10 +95,10 @@ function formatPrimitiveValue(value: string | number | boolean): string {
   return typeof value === 'string' ? value.trim() : String(value);
 }
 
-function formatTimestamp(timestamp?: number): string | null {
+function formatTimestamp(timestamp: number | undefined, locale: string): string | null {
   if (!timestamp) return null;
 
-  return new Intl.DateTimeFormat('en', {
+  return new Intl.DateTimeFormat(locale, {
     month: 'short',
     year: 'numeric',
   }).format(new Date(timestamp * 1000));
@@ -121,27 +127,8 @@ function buildExcerpt(value?: string | null, maxLength = 280): string {
 	return `${trimmed.slice(0, maxLength).trimEnd()}…`;
 }
 
-function getRenderableList(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-
-  return value
-    .map((item) => {
-      if (isPrimitiveValue(item)) {
-        return formatPrimitiveValue(item);
-      }
-
-      if (isRecord(item)) {
-        const primitiveEntries = Object.entries(item)
-          .flatMap(([entryKey, entryValue]) => (isPrimitiveValue(entryValue)
-            ? [`${formatLabel(entryKey)}: ${formatPrimitiveValue(entryValue)}`]
-            : []));
-
-        return primitiveEntries.length > 0 ? primitiveEntries.join(' · ') : null;
-      }
-
-      return null;
-    })
-    .filter((item): item is string => Boolean(item?.trim()));
+function getRenderableList(value: unknown, kind: ProjectProfileListKind = PROJECT_PROFILE_LIST_KIND.GENERIC): string[] {
+  return summarizeProjectProfileList(value, kind);
 }
 
 function getRenderableEntries(value: unknown): KeyValueEntry[] {
@@ -157,16 +144,17 @@ function getRenderableEntries(value: unknown): KeyValueEntry[] {
     .filter((entry) => entry.value.trim().length > 0);
 }
 
-function CaseStudySection({ title, content }: CaseStudySectionProps) {
+function CaseStudySection({ title, content, eyebrow }: CaseStudySectionProps & { eyebrow: string }) {
   return (
     <article className="detail__story-section">
-      <p className="eyebrow">{title}</p>
+      <p className="eyebrow">{eyebrow}</p>
+      <h4 className="detail__section-title">{title}</h4>
       <p className="detail__section-copy">{content}</p>
     </article>
   );
 }
 
-function DetailLayer({ title, textSections, listSections = [], metrics = [], metricsTitle = 'Metrics' }: DetailLayerData) {
+function DetailLayer({ title, textSections, listSections = [], metrics = [], metricsTitle, caseStudyEyebrow }: DetailLayerData & { caseStudyEyebrow: string }) {
   if (textSections.length === 0 && listSections.length === 0 && metrics.length === 0) {
     return null;
   }
@@ -174,13 +162,13 @@ function DetailLayer({ title, textSections, listSections = [], metrics = [], met
   return (
     <article className="card detail__layer">
       <div className="detail__column-intro">
-        <p className="eyebrow">Case study</p>
+        <p className="eyebrow">{caseStudyEyebrow}</p>
         <h3 className="detail__column-title">{title}</h3>
       </div>
 
-      <div className="detail__main-stack">
-        {textSections.map((section) => (
-          <CaseStudySection key={section.title} title={section.title} content={buildExcerpt(section.content, 300)} />
+        <div className="detail__main-stack">
+          {textSections.map((section) => (
+          <CaseStudySection key={section.title} title={section.title} content={buildExcerpt(section.content, 300)} eyebrow={caseStudyEyebrow} />
         ))}
 
         {listSections.map((section) => (
@@ -241,6 +229,9 @@ export function ProductDetailPage() {
   const locationState = (location.state as ProjectDetailLocationState | null) ?? null;
   const activeSearchQuery = locationState?.activeSearchQuery?.trim() ?? '';
   const activeSearchCategory = locationState?.activeSearchCategory?.trim() ?? '';
+  const activeSearchClient = locationState?.activeSearchClient?.trim() ?? '';
+  const activeSearchTechnologies = locationState?.activeSearchTechnologies ?? [];
+  const activeSearchTechnologiesParam = activeSearchTechnologies.join(',');
   const locationMatchContext = locationState?.searchMatchContext;
   const [resolvedSearchMatchContext, setResolvedSearchMatchContext] = useState<SearchMatchContext | undefined>(
     locationMatchContext,
@@ -321,6 +312,8 @@ export function ProductDetailPage() {
     searchProjects({
       q: activeSearchQuery,
       category: activeSearchCategory || undefined,
+      client: activeSearchClient || undefined,
+      technologies: activeSearchTechnologiesParam || undefined,
       pageSize: 100,
       lang: locale,
     })
@@ -330,22 +323,31 @@ export function ProductDetailPage() {
         const remoteMatch = response.data.find((candidate) => candidate.slug === slug);
         if (remoteMatch) {
           setResolvedSearchMatchContext(
-            buildSearchMatchContext(remoteMatch) ?? buildProjectSearchMatchContext(project, activeSearchQuery),
+            buildSearchMatchContext(remoteMatch) ?? buildProjectSearchMatchContext(project, activeSearchQuery, t),
           );
           return;
         }
 
-        setResolvedSearchMatchContext(buildProjectSearchMatchContext(project, activeSearchQuery));
+        setResolvedSearchMatchContext(buildProjectSearchMatchContext(project, activeSearchQuery, t));
       })
       .catch(() => {
         if (cancelled) return;
-        setResolvedSearchMatchContext(buildProjectSearchMatchContext(project, activeSearchQuery));
+        setResolvedSearchMatchContext(buildProjectSearchMatchContext(project, activeSearchQuery, t));
       });
 
     return () => {
       cancelled = true;
     };
-  }, [activeSearchCategory, activeSearchQuery, locale, locationMatchContext, project, slug]);
+  }, [activeSearchCategory, activeSearchClient, activeSearchQuery, activeSearchTechnologiesParam, locale, locationMatchContext, project, slug, t]);
+
+  const searchBackPath = activeSearchQuery
+    ? buildSearchResultsPath(activeSearchQuery, {
+      category: activeSearchCategory || null,
+      client: activeSearchClient || null,
+      technologies: activeSearchTechnologies,
+    })
+    : '/';
+  const searchBackState = activeSearchQuery ? locationState ?? undefined : undefined;
 
   const projectName = project?.name ?? '';
   const technologies = project?.technologies ?? [];
@@ -376,18 +378,18 @@ export function ProductDetailPage() {
   const responsibilityScope = project?.profile?.responsibility_scope?.trim();
   const architecture = project?.profile?.architecture?.trim();
   const aiUsage = project?.profile?.ai_usage?.trim();
-  const integrations = getRenderableList(project?.profile?.integrations);
-  const technicalDecisions = getRenderableList(project?.profile?.technical_decisions);
-  const challenges = getRenderableList(project?.profile?.challenges);
-  const results = getRenderableList(project?.profile?.results);
-  const timeline = getRenderableList(project?.profile?.timeline);
+  const integrations = getRenderableList(project?.profile?.integrations, PROJECT_PROFILE_LIST_KIND.INTEGRATIONS);
+  const technicalDecisions = getRenderableList(project?.profile?.technical_decisions, PROJECT_PROFILE_LIST_KIND.TECHNICAL_DECISIONS);
+  const challenges = getRenderableList(project?.profile?.challenges, PROJECT_PROFILE_LIST_KIND.CHALLENGES);
+  const results = getRenderableList(project?.profile?.results, PROJECT_PROFILE_LIST_KIND.RESULTS);
+  const timeline = getRenderableList(project?.profile?.timeline, PROJECT_PROFILE_LIST_KIND.TIMELINE);
   const metrics = getRenderableEntries(project?.profile?.metrics);
   const searchMatchContext = resolvedSearchMatchContext;
   const searchEvidence = searchMatchContext?.evidence ?? [];
   const hasExplanation = Boolean(searchMatchContext?.explanation?.trim());
   const hasEvidence = searchEvidence.length > 0;
   const showSearchMatchContext = hasExplanation || hasEvidence;
-  const lastUpdated = formatTimestamp(project?.updated_at);
+  const lastUpdated = formatTimestamp(project?.updated_at, locale);
   const showAssistantChat = Boolean(project?.assistant_available && user?.can_use_project_assistant);
   const showAssistantAccessCard = Boolean(project?.assistant_available && user) && !sessionLoading && !showAssistantChat;
   const heroFacts = [
@@ -522,9 +524,9 @@ export function ProductDetailPage() {
     return (
       <section className="detail">
         <div className="card card--muted">
-          <p className="eyebrow">Error</p>
+          <p className="eyebrow">{t.detailErrorEyebrow}</p>
           <p>{error ?? t.detailNotFound}</p>
-          <Link to="/">{t.detailBack}</Link>
+          <Link to={searchBackPath} state={searchBackState}>{t.detailBack}</Link>
         </div>
       </section>
     );
@@ -533,7 +535,7 @@ export function ProductDetailPage() {
   return (
     <>
       <section className="detail">
-        <Link className="detail__back" to="/">
+        <Link className="detail__back" to={searchBackPath} state={searchBackState}>
           {t.detailBack}
         </Link>
 
@@ -550,7 +552,7 @@ export function ProductDetailPage() {
               ) : null}
 
               {heroFacts.length > 0 ? (
-                <dl className="detail__hero-facts" aria-label="Project highlights">
+                <dl className="detail__hero-facts" aria-label={t.detailProjectHighlightsAria}>
                   {heroFacts.map((item) => (
                     <div key={item.label} className="detail__hero-fact">
                       <dt>{item.label}</dt>
@@ -563,14 +565,14 @@ export function ProductDetailPage() {
 
             {adminSourceMarkdownURL ? (
               <p className="detail__admin-source">
-                <a href={adminSourceMarkdownURL} target="_blank" rel="noreferrer">Admin markdown source</a>
+                <a href={adminSourceMarkdownURL} target="_blank" rel="noreferrer">{t.detailAdminMarkdownSource}</a>
               </p>
             ) : null}
 
             {technologies.length > 0 ? (
               <div className="detail__hero-tech">
                 <p className="detail__hero-tech-label">{t.detailTechnologies}</p>
-                <div className="detail__chips detail__chips--hero" aria-label="Technologies used">
+                <div className="detail__chips detail__chips--hero" aria-label={t.detailTechnologiesUsedAria}>
                   {technologies.map((technology) => (
                     <span key={technology.id} className="detail__chip">
                       {technology.name}
@@ -583,14 +585,14 @@ export function ProductDetailPage() {
 
           <div className="detail__hero-media">
             {galleryImages.length > 0 ? (
-              <div className="detail__gallery-panel detail__gallery-panel--hero" aria-label="Galería principal del proyecto">
+              <div className="detail__gallery-panel detail__gallery-panel--hero" aria-label={t.detailHeroGalleryAria}>
                 {selectedGalleryImage ? (
                   <div className="detail__gallery-toolbar detail__gallery-toolbar--hero">
                     <p className="detail__gallery-counter">
                       {selectedGalleryIndex + 1} / {galleryImages.length}
                     </p>
 
-                    {selectedGalleryImage.featured ? <span className="detail__gallery-toolbar-badge">Destacada</span> : null}
+                    {selectedGalleryImage.featured ? <span className="detail__gallery-toolbar-badge">{t.detailGalleryFeatured}</span> : null}
                   </div>
                 ) : null}
 
@@ -604,7 +606,7 @@ export function ProductDetailPage() {
                               type="button"
                               className="detail__gallery-stage"
                               onClick={() => setLightboxIndex(index)}
-                              aria-label={`Abrir imagen ${index + 1}`}
+                              aria-label={`${t.detailGalleryOpenImage} ${index + 1}`}
                             >
                               <img className="detail__gallery-stage-image" src={image.preview} alt={image.alt} loading="lazy" />
                             </button>
@@ -613,13 +615,13 @@ export function ProductDetailPage() {
                       </div>
                     </div>
 
-                    <div className="detail__gallery-nav" aria-label="Controles de galería">
+                    <div className="detail__gallery-nav" aria-label={t.detailGalleryControlsAria}>
                       <button
                         type="button"
                         className="detail__gallery-nav-button detail__gallery-nav-button--prev"
                         onClick={() => galleryViewportApi?.scrollPrev()}
                         disabled={!canScrollGalleryPrev}
-                        aria-label="Imagen anterior"
+                        aria-label={t.detailGalleryPreviousImage}
                       >
                         <span aria-hidden="true">←</span>
                       </button>
@@ -629,7 +631,7 @@ export function ProductDetailPage() {
                         className="detail__gallery-nav-button detail__gallery-nav-button--next"
                         onClick={() => galleryViewportApi?.scrollNext()}
                         disabled={!canScrollGalleryNext}
-                        aria-label="Imagen siguiente"
+                        aria-label={t.detailGalleryNextImage}
                       >
                         <span aria-hidden="true">→</span>
                       </button>
@@ -642,7 +644,7 @@ export function ProductDetailPage() {
                             <p className="detail__gallery-stage-caption">{selectedGalleryImage.caption}</p>
                           ) : (
                             <p className="detail__gallery-stage-caption detail__gallery-stage-caption--muted">
-                              Visual {selectedGalleryIndex + 1} del proyecto
+                              {t.detailGalleryFallbackCaption} {selectedGalleryIndex + 1}
                             </p>
                           )}
                         </div>
@@ -652,7 +654,7 @@ export function ProductDetailPage() {
                           className="detail__gallery-stage-cta"
                           onClick={() => setLightboxIndex(selectedGalleryIndex)}
                         >
-                          Ver completa
+                          {t.detailGalleryViewFull}
                         </button>
                       </div>
                     ) : null}
@@ -694,12 +696,13 @@ export function ProductDetailPage() {
                   listSections={layer.listSections}
                   metrics={layer.metrics}
                   metricsTitle={layer.metricsTitle}
+                  caseStudyEyebrow={t.detailCaseStudyEyebrow}
                 />
               ))}
 
               {showSearchMatchContext ? (
-                <article className="detail__aside-panel detail__match-context card" aria-label="Por qué coincide con la búsqueda">
-                  <p className="eyebrow">Por qué coincide</p>
+                <article className="detail__aside-panel detail__match-context card" aria-label={t.searchContextTitle}>
+                  <p className="eyebrow">{t.searchContextTitle}</p>
 
                   {hasExplanation && searchMatchContext?.explanation ? (
                     <p className="detail__match-explanation">{searchMatchContext.explanation}</p>
@@ -707,7 +710,7 @@ export function ProductDetailPage() {
 
                   {hasEvidence ? (
                     <div className="detail__match-evidence">
-                      <p className="detail__match-evidence-title">Evidencia utilizada</p>
+                      <p className="detail__match-evidence-title">{t.searchContextEvidenceTitle}</p>
                       <ul className="detail__match-evidence-list">
                         {searchEvidence.map((evidence, index) => (
                           <li
@@ -715,8 +718,8 @@ export function ProductDetailPage() {
                             className="detail__match-evidence-item"
                           >
                             <div className="detail__match-evidence-meta">
-                              <span className="detail__match-evidence-field">{formatEvidenceField(evidence.field)}</span>
-                              <span className="detail__match-evidence-type">{formatMatchType(evidence.match_type)}</span>
+                              <span className="detail__match-evidence-field">{formatEvidenceField(evidence.field, t)}</span>
+                              <span className="detail__match-evidence-type">{formatMatchType(evidence.match_type, t)}</span>
                             </div>
 
                             {hasMatchedText(evidence) ? (
@@ -734,32 +737,32 @@ export function ProductDetailPage() {
         </div>
         </section>
       {showAssistantAccessCard ? (
-        <section className="card assistant-chat__panel" aria-label="Assistant access requirements">
+        <section className="card assistant-chat__panel" aria-label={t.detailAssistantAccessRequirementsAria}>
           <div className="assistant-chat__header">
-            <p className="eyebrow">Project assistant</p>
+	            <p className="eyebrow">{t.detailAssistantEyebrow}</p>
 			{!user ? (
 				<>
-				  <p className="assistant-chat__copy">Log in to unlock project-specific chat.</p>
+				  <p className="assistant-chat__copy">{t.detailAssistantLoginPrompt}</p>
 				  <Link className="btn btn--primary" to="/login" state={{ from: location.pathname }}>
-				    Log in
+				    {t.detailAssistantLoginCta}
 				  </Link>
 				</>
 			) : user.auth_provider === 'local' && !user.email_verified ? (
 				<>
-				  <p className="assistant-chat__copy">Verify your email to keep your local account eligible for the assistant.</p>
+				  <p className="assistant-chat__copy">{t.detailAssistantVerifyPrompt}</p>
 				  <Link className="btn btn--primary" to="/verify-email" state={{ from: location.pathname, email: user.email }}>
-				    Verify email
+				    {t.detailAssistantVerifyCta}
 				  </Link>
 				</>
 			) : !user.profile_completed ? (
               <>
-                <p className="assistant-chat__copy">Complete your profile with your full name and company to enable the assistant.</p>
+                <p className="assistant-chat__copy">{t.detailAssistantCompleteProfilePrompt}</p>
                 <Link className="btn btn--primary" to="/complete-profile" state={{ from: location.pathname }}>
-                  Complete profile
+                  {t.detailAssistantCompleteProfileCta}
                 </Link>
               </>
             ) : !user.email_verified && user.auth_provider === 'google' ? (
-              <p className="assistant-chat__copy">Google sign-in requires a verified email before the assistant can be enabled.</p>
+              <p className="assistant-chat__copy">{t.detailAssistantGoogleRestriction}</p>
             ) : (
               <p className="assistant-chat__copy">{t.detailAssistantLocalRestriction}</p>
             )}
@@ -768,8 +771,8 @@ export function ProductDetailPage() {
       ) : null}
       <ProjectAssistantChat slug={project.slug} enabled={showAssistantChat} lang={locale} />
       {activeLightboxImage ? (
-        <div className="detail__lightbox" role="dialog" aria-modal="true" aria-label="Image preview" onClick={() => setLightboxIndex(null)}>
-          <button type="button" className="detail__lightbox-close" aria-label="Close image preview" onClick={() => setLightboxIndex(null)}>
+        <div className="detail__lightbox" role="dialog" aria-modal="true" aria-label={t.detailLightboxAria} onClick={() => setLightboxIndex(null)}>
+          <button type="button" className="detail__lightbox-close" aria-label={t.detailLightboxClose} onClick={() => setLightboxIndex(null)}>
             ×
           </button>
 
@@ -786,7 +789,7 @@ export function ProductDetailPage() {
                   });
                 }}
                 disabled={lightboxIndex === 0}
-                aria-label="Imagen anterior"
+                aria-label={t.detailGalleryPreviousImage}
               >
                 <span aria-hidden="true">←</span>
               </button>
@@ -802,7 +805,7 @@ export function ProductDetailPage() {
                   });
                 }}
                 disabled={lightboxIndex === galleryImages.length - 1}
-                aria-label="Imagen siguiente"
+                aria-label={t.detailGalleryNextImage}
               >
                 <span aria-hidden="true">→</span>
               </button>

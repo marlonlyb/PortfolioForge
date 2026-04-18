@@ -19,9 +19,11 @@ import (
 type mockSearchRepo struct {
 	results []model.SearchResult
 	err     error
+	params  []model.SearchParams
 }
 
-func (m *mockSearchRepo) Search(_ context.Context, _ model.SearchParams) ([]model.SearchResult, error) {
+func (m *mockSearchRepo) Search(_ context.Context, params model.SearchParams) ([]model.SearchResult, error) {
+	m.params = append(m.params, params)
 	return m.results, m.err
 }
 func (m *mockSearchRepo) RefreshSearchDocument(_ context.Context, _ uuid.UUID) error {
@@ -30,7 +32,7 @@ func (m *mockSearchRepo) RefreshSearchDocument(_ context.Context, _ uuid.UUID) e
 func (m *mockSearchRepo) RefreshAllDocuments(_ context.Context) error { return nil }
 
 type mockProjectReader struct {
-	techs []model.Technology
+	techsByProject map[uuid.UUID][]model.Technology
 }
 
 func (m *mockProjectReader) GetByID(_ context.Context, _ uuid.UUID) (model.Project, error) {
@@ -42,18 +44,23 @@ func (m *mockProjectReader) GetBySlug(_ context.Context, _ string) (model.Projec
 func (m *mockProjectReader) ListPublished(_ context.Context) ([]model.Project, error) {
 	return nil, nil
 }
-func (m *mockProjectReader) GetTechnologiesByProjectID(_ context.Context, _ uuid.UUID) ([]model.Technology, error) {
-	return m.techs, nil
+func (m *mockProjectReader) GetTechnologiesByProjectID(_ context.Context, projectID uuid.UUID) ([]model.Technology, error) {
+	return m.techsByProject[projectID], nil
 }
 
 func (m *mockProjectReader) GetAssistantContextBySlug(_ context.Context, _ string) (model.ProjectAssistantContext, error) {
 	return model.ProjectAssistantContext{}, nil
 }
 
-type mockEmbeddingProv struct{}
+type mockEmbeddingProv struct {
+	vectors []float32
+	err     error
+	inputs  []string
+}
 
-func (m *mockEmbeddingProv) Generate(_ context.Context, _ string) ([]float32, error) {
-	return nil, nil
+func (m *mockEmbeddingProv) Generate(_ context.Context, input string) ([]float32, error) {
+	m.inputs = append(m.inputs, input)
+	return m.vectors, m.err
 }
 func (m *mockEmbeddingProv) Dimension() int { return 1536 }
 
@@ -71,7 +78,7 @@ var (
 func newTestSearch(semanticEnabled bool, repoResults []model.SearchResult) *Search {
 	return NewSearch(
 		&mockSearchRepo{results: repoResults},
-		&mockProjectReader{},
+		&mockProjectReader{techsByProject: map[uuid.UUID][]model.Technology{}},
 		&mockEmbeddingProv{},
 		NewNoOpExplanationProvider(),
 		semanticEnabled,
@@ -360,5 +367,78 @@ func TestExtractEvidence(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestSearchGeneratesSemanticEmbeddingAndPassesItToRepository(t *testing.T) {
+	projectID := uuid.New()
+	searchRepo := &mockSearchRepo{results: []model.SearchResult{{
+		Project:      model.Project{ID: projectID, Name: "PortfolioForge", Category: "platform"},
+		LexicalScore: 1,
+	}}}
+	projectReader := &mockProjectReader{techsByProject: map[uuid.UUID][]model.Technology{}}
+	embeddingProvider := &mockEmbeddingProv{vectors: []float32{0.11, 0.22, 0.33}}
+	svc := NewSearch(searchRepo, projectReader, embeddingProvider, NewNoOpExplanationProvider(), true)
+
+	_, err := svc.Search(context.Background(), model.SearchParams{Query: "  PortfolioForge  ", PageSize: 10})
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if len(embeddingProvider.inputs) != 1 || embeddingProvider.inputs[0] != "portfolioforge" {
+		t.Fatalf("embedding inputs = %#v", embeddingProvider.inputs)
+	}
+	if len(searchRepo.params) != 1 {
+		t.Fatalf("repo calls = %d, want 1", len(searchRepo.params))
+	}
+	if len(searchRepo.params[0].QueryEmbedding) != 3 {
+		t.Fatalf("query embedding length = %d, want 3", len(searchRepo.params[0].QueryEmbedding))
+	}
+}
+
+func TestSearchPaginatesWithoutDuplicatesAndBuildsCompleteResultItems(t *testing.T) {
+	projectID1 := uuid.New()
+	projectID2 := uuid.New()
+	projectID3 := uuid.New()
+	searchRepo := &mockSearchRepo{results: []model.SearchResult{
+		{Project: model.Project{ID: projectID1, Slug: "alpha", Name: "Alpha", Category: "platform", ClientName: "Acme", Profile: &model.ProjectProfile{ProjectID: projectID1, SolutionSummary: "Summary alpha"}, Images: []byte(`["https://img/alpha.png"]`)}, LexicalScore: 0.9},
+		{Project: model.Project{ID: projectID2, Slug: "beta", Name: "Beta", Category: "platform", ClientName: "Acme", Profile: &model.ProjectProfile{ProjectID: projectID2, SolutionSummary: "Summary beta"}, Images: []byte(`["https://img/beta.png"]`)}, LexicalScore: 0.8},
+		{Project: model.Project{ID: projectID3, Slug: "gamma", Name: "Gamma", Category: "platform", ClientName: "Acme", Profile: &model.ProjectProfile{ProjectID: projectID3, SolutionSummary: "Summary gamma"}, Images: []byte(`["https://img/gamma.png"]`)}, LexicalScore: 0.7},
+	}}
+	projectReader := &mockProjectReader{techsByProject: map[uuid.UUID][]model.Technology{
+		projectID1: {{ID: uuid.New(), Name: "React", Slug: "react", Color: "#61dafb"}},
+		projectID2: {{ID: uuid.New(), Name: "Go", Slug: "go", Color: "#00add8"}},
+		projectID3: {{ID: uuid.New(), Name: "PostgreSQL", Slug: "postgresql", Color: "#336791"}},
+	}}
+	svc := NewSearch(searchRepo, projectReader, &mockEmbeddingProv{}, NewNoOpExplanationProvider(), false)
+
+	firstPage, err := svc.Search(context.Background(), model.SearchParams{Query: "platform", PageSize: 2})
+	if err != nil {
+		t.Fatalf("Search() first page error = %v", err)
+	}
+	if len(firstPage.Data) != 2 {
+		t.Fatalf("first page items = %d, want 2", len(firstPage.Data))
+	}
+	if firstPage.Meta.Total != 3 {
+		t.Fatalf("first page total = %d, want 3", firstPage.Meta.Total)
+	}
+	if firstPage.Meta.Cursor == nil || *firstPage.Meta.Cursor != "2" {
+		t.Fatalf("first page cursor = %#v, want 2", firstPage.Meta.Cursor)
+	}
+	if firstPage.Data[0].Slug != "alpha" || firstPage.Data[0].HeroImage == nil || *firstPage.Data[0].HeroImage != "https://img/alpha.png" {
+		t.Fatalf("first page item missing slug/hero image: %#v", firstPage.Data[0])
+	}
+	if len(firstPage.Data[0].Technologies) != 1 || firstPage.Data[0].Technologies[0].Slug != "react" {
+		t.Fatalf("first page technologies = %#v", firstPage.Data[0].Technologies)
+	}
+
+	secondPage, err := svc.Search(context.Background(), model.SearchParams{Query: "platform", PageSize: 2, Cursor: "2"})
+	if err != nil {
+		t.Fatalf("Search() second page error = %v", err)
+	}
+	if len(secondPage.Data) != 1 || secondPage.Data[0].Slug != "gamma" {
+		t.Fatalf("second page data = %#v", secondPage.Data)
+	}
+	if secondPage.Meta.Cursor != nil {
+		t.Fatalf("second page cursor = %#v, want nil", secondPage.Meta.Cursor)
 	}
 }

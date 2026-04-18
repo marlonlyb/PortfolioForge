@@ -1,6 +1,6 @@
 import { httpGet, httpPatch, httpPost, httpPut } from '../../shared/api/http';
 import type { AdminProjectDetail, AdminProjectListResponse } from '../../shared/types/admin-project';
-import type { ProjectMedia, ProjectProfileMetrics } from '../../shared/types/project';
+import type { ProjectMedia, ProjectProfileMetrics, ProjectProfileStructuredList } from '../../shared/types/project';
 import type { PublicContentFieldKey, PublicLocale, TranslationMode } from '../../shared/i18n/config';
 
 export interface ProjectReadiness {
@@ -74,12 +74,12 @@ export interface UpdateProjectEnrichmentProfilePayload {
   business_goal?: string;
   problem_statement?: string;
   ai_usage?: string;
-  integrations?: string[];
-  technical_decisions?: string[];
-  challenges?: string[];
-  results?: string[];
+  integrations?: ProjectProfileStructuredList;
+  technical_decisions?: ProjectProfileStructuredList;
+  challenges?: ProjectProfileStructuredList;
+  results?: ProjectProfileStructuredList;
   metrics?: ProjectProfileMetrics;
-  timeline?: string[];
+  timeline?: ProjectProfileStructuredList;
 }
 
 export interface UpdateProjectEnrichmentPayload {

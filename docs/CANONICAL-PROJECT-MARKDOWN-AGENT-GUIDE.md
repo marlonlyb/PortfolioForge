@@ -293,12 +293,21 @@ Escribe estas secciones como listas con un ítem por línea:
 - Timeline
 - Technologies
 
-Para máxima compatibilidad con PortfolioForge, favorece formatos semi-estructurados como:
+Para máxima compatibilidad con PortfolioForge, escribe bullets directos, breves y editoriales.
 
-- `name: ... | type: ... | note: ...`
-- `decision: ... | why: ... | tradeoff: ...`
-- `result: ... | impact: ... | evidence: ...`
-- `phase: ... | objective: ... | outcome: ...`
+Reglas:
+
+- no copies texto largo del repositorio o de documentos fuente;
+- no empieces cada línea con prefijos redundantes como `decision:`, `challenge:`, `result:`, `phase:`, `why:`, `impact:` o `evidence:`;
+- cada línea debe condensar solo la idea principal y, si hace falta, una consecuencia corta;
+- deja la trazabilidad extensa y el detalle fino dentro del resto del markdown, no incrustados como metadatos inline en cada bullet.
+
+Ejemplos correctos:
+
+- `Exponer datos por Ethernet/UDP para consumo externo futuro sin afirmar una integración ERP ya completada`
+- `La comunicación USB sobre UTP no era confiable para la distancia requerida y se rediseñó alrededor de CAN directa`
+- `Se instaló visualización en dos pantallas para ambos contextos de grúa y mejoró la supervisión desde piso`
+- `A inicios de 2024 quedó documentado el retrofit instalado y la arquitectura posterior a la modificación`
 
 ## 9.4 Metrics
 
@@ -487,13 +496,13 @@ La tarea debe considerarse fallida si ocurre cualquiera de estas condiciones:
 ...
 
 ### Challenges
-- challenge: ... | mitigation: ... | status: ...
+- ...
 
 ### Results
-- result: ... | impact: ... | evidence: ...
+- ...
 
 ### Timeline
-- phase: ... | objective: ... | outcome: ...
+- ...
 
 ## Technical
 
@@ -504,10 +513,10 @@ La tarea debe considerarse fallida si ocurre cualquiera de estas condiciones:
 ...
 
 ### Integrations
-- name: ... | type: ... | direction: ... | note: ...
+- ...
 
 ### Technical Decisions
-- decision: ... | why: ... | tradeoff: ...
+- ...
 
 ### Metrics
 - key: value

@@ -14,6 +14,8 @@ import { CompleteProfilePage } from '../auth/CompleteProfilePage';
 import { ProductDetailPage } from './ProductDetailPage';
 import { fetchProjectBySlug } from './api';
 import type { SessionUser } from '../../app/providers/SessionProvider';
+import { searchProjects } from '../search/api';
+import { SearchResultsPage } from '../search/SearchResultsPage';
 
 vi.mock('embla-carousel-react', () => ({
   default: vi.fn(() => [
@@ -59,6 +61,7 @@ vi.mock('../search/api', async () => {
 
 const mockedFetchProjectBySlug = vi.mocked(fetchProjectBySlug);
 const mockedFetchAdminProjectById = vi.mocked(fetchAdminProjectById);
+const mockedSearchProjects = vi.mocked(searchProjects);
 
 function buildSessionUser(overrides: Partial<SessionUser> = {}): SessionUser {
   return {
@@ -197,6 +200,8 @@ describe('ProductDetailPage', () => {
   beforeEach(() => {
     mockedFetchProjectBySlug.mockReset();
     mockedFetchAdminProjectById.mockReset();
+    mockedSearchProjects.mockReset();
+    mockedSearchProjects.mockResolvedValue({ data: [], meta: { total: 0, page_size: 10, cursor: null, query: '', filters_applied: { category: null, client: null, technologies: [] } } });
     mockedFetchAdminProjectById.mockResolvedValue({
       id: 'project-1',
       name: 'PortfolioForge',
@@ -235,6 +240,33 @@ describe('ProductDetailPage', () => {
     expect(screen.queryByRole('link', { name: 'Sign in with Google' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Admin markdown source' })).not.toBeInTheDocument();
     expect(mockedFetchAdminProjectById).not.toHaveBeenCalled();
+  });
+
+  it('summarizes structured profile bullets instead of rendering canonical labels literally', async () => {
+    mockedFetchProjectBySlug.mockResolvedValue(buildProject({
+      profile: {
+        project_id: 'project-1',
+        integrations: ['name: CAN Bus | type: fieldbus | note: backbone entre la medición existente y la estación de monitoreo'],
+        technical_decisions: ['decision: exponer datos por Ethernet/UDP para consumo externo futuro | why: los documentos muestran preparación de interfaz | tradeoff: arquitectura lista para integrarse sin sobreactuar el rollout'],
+        challenges: ['challenge: la comunicación USB sobre UTP no era confiable para la distancia requerida | mitigation: rediseñar el esquema alrededor de CAN directa | status: parcialmente resuelto'],
+        results: ['result: se instaló visualización de operador en dos pantallas para los dos contextos de grúa | impact: la información de carga pasó a supervisarse con mayor claridad desde piso | evidence: informe de instalación y propuesta de retrofit'],
+        metrics: {},
+        timeline: ['phase: instalación e informe a inicios de 2024 | objective: entregar el retrofit | outcome: quedó documentado el sistema posterior a la modificación'],
+        updated_at: 1710000000,
+      },
+    }));
+
+    renderDetailPage();
+
+    expect(await screen.findByText('Exponer datos por Ethernet/UDP para consumo externo futuro.')).toBeInTheDocument();
+    expect(screen.getByText('La comunicación USB sobre UTP no era confiable para la distancia requerida. Quedó parcialmente resuelto.')).toBeInTheDocument();
+    expect(screen.getByText('Se instaló visualización de operador en dos pantallas para los dos contextos de grúa. La información de carga pasó a supervisarse con mayor claridad desde piso.')).toBeInTheDocument();
+    expect(screen.getByText('Instalación e informe a inicios de 2024. Quedó documentado el sistema posterior a la modificación.')).toBeInTheDocument();
+    expect(screen.queryByText(/result:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/decision:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/challenge:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/phase:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/evidence:/i)).not.toBeInTheDocument();
   });
 
   it('keeps assistant chat hidden for authenticated users with incomplete profiles', async () => {
@@ -282,6 +314,33 @@ describe('ProductDetailPage', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
     expect(screen.getByText('Verify your email to keep your local account eligible for the assistant.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Verify email' })).toBeInTheDocument();
+  });
+
+  it('updates detail assistant and complete-profile copy when the locale changes', async () => {
+    mockedFetchProjectBySlug.mockResolvedValue(buildProject());
+    const incompleteUser = buildSessionUser({
+      full_name: '',
+      company: '',
+      profile_completed: false,
+      assistant_eligible: false,
+      can_use_project_assistant: false,
+    });
+    mockPrivateMe(incompleteUser);
+    window.sessionStorage.setItem('auth_token', 'token');
+
+    renderAssistantFlow();
+
+    expect(await screen.findByRole('link', { name: 'Complete profile' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'ES' }));
+
+    expect(await screen.findByText('Asistente del proyecto')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Completar perfil' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Completar perfil' }));
+
+    expect(await screen.findByRole('heading', { name: 'Desbloquea el asistente del proyecto' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Nombre completo')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Guardar perfil' })).toBeInTheDocument();
   });
 
   it('restores assistant continuity after profile completion returns to the same project', async () => {
@@ -380,7 +439,7 @@ describe('ProductDetailPage', () => {
 		const galleryImage = screen.getByRole('img', { name: 'Project hero' });
 		expect(galleryImage).toHaveAttribute('src', 'https://cdn.example.com/project-medium.webp');
 
-		fireEvent.click(screen.getByRole('button', { name: 'Ver completa' }));
+		fireEvent.click(screen.getByRole('button', { name: 'View full size' }));
 
 		const dialog = await screen.findByRole('dialog', { name: 'Image preview' });
 		expect(within(dialog).getByRole('img', { name: 'Project hero' })).toHaveAttribute(
@@ -480,7 +539,7 @@ describe('ProductDetailPage', () => {
 	  ).toBeTruthy();
 	  expect(screen.getByRole('link', { name: '← Back to projects' })).toBeInTheDocument();
 	  expect(screen.getByLabelText('Project highlights')).toBeInTheDocument();
-	  expect(screen.getByRole('button', { name: 'Ver completa' })).toBeInTheDocument();
+	  expect(screen.getByRole('button', { name: 'View full size' })).toBeInTheDocument();
 	  expect(screen.getByText('React')).toBeInTheDocument();
 	  expect(screen.getByText('TypeScript')).toBeInTheDocument();
 	  expect(screen.getByText('Vite')).toBeInTheDocument();
@@ -558,5 +617,78 @@ describe('ProductDetailPage', () => {
 	    expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio' })).toBeInTheDocument();
 	  });
 	  expect(screen.getByText('login page')).toBeInTheDocument();
+	});
+
+	it('returns to the active search route with cached results and filters intact', async () => {
+	  mockedFetchProjectBySlug.mockResolvedValue(buildProject());
+
+	  render(
+	    <MemoryRouter
+	      initialEntries={[
+	        {
+	          pathname: '/projects/portfolioforge',
+	          state: {
+	            activeSearchQuery: 'portfolio',
+	            activeSearchCategory: 'platform',
+	            activeSearchClient: 'Acme',
+	            activeSearchTechnologies: ['react'],
+	            searchResultsSnapshot: {
+	              total: 2,
+	              cursor: null,
+	              results: [
+	                {
+	                  id: 'project-1',
+	                  slug: 'portfolioforge',
+	                  title: 'PortfolioForge',
+	                  category: 'platform',
+	                  client_name: 'Acme',
+	                  summary: 'Search-ready portfolio platform',
+	                  technologies: [{ id: 'tech-1', name: 'React', slug: 'react', color: '#61dafb' }],
+	                  hero_image: 'https://img/portfolioforge.png',
+	                  score: 0.95,
+	                  explanation: null,
+	                  evidence: [],
+	                },
+	                {
+	                  id: 'project-2',
+	                  slug: 'beta',
+	                  title: 'Beta',
+	                  category: 'platform',
+	                  client_name: 'Acme',
+	                  summary: 'Second page result',
+	                  technologies: [{ id: 'tech-2', name: 'Go', slug: 'go', color: '#00add8' }],
+	                  hero_image: 'https://img/beta.png',
+	                  score: 0.7,
+	                  explanation: null,
+	                  evidence: [],
+	                },
+	              ],
+	            },
+	          },
+	        },
+	      ]}
+	    >
+	      <SessionProvider>
+	        <LocaleProvider>
+	          <Routes>
+	            <Route path="/" element={<StoreLayout />}>
+	              <Route index element={<div>landing content</div>} />
+	              <Route path="projects/:slug" element={<ProductDetailPage />} />
+	              <Route path="search" element={<SearchResultsPage />} />
+	            </Route>
+	          </Routes>
+	        </LocaleProvider>
+	      </SessionProvider>
+	    </MemoryRouter>,
+	  );
+
+	  expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
+	  expect(mockedSearchProjects).toHaveBeenCalledTimes(1);
+
+	  fireEvent.click(screen.getByRole('link', { name: '← Back to projects' }));
+
+	  expect(await screen.findByText('Beta')).toBeInTheDocument();
+	  expect(screen.getByRole('button', { name: 'React' })).toBeInTheDocument();
+	  expect(mockedSearchProjects).toHaveBeenCalledTimes(1);
 	});
 });

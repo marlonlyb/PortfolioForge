@@ -112,7 +112,7 @@ func main() {
 		log.Println("WARNING: ENABLE_SEMANTIC_SEARCH is true but OPENAI_API_KEY is not set. Falling back to NoOp/Template providers.")
 	}
 
-	searchRepo := postgres.NewSearchRepository(dbPool, semanticEnabled)
+	searchRepo := postgres.NewSearchRepository(dbPool, semanticEnabled, embeddingProv)
 	searchService := services.NewSearch(searchRepo, projRepository, embeddingProv, explProv, semanticEnabled)
 
 	searchHandlers := handlers.NewSearch(searchService, semanticDegraded, projectLocalizationService)

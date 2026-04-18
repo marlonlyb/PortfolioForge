@@ -93,6 +93,139 @@ interface Messages {
   authBackToPortfolio: string;
   authBackToPublicLogin: string;
   detailAssistantLocalRestriction: string;
+  searchResultsEyebrow: string;
+  searchResultsTitle: string;
+  searchResultsIntro: string;
+  searchResultsCountSingular: string;
+  searchResultsCountPlural: string;
+  searchResultsError: string;
+  searchResultsSearching: string;
+  searchResultsNoResults: string;
+  searchResultsViewCatalog: string;
+  searchResultsLoadMore: string;
+  searchResultsLoadingMore: string;
+  searchResultsMinCharacters: string;
+  searchFiltersTitle: string;
+  searchFiltersCategory: string;
+  searchFiltersClient: string;
+  searchFiltersTechnologies: string;
+  searchFiltersClear: string;
+  searchResultProjectVisual: string;
+  searchResultMoreTechnologies: string;
+  searchResultMatchDetailsAria: string;
+  searchContextTitle: string;
+  searchContextEvidenceTitle: string;
+  searchContextExplanationPrefix: string;
+  searchContextExplanationConnector: string;
+  searchContextAnd: string;
+  searchContextRelevantProjectFields: string;
+  searchEvidenceFieldTitle: string;
+  searchEvidenceFieldSummary: string;
+  searchEvidenceFieldDescription: string;
+  searchEvidenceFieldClient: string;
+  searchEvidenceFieldCategory: string;
+  searchEvidenceFieldTechnology: string;
+  searchEvidenceFieldTechnologies: string;
+  searchEvidenceFieldSolution: string;
+  searchEvidenceFieldArchitecture: string;
+  searchEvidenceFieldBusinessGoal: string;
+  searchEvidenceFieldAIUsage: string;
+  searchEvidenceFieldTechnicalDecisions: string;
+  searchEvidenceFieldResults: string;
+  searchMatchTypeFTS: string;
+  searchMatchTypeFuzzy: string;
+  searchMatchTypeSemantic: string;
+  searchMatchTypeStructured: string;
+  searchResultOpenCaseStudy: string;
+  detailCaseStudyEyebrow: string;
+  detailErrorEyebrow: string;
+  detailProjectHighlightsAria: string;
+  detailAdminMarkdownSource: string;
+  detailTechnologiesUsedAria: string;
+  detailHeroGalleryAria: string;
+  detailGalleryFeatured: string;
+  detailGalleryOpenImage: string;
+  detailGalleryControlsAria: string;
+  detailGalleryPreviousImage: string;
+  detailGalleryNextImage: string;
+  detailGalleryFallbackCaption: string;
+  detailGalleryViewFull: string;
+  detailAssistantAccessRequirementsAria: string;
+  detailAssistantEyebrow: string;
+  detailAssistantLoginPrompt: string;
+  detailAssistantLoginCta: string;
+  detailAssistantVerifyPrompt: string;
+  detailAssistantVerifyCta: string;
+  detailAssistantCompleteProfilePrompt: string;
+  detailAssistantCompleteProfileCta: string;
+  detailAssistantGoogleRestriction: string;
+  detailLightboxAria: string;
+  detailLightboxClose: string;
+  detailAssistantToggleOpen: string;
+  detailAssistantToggleClose: string;
+  detailAssistantPanelAria: string;
+  detailAssistantConversationResume: string;
+  detailAssistantConversationIntro: string;
+  detailAssistantEmpty: string;
+  detailAssistantRoleAssistant: string;
+  detailAssistantRoleYou: string;
+  detailAssistantThinking: string;
+  detailAssistantPlaceholder: string;
+  detailAssistantClear: string;
+  detailAssistantSend: string;
+  detailAssistantUnavailable: string;
+  authFieldEmail: string;
+  authFieldPassword: string;
+  authFieldConfirmPassword: string;
+  authValidationEmailRequired: string;
+  authValidationPasswordInvalid: string;
+  authValidationConfirmRequired: string;
+  authValidationConfirmMismatch: string;
+  authInvalidCredentials: string;
+  authForbiddenAdmin: string;
+  authPasswordSetupRequired: string;
+  authUnexpectedError: string;
+  authGoogleCredentialMissing: string;
+  authGoogleSignInFailed: string;
+  authGoogleContinue: string;
+  authGoogleNotConfigured: string;
+  authGoogleLoading: string;
+  authGoogleCompleting: string;
+  authSignupSuccessEyebrow: string;
+  authSignupSuccessTitle: string;
+  authSignupSuccessHelper: string;
+  authSignupSuccessVerifyCta: string;
+  authSignupSuccessBackLogin: string;
+  authSubmitCreateAccount: string;
+  authSubmitCreatingAccount: string;
+  authSubmitSignIn: string;
+  authSubmitSigningIn: string;
+  authAltAlreadyHaveAccount: string;
+  authAltNeedAccount: string;
+  authVerifyEyebrow: string;
+  authVerifyTitle: string;
+  authVerifyDefaultNotice: string;
+  authVerifyLoginNotice: string;
+  authVerifyCodeLabel: string;
+  authVerifySubmit: string;
+  authVerifySubmitting: string;
+  authVerifyResend: string;
+  authVerifyResending: string;
+  authVerifyResendIn: string;
+  authVerifyBackLogin: string;
+  authVerifyInvalidCode: string;
+  authVerifyExpiredCode: string;
+  authVerifyUnableToVerify: string;
+  authVerifyUnableToResend: string;
+  authCompleteProfileEyebrow: string;
+  authCompleteProfileTitle: string;
+  authCompleteProfileDescription: string;
+  authCompleteProfileFullName: string;
+  authCompleteProfileCompany: string;
+  authCompleteProfileSave: string;
+  authCompleteProfileSaving: string;
+  authCompleteProfileBack: string;
+  authCompleteProfileUnableToSave: string;
 }
 
 type AuthMessageKey =
@@ -107,29 +240,133 @@ type AuthMessageKey =
   | 'authAdminDescription'
   | 'authBackToPortfolio'
   | 'authBackToPublicLogin'
-  | 'detailAssistantLocalRestriction';
+  | 'detailAssistantLocalRestriction'
+  | 'authFieldEmail'
+  | 'authFieldPassword'
+  | 'authFieldConfirmPassword'
+  | 'authValidationEmailRequired'
+  | 'authValidationPasswordInvalid'
+  | 'authValidationConfirmRequired'
+  | 'authValidationConfirmMismatch'
+  | 'authInvalidCredentials'
+  | 'authForbiddenAdmin'
+  | 'authPasswordSetupRequired'
+  | 'authUnexpectedError'
+  | 'authGoogleCredentialMissing'
+  | 'authGoogleSignInFailed'
+  | 'authGoogleContinue'
+  | 'authGoogleNotConfigured'
+  | 'authGoogleLoading'
+  | 'authGoogleCompleting'
+  | 'authSignupSuccessEyebrow'
+  | 'authSignupSuccessTitle'
+  | 'authSignupSuccessHelper'
+  | 'authSignupSuccessVerifyCta'
+  | 'authSignupSuccessBackLogin'
+  | 'authSubmitCreateAccount'
+  | 'authSubmitCreatingAccount'
+  | 'authSubmitSignIn'
+  | 'authSubmitSigningIn'
+  | 'authAltAlreadyHaveAccount'
+  | 'authAltNeedAccount'
+  | 'authVerifyEyebrow'
+  | 'authVerifyTitle'
+  | 'authVerifyDefaultNotice'
+  | 'authVerifyLoginNotice'
+  | 'authVerifyCodeLabel'
+  | 'authVerifySubmit'
+  | 'authVerifySubmitting'
+  | 'authVerifyResend'
+  | 'authVerifyResending'
+  | 'authVerifyResendIn'
+  | 'authVerifyBackLogin'
+  | 'authVerifyInvalidCode'
+  | 'authVerifyExpiredCode'
+  | 'authVerifyUnableToVerify'
+  | 'authVerifyUnableToResend'
+  | 'authCompleteProfileEyebrow'
+  | 'authCompleteProfileTitle'
+  | 'authCompleteProfileDescription'
+  | 'authCompleteProfileFullName'
+  | 'authCompleteProfileCompany'
+  | 'authCompleteProfileSave'
+  | 'authCompleteProfileSaving'
+  | 'authCompleteProfileBack'
+  | 'authCompleteProfileUnableToSave';
 
 type CoreMessages = Omit<Messages, AuthMessageKey>;
 
 const authMessages: Record<PublicLocale, Pick<Messages, AuthMessageKey>> = {
   es: {
     authPublicEyebrow: 'Acceso público',
-    authPublicLoginTitle: 'Login to PortfolioForge',
+    authPublicLoginTitle: 'Accede a PortfolioForge',
     authPublicLoginDescription:
-      'Use Google or sign in with your local email and password.',
-    authPublicSignupTitle: 'Create your account',
+      'Usa Google o entra con tu email y contraseña locales.',
+    authPublicSignupTitle: 'Crea tu cuenta',
     authPublicSignupDescription:
-      'Sign up with Google or create a local account with email and password. Email verification is required before the assistant unlocks.',
+      'Regístrate con Google o crea una cuenta local con email y contraseña. La verificación del email es obligatoria antes de desbloquear el asistente.',
     authPublicLocalRestriction:
-      'Local accounts still need a verified email and a completed profile before the assistant unlocks.',
-    authAdminEyebrow: 'Admin access',
-    authAdminTitle: 'Admin access',
+      'Las cuentas locales aún necesitan un email verificado y un perfil completado antes de desbloquear el asistente.',
+    authAdminEyebrow: 'Acceso admin',
+    authAdminTitle: 'Acceso admin',
     authAdminDescription:
-      'This route stays hidden from the public UI. Use local admin credentials here only.',
-    authBackToPortfolio: 'Back to portfolio',
-    authBackToPublicLogin: 'Back to public login',
+      'Esta ruta permanece oculta en la UI pública. Usa aquí solo credenciales locales de administrador.',
+    authBackToPortfolio: 'Volver al portfolio',
+    authBackToPublicLogin: 'Volver al login público',
     detailAssistantLocalRestriction:
-      'Passwordless email users still need a verified email and a completed profile before the project assistant unlocks.',
+      'Los usuarios de email sin contraseña aún necesitan un email verificado y un perfil completado antes de desbloquear el asistente del proyecto.',
+    authFieldEmail: 'Email',
+    authFieldPassword: 'Contraseña',
+    authFieldConfirmPassword: 'Confirmar contraseña',
+    authValidationEmailRequired: 'El email es obligatorio.',
+    authValidationPasswordInvalid: 'La contraseña debe tener al menos 8 caracteres.',
+    authValidationConfirmRequired: 'Debes confirmar la contraseña.',
+    authValidationConfirmMismatch: 'Las contraseñas deben coincidir.',
+    authInvalidCredentials: 'Email o contraseña incorrectos.',
+    authForbiddenAdmin: 'Esta cuenta no tiene acceso de administrador.',
+    authPasswordSetupRequired: 'Esta cuenta todavía necesita configurar o restablecer una contraseña antes de iniciar sesión.',
+    authUnexpectedError: 'Ocurrió un error inesperado. Inténtalo de nuevo.',
+    authGoogleCredentialMissing: 'Google no devolvió una credencial válida.',
+    authGoogleSignInFailed: 'No se pudo completar el acceso con Google.',
+    authGoogleContinue: 'Continuar con Google',
+    authGoogleNotConfigured: 'El acceso con Google no está configurado en este entorno.',
+    authGoogleLoading: 'Cargando acceso con Google…',
+    authGoogleCompleting: 'Completando acceso con Google…',
+    authSignupSuccessEyebrow: 'Alta pública',
+    authSignupSuccessTitle: 'Revisa tu email',
+    authSignupSuccessHelper: 'Verifica primero el código y luego inicia sesión con tu nueva contraseña.',
+    authSignupSuccessVerifyCta: 'Verificar email',
+    authSignupSuccessBackLogin: 'Volver al login',
+    authSubmitCreateAccount: 'Crear cuenta',
+    authSubmitCreatingAccount: 'Creando cuenta…',
+    authSubmitSignIn: 'Iniciar sesión',
+    authSubmitSigningIn: 'Iniciando sesión…',
+    authAltAlreadyHaveAccount: '¿Ya tienes cuenta? Inicia sesión',
+    authAltNeedAccount: '¿Necesitas una cuenta? Regístrate',
+    authVerifyEyebrow: 'Verificación de email',
+    authVerifyTitle: 'Verifica tu email',
+    authVerifyDefaultNotice: 'Introduce el código de verificación de 6 dígitos que enviamos a tu email.',
+    authVerifyLoginNotice: 'Email verificado. Inicia sesión con tu contraseña para continuar.',
+    authVerifyCodeLabel: 'Código de verificación',
+    authVerifySubmit: 'Verificar email',
+    authVerifySubmitting: 'Verificando…',
+    authVerifyResend: 'Reenviar código',
+    authVerifyResending: 'Enviando…',
+    authVerifyResendIn: 'Reenviar código en',
+    authVerifyBackLogin: 'Volver al login',
+    authVerifyInvalidCode: 'El código de verificación no es válido. Inténtalo de nuevo.',
+    authVerifyExpiredCode: 'Este código de verificación ha expirado. Solicita uno nuevo para continuar.',
+    authVerifyUnableToVerify: 'No se puede verificar el código ahora mismo.',
+    authVerifyUnableToResend: 'No se puede reenviar el código de verificación ahora mismo.',
+    authCompleteProfileEyebrow: 'Completa tu perfil',
+    authCompleteProfileTitle: 'Desbloquea el asistente del proyecto',
+    authCompleteProfileDescription: 'Añade tu nombre completo y empresa para continuar con el chat específico del proyecto.',
+    authCompleteProfileFullName: 'Nombre completo',
+    authCompleteProfileCompany: 'Empresa',
+    authCompleteProfileSave: 'Guardar perfil',
+    authCompleteProfileSaving: 'Guardando…',
+    authCompleteProfileBack: 'Volver al proyecto',
+    authCompleteProfileUnableToSave: 'No se puede guardar tu perfil ahora mismo.',
   },
   ca: {
     authPublicEyebrow: 'Accés públic',
@@ -149,6 +386,58 @@ const authMessages: Record<PublicLocale, Pick<Messages, AuthMessageKey>> = {
     authBackToPublicLogin: 'Back to public login',
     detailAssistantLocalRestriction:
       'Passwordless email users still need a verified email and a completed profile before the project assistant unlocks.',
+    authFieldEmail: 'Email',
+    authFieldPassword: 'Password',
+    authFieldConfirmPassword: 'Confirm password',
+    authValidationEmailRequired: 'Email is required.',
+    authValidationPasswordInvalid: 'Password must contain at least 8 characters.',
+    authValidationConfirmRequired: 'Confirm password is required.',
+    authValidationConfirmMismatch: 'Passwords must match.',
+    authInvalidCredentials: 'Invalid email or password.',
+    authForbiddenAdmin: 'This account does not have admin access.',
+    authPasswordSetupRequired: 'This account still needs a password setup or reset before it can sign in.',
+    authUnexpectedError: 'An unexpected error occurred. Please try again.',
+    authGoogleCredentialMissing: 'Google sign-in did not return a valid credential.',
+    authGoogleSignInFailed: 'Unable to complete Google sign-in.',
+    authGoogleContinue: 'Continue with Google',
+    authGoogleNotConfigured: 'Google sign-in is not configured in this environment.',
+    authGoogleLoading: 'Loading Google sign-in…',
+    authGoogleCompleting: 'Completing Google sign-in…',
+    authSignupSuccessEyebrow: 'Public sign up',
+    authSignupSuccessTitle: 'Check your email',
+    authSignupSuccessHelper: 'Verify the code first, then log in with your new password.',
+    authSignupSuccessVerifyCta: 'Verify email',
+    authSignupSuccessBackLogin: 'Back to login',
+    authSubmitCreateAccount: 'Create account',
+    authSubmitCreatingAccount: 'Creating account…',
+    authSubmitSignIn: 'Sign in',
+    authSubmitSigningIn: 'Signing in…',
+    authAltAlreadyHaveAccount: 'Already have an account? Log in',
+    authAltNeedAccount: 'Need an account? Sign up',
+    authVerifyEyebrow: 'Email verification',
+    authVerifyTitle: 'Verify your email',
+    authVerifyDefaultNotice: 'Enter the 6-digit verification code we sent to your email.',
+    authVerifyLoginNotice: 'Email verified. Log in with your password to continue.',
+    authVerifyCodeLabel: 'Verification code',
+    authVerifySubmit: 'Verify email',
+    authVerifySubmitting: 'Verifying…',
+    authVerifyResend: 'Resend code',
+    authVerifyResending: 'Sending…',
+    authVerifyResendIn: 'Resend code in',
+    authVerifyBackLogin: 'Back to login',
+    authVerifyInvalidCode: 'The verification code is invalid. Please try again.',
+    authVerifyExpiredCode: 'This verification code expired. Request a new code to continue.',
+    authVerifyUnableToVerify: 'Unable to verify the code right now.',
+    authVerifyUnableToResend: 'Unable to resend the verification code right now.',
+    authCompleteProfileEyebrow: 'Complete your profile',
+    authCompleteProfileTitle: 'Unlock the project assistant',
+    authCompleteProfileDescription: 'Add your full name and company to continue with project-specific chat.',
+    authCompleteProfileFullName: 'Full name',
+    authCompleteProfileCompany: 'Company',
+    authCompleteProfileSave: 'Save profile',
+    authCompleteProfileSaving: 'Saving…',
+    authCompleteProfileBack: 'Back to project',
+    authCompleteProfileUnableToSave: 'Unable to save your profile right now.',
   },
   en: {
     authPublicEyebrow: 'Public access',
@@ -168,6 +457,58 @@ const authMessages: Record<PublicLocale, Pick<Messages, AuthMessageKey>> = {
     authBackToPublicLogin: 'Back to public login',
     detailAssistantLocalRestriction:
       'Passwordless email users still need a verified email and a completed profile before the project assistant unlocks.',
+    authFieldEmail: 'Email',
+    authFieldPassword: 'Password',
+    authFieldConfirmPassword: 'Confirm password',
+    authValidationEmailRequired: 'Email is required.',
+    authValidationPasswordInvalid: 'Password must contain at least 8 characters.',
+    authValidationConfirmRequired: 'Confirm password is required.',
+    authValidationConfirmMismatch: 'Passwords must match.',
+    authInvalidCredentials: 'Invalid email or password.',
+    authForbiddenAdmin: 'This account does not have admin access.',
+    authPasswordSetupRequired: 'This account still needs a password setup or reset before it can sign in.',
+    authUnexpectedError: 'An unexpected error occurred. Please try again.',
+    authGoogleCredentialMissing: 'Google sign-in did not return a valid credential.',
+    authGoogleSignInFailed: 'Unable to complete Google sign-in.',
+    authGoogleContinue: 'Continue with Google',
+    authGoogleNotConfigured: 'Google sign-in is not configured in this environment.',
+    authGoogleLoading: 'Loading Google sign-in…',
+    authGoogleCompleting: 'Completing Google sign-in…',
+    authSignupSuccessEyebrow: 'Public sign up',
+    authSignupSuccessTitle: 'Check your email',
+    authSignupSuccessHelper: 'Verify the code first, then log in with your new password.',
+    authSignupSuccessVerifyCta: 'Verify email',
+    authSignupSuccessBackLogin: 'Back to login',
+    authSubmitCreateAccount: 'Create account',
+    authSubmitCreatingAccount: 'Creating account…',
+    authSubmitSignIn: 'Sign in',
+    authSubmitSigningIn: 'Signing in…',
+    authAltAlreadyHaveAccount: 'Already have an account? Log in',
+    authAltNeedAccount: 'Need an account? Sign up',
+    authVerifyEyebrow: 'Email verification',
+    authVerifyTitle: 'Verify your email',
+    authVerifyDefaultNotice: 'Enter the 6-digit verification code we sent to your email.',
+    authVerifyLoginNotice: 'Email verified. Log in with your password to continue.',
+    authVerifyCodeLabel: 'Verification code',
+    authVerifySubmit: 'Verify email',
+    authVerifySubmitting: 'Verifying…',
+    authVerifyResend: 'Resend code',
+    authVerifyResending: 'Sending…',
+    authVerifyResendIn: 'Resend code in',
+    authVerifyBackLogin: 'Back to login',
+    authVerifyInvalidCode: 'The verification code is invalid. Please try again.',
+    authVerifyExpiredCode: 'This verification code expired. Request a new code to continue.',
+    authVerifyUnableToVerify: 'Unable to verify the code right now.',
+    authVerifyUnableToResend: 'Unable to resend the verification code right now.',
+    authCompleteProfileEyebrow: 'Complete your profile',
+    authCompleteProfileTitle: 'Unlock the project assistant',
+    authCompleteProfileDescription: 'Add your full name and company to continue with project-specific chat.',
+    authCompleteProfileFullName: 'Full name',
+    authCompleteProfileCompany: 'Company',
+    authCompleteProfileSave: 'Save profile',
+    authCompleteProfileSaving: 'Saving…',
+    authCompleteProfileBack: 'Back to project',
+    authCompleteProfileUnableToSave: 'Unable to save your profile right now.',
   },
   de: {
     authPublicEyebrow: 'Öffentlicher Zugang',
@@ -187,6 +528,58 @@ const authMessages: Record<PublicLocale, Pick<Messages, AuthMessageKey>> = {
     authBackToPublicLogin: 'Back to public login',
     detailAssistantLocalRestriction:
       'Passwordless email users still need a verified email and a completed profile before the project assistant unlocks.',
+    authFieldEmail: 'Email',
+    authFieldPassword: 'Password',
+    authFieldConfirmPassword: 'Confirm password',
+    authValidationEmailRequired: 'Email is required.',
+    authValidationPasswordInvalid: 'Password must contain at least 8 characters.',
+    authValidationConfirmRequired: 'Confirm password is required.',
+    authValidationConfirmMismatch: 'Passwords must match.',
+    authInvalidCredentials: 'Invalid email or password.',
+    authForbiddenAdmin: 'This account does not have admin access.',
+    authPasswordSetupRequired: 'This account still needs a password setup or reset before it can sign in.',
+    authUnexpectedError: 'An unexpected error occurred. Please try again.',
+    authGoogleCredentialMissing: 'Google sign-in did not return a valid credential.',
+    authGoogleSignInFailed: 'Unable to complete Google sign-in.',
+    authGoogleContinue: 'Continue with Google',
+    authGoogleNotConfigured: 'Google sign-in is not configured in this environment.',
+    authGoogleLoading: 'Loading Google sign-in…',
+    authGoogleCompleting: 'Completing Google sign-in…',
+    authSignupSuccessEyebrow: 'Public sign up',
+    authSignupSuccessTitle: 'Check your email',
+    authSignupSuccessHelper: 'Verify the code first, then log in with your new password.',
+    authSignupSuccessVerifyCta: 'Verify email',
+    authSignupSuccessBackLogin: 'Back to login',
+    authSubmitCreateAccount: 'Create account',
+    authSubmitCreatingAccount: 'Creating account…',
+    authSubmitSignIn: 'Sign in',
+    authSubmitSigningIn: 'Signing in…',
+    authAltAlreadyHaveAccount: 'Already have an account? Log in',
+    authAltNeedAccount: 'Need an account? Sign up',
+    authVerifyEyebrow: 'Email verification',
+    authVerifyTitle: 'Verify your email',
+    authVerifyDefaultNotice: 'Enter the 6-digit verification code we sent to your email.',
+    authVerifyLoginNotice: 'Email verified. Log in with your password to continue.',
+    authVerifyCodeLabel: 'Verification code',
+    authVerifySubmit: 'Verify email',
+    authVerifySubmitting: 'Verifying…',
+    authVerifyResend: 'Resend code',
+    authVerifyResending: 'Sending…',
+    authVerifyResendIn: 'Resend code in',
+    authVerifyBackLogin: 'Back to login',
+    authVerifyInvalidCode: 'The verification code is invalid. Please try again.',
+    authVerifyExpiredCode: 'This verification code expired. Request a new code to continue.',
+    authVerifyUnableToVerify: 'Unable to verify the code right now.',
+    authVerifyUnableToResend: 'Unable to resend the verification code right now.',
+    authCompleteProfileEyebrow: 'Complete your profile',
+    authCompleteProfileTitle: 'Unlock the project assistant',
+    authCompleteProfileDescription: 'Add your full name and company to continue with project-specific chat.',
+    authCompleteProfileFullName: 'Full name',
+    authCompleteProfileCompany: 'Company',
+    authCompleteProfileSave: 'Save profile',
+    authCompleteProfileSaving: 'Saving…',
+    authCompleteProfileBack: 'Back to project',
+    authCompleteProfileUnableToSave: 'Unable to save your profile right now.',
   },
 };
 
@@ -282,6 +675,87 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailTimeline: 'Timeline',
     detailClientContext: 'Contexto cliente',
     detailVisualUnavailable: 'Visual del caso de estudio no disponible',
+    searchResultsEyebrow: 'Búsqueda pública',
+    searchResultsTitle: 'Busca proyectos por tecnología, cliente o concepto.',
+    searchResultsIntro: 'La búsqueda pública ahora comparte el mismo lenguaje editorial del catálogo y del detalle para que la exploración se sienta consistente.',
+    searchResultsCountSingular: 'proyecto encontrado',
+    searchResultsCountPlural: 'proyectos encontrados',
+    searchResultsError: 'Error al buscar proyectos.',
+    searchResultsSearching: 'Buscando',
+    searchResultsNoResults: 'No se encontraron proyectos para',
+    searchResultsViewCatalog: 'Ver catálogo completo',
+    searchResultsLoadMore: 'Cargar más',
+    searchResultsLoadingMore: 'Cargando…',
+    searchResultsMinCharacters: 'Escribe al menos 2 caracteres para buscar',
+    searchFiltersTitle: 'Filtros',
+    searchFiltersCategory: 'Categoría',
+    searchFiltersClient: 'Cliente',
+    searchFiltersTechnologies: 'Tecnologías',
+    searchFiltersClear: 'Limpiar filtros',
+    searchResultProjectVisual: 'Visual del proyecto',
+    searchResultMoreTechnologies: 'más',
+    searchResultMatchDetailsAria: 'Detalles de coincidencia',
+    searchContextTitle: 'Por qué coincide',
+    searchContextEvidenceTitle: 'Evidencia utilizada',
+    searchContextExplanationPrefix: 'Coincide con la búsqueda',
+    searchContextExplanationConnector: 'en',
+    searchContextAnd: 'y',
+    searchContextRelevantProjectFields: 'campos relevantes del proyecto',
+    searchEvidenceFieldTitle: 'Título del proyecto',
+    searchEvidenceFieldSummary: 'Resumen',
+    searchEvidenceFieldDescription: 'Descripción',
+    searchEvidenceFieldClient: 'Cliente',
+    searchEvidenceFieldCategory: 'Categoría',
+    searchEvidenceFieldTechnology: 'Tecnología',
+    searchEvidenceFieldTechnologies: 'Tecnologías',
+    searchEvidenceFieldSolution: 'Solución implementada',
+    searchEvidenceFieldArchitecture: 'Arquitectura',
+    searchEvidenceFieldBusinessGoal: 'Objetivo de negocio',
+    searchEvidenceFieldAIUsage: 'Uso de IA',
+    searchEvidenceFieldTechnicalDecisions: 'Decisiones técnicas',
+    searchEvidenceFieldResults: 'Resultados',
+    searchMatchTypeFTS: 'Texto coincidente',
+    searchMatchTypeFuzzy: 'Coincidencia aproximada',
+    searchMatchTypeSemantic: 'Coincidencia semántica',
+    searchMatchTypeStructured: 'Coincidencia estructurada',
+    searchResultOpenCaseStudy: 'Abrir caso de estudio',
+    detailCaseStudyEyebrow: 'Caso de estudio',
+    detailErrorEyebrow: 'Error',
+    detailProjectHighlightsAria: 'Aspectos destacados del proyecto',
+    detailAdminMarkdownSource: 'Fuente markdown de admin',
+    detailTechnologiesUsedAria: 'Tecnologías utilizadas',
+    detailHeroGalleryAria: 'Galería principal del proyecto',
+    detailGalleryFeatured: 'Destacada',
+    detailGalleryOpenImage: 'Abrir imagen',
+    detailGalleryControlsAria: 'Controles de galería',
+    detailGalleryPreviousImage: 'Imagen anterior',
+    detailGalleryNextImage: 'Imagen siguiente',
+    detailGalleryFallbackCaption: 'Visual del proyecto',
+    detailGalleryViewFull: 'Ver completa',
+    detailAssistantAccessRequirementsAria: 'Requisitos de acceso al asistente',
+    detailAssistantEyebrow: 'Asistente del proyecto',
+    detailAssistantLoginPrompt: 'Inicia sesión para desbloquear el chat específico del proyecto.',
+    detailAssistantLoginCta: 'Iniciar sesión',
+    detailAssistantVerifyPrompt: 'Verifica tu email para mantener tu cuenta local habilitada para el asistente.',
+    detailAssistantVerifyCta: 'Verificar email',
+    detailAssistantCompleteProfilePrompt: 'Completa tu perfil con tu nombre completo y empresa para habilitar el asistente.',
+    detailAssistantCompleteProfileCta: 'Completar perfil',
+    detailAssistantGoogleRestriction: 'El acceso con Google requiere un email verificado antes de habilitar el asistente.',
+    detailLightboxAria: 'Vista previa de imagen',
+    detailLightboxClose: 'Cerrar vista previa de imagen',
+    detailAssistantToggleOpen: 'Preguntar al asistente del proyecto',
+    detailAssistantToggleClose: 'Cerrar asistente',
+    detailAssistantPanelAria: 'Asistente del proyecto',
+    detailAssistantConversationResume: 'Continúa la conversación con el contexto de esta sesión del navegador solamente.',
+    detailAssistantConversationIntro: 'Haz preguntas detalladas apoyadas en la documentación del proyecto.',
+    detailAssistantEmpty: 'Prueba a preguntar por arquitectura, resultados, integraciones o tradeoffs.',
+    detailAssistantRoleAssistant: 'Asistente',
+    detailAssistantRoleYou: 'Tú',
+    detailAssistantThinking: 'Pensando…',
+    detailAssistantPlaceholder: 'Haz una pregunta detallada sobre este proyecto',
+    detailAssistantClear: 'Limpiar chat',
+    detailAssistantSend: 'Enviar',
+    detailAssistantUnavailable: 'Asistente no disponible.',
   },
   ca: {
     headerTitle: 'Portfoli de projectes',
@@ -374,6 +848,87 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailTimeline: 'Timeline',
     detailClientContext: 'Context client',
     detailVisualUnavailable: 'Visual del cas d’estudi no disponible',
+    searchResultsEyebrow: 'Cerca pública',
+    searchResultsTitle: 'Cerca projectes per tecnologia, client o concepte.',
+    searchResultsIntro: 'La cerca pública ara comparteix el mateix llenguatge editorial del catàleg i del detall perquè l’exploració se senti consistent.',
+    searchResultsCountSingular: 'projecte trobat',
+    searchResultsCountPlural: 'projectes trobats',
+    searchResultsError: 'Error en cercar projectes.',
+    searchResultsSearching: 'Cercant',
+    searchResultsNoResults: 'No s’han trobat projectes per a',
+    searchResultsViewCatalog: 'Veure catàleg complet',
+    searchResultsLoadMore: 'Carregar més',
+    searchResultsLoadingMore: 'Carregant…',
+    searchResultsMinCharacters: 'Escriu almenys 2 caràcters per cercar',
+    searchFiltersTitle: 'Filtres',
+    searchFiltersCategory: 'Categoria',
+    searchFiltersClient: 'Client',
+    searchFiltersTechnologies: 'Tecnologies',
+    searchFiltersClear: 'Netejar filtres',
+    searchResultProjectVisual: 'Visual del projecte',
+    searchResultMoreTechnologies: 'més',
+    searchResultMatchDetailsAria: 'Detalls de coincidència',
+    searchContextTitle: 'Per què coincideix',
+    searchContextEvidenceTitle: 'Evidència utilitzada',
+    searchContextExplanationPrefix: 'Coincideix amb la cerca',
+    searchContextExplanationConnector: 'a',
+    searchContextAnd: 'i',
+    searchContextRelevantProjectFields: 'camps rellevants del projecte',
+    searchEvidenceFieldTitle: 'Títol del projecte',
+    searchEvidenceFieldSummary: 'Resum',
+    searchEvidenceFieldDescription: 'Descripció',
+    searchEvidenceFieldClient: 'Client',
+    searchEvidenceFieldCategory: 'Categoria',
+    searchEvidenceFieldTechnology: 'Tecnologia',
+    searchEvidenceFieldTechnologies: 'Tecnologies',
+    searchEvidenceFieldSolution: 'Solució implementada',
+    searchEvidenceFieldArchitecture: 'Arquitectura',
+    searchEvidenceFieldBusinessGoal: 'Objectiu de negoci',
+    searchEvidenceFieldAIUsage: 'Ús d’IA',
+    searchEvidenceFieldTechnicalDecisions: 'Decisions tècniques',
+    searchEvidenceFieldResults: 'Resultats',
+    searchMatchTypeFTS: 'Text coincident',
+    searchMatchTypeFuzzy: 'Coincidència aproximada',
+    searchMatchTypeSemantic: 'Coincidència semàntica',
+    searchMatchTypeStructured: 'Coincidència estructurada',
+    searchResultOpenCaseStudy: 'Obrir cas d’estudi',
+    detailCaseStudyEyebrow: 'Cas d’estudi',
+    detailErrorEyebrow: 'Error',
+    detailProjectHighlightsAria: 'Aspectes destacats del projecte',
+    detailAdminMarkdownSource: 'Font markdown d’admin',
+    detailTechnologiesUsedAria: 'Tecnologies utilitzades',
+    detailHeroGalleryAria: 'Galeria principal del projecte',
+    detailGalleryFeatured: 'Destacada',
+    detailGalleryOpenImage: 'Obrir imatge',
+    detailGalleryControlsAria: 'Controls de galeria',
+    detailGalleryPreviousImage: 'Imatge anterior',
+    detailGalleryNextImage: 'Imatge següent',
+    detailGalleryFallbackCaption: 'Visual del projecte',
+    detailGalleryViewFull: 'Veure completa',
+    detailAssistantAccessRequirementsAria: 'Requisits d’accés a l’assistent',
+    detailAssistantEyebrow: 'Assistent del projecte',
+    detailAssistantLoginPrompt: 'Inicia sessió per desbloquejar el xat específic del projecte.',
+    detailAssistantLoginCta: 'Iniciar sessió',
+    detailAssistantVerifyPrompt: 'Verifica el teu correu per mantenir el compte local habilitat per a l’assistent.',
+    detailAssistantVerifyCta: 'Verificar correu',
+    detailAssistantCompleteProfilePrompt: 'Completa el teu perfil amb el teu nom complet i empresa per habilitar l’assistent.',
+    detailAssistantCompleteProfileCta: 'Completar perfil',
+    detailAssistantGoogleRestriction: 'L’accés amb Google requereix un correu verificat abans d’habilitar l’assistent.',
+    detailLightboxAria: 'Vista prèvia de la imatge',
+    detailLightboxClose: 'Tancar la vista prèvia de la imatge',
+    detailAssistantToggleOpen: 'Preguntar a l’assistent del projecte',
+    detailAssistantToggleClose: 'Tancar assistent',
+    detailAssistantPanelAria: 'Assistent del projecte',
+    detailAssistantConversationResume: 'Continua la conversa amb el context d’aquesta sessió del navegador només.',
+    detailAssistantConversationIntro: 'Fes preguntes detallades recolzades en la documentació del projecte.',
+    detailAssistantEmpty: 'Prova de preguntar per arquitectura, resultats, integracions o tradeoffs.',
+    detailAssistantRoleAssistant: 'Assistent',
+    detailAssistantRoleYou: 'Tu',
+    detailAssistantThinking: 'Pensant…',
+    detailAssistantPlaceholder: 'Fes una pregunta detallada sobre aquest projecte',
+    detailAssistantClear: 'Netejar xat',
+    detailAssistantSend: 'Enviar',
+    detailAssistantUnavailable: 'Assistent no disponible.',
   },
   en: {
     headerTitle: 'Project portfolio',
@@ -466,6 +1021,87 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailTimeline: 'Timeline',
     detailClientContext: 'Client context',
     detailVisualUnavailable: 'Case study visual unavailable',
+    searchResultsEyebrow: 'Public search',
+    searchResultsTitle: 'Search projects by technology, client, or concept.',
+    searchResultsIntro: 'Public search now shares the same editorial language as the catalog and detail views so exploration feels consistent.',
+    searchResultsCountSingular: 'project found',
+    searchResultsCountPlural: 'projects found',
+    searchResultsError: 'Error while searching projects.',
+    searchResultsSearching: 'Searching',
+    searchResultsNoResults: 'No projects were found for',
+    searchResultsViewCatalog: 'View full catalog',
+    searchResultsLoadMore: 'Load more',
+    searchResultsLoadingMore: 'Loading…',
+    searchResultsMinCharacters: 'Type at least 2 characters to search',
+    searchFiltersTitle: 'Filters',
+    searchFiltersCategory: 'Category',
+    searchFiltersClient: 'Client',
+    searchFiltersTechnologies: 'Technologies',
+    searchFiltersClear: 'Clear filters',
+    searchResultProjectVisual: 'Project visual',
+    searchResultMoreTechnologies: 'more',
+    searchResultMatchDetailsAria: 'Match details',
+    searchContextTitle: 'Why it matches',
+    searchContextEvidenceTitle: 'Evidence used',
+    searchContextExplanationPrefix: 'Matches your search',
+    searchContextExplanationConnector: 'in',
+    searchContextAnd: 'and',
+    searchContextRelevantProjectFields: 'relevant project fields',
+    searchEvidenceFieldTitle: 'Project title',
+    searchEvidenceFieldSummary: 'Summary',
+    searchEvidenceFieldDescription: 'Description',
+    searchEvidenceFieldClient: 'Client',
+    searchEvidenceFieldCategory: 'Category',
+    searchEvidenceFieldTechnology: 'Technology',
+    searchEvidenceFieldTechnologies: 'Technologies',
+    searchEvidenceFieldSolution: 'Implemented solution',
+    searchEvidenceFieldArchitecture: 'Architecture',
+    searchEvidenceFieldBusinessGoal: 'Business goal',
+    searchEvidenceFieldAIUsage: 'AI usage',
+    searchEvidenceFieldTechnicalDecisions: 'Technical decisions',
+    searchEvidenceFieldResults: 'Results',
+    searchMatchTypeFTS: 'Matching text',
+    searchMatchTypeFuzzy: 'Approximate match',
+    searchMatchTypeSemantic: 'Semantic match',
+    searchMatchTypeStructured: 'Structured match',
+    searchResultOpenCaseStudy: 'Open case study',
+    detailCaseStudyEyebrow: 'Case study',
+    detailErrorEyebrow: 'Error',
+    detailProjectHighlightsAria: 'Project highlights',
+    detailAdminMarkdownSource: 'Admin markdown source',
+    detailTechnologiesUsedAria: 'Technologies used',
+    detailHeroGalleryAria: 'Main project gallery',
+    detailGalleryFeatured: 'Featured',
+    detailGalleryOpenImage: 'Open image',
+    detailGalleryControlsAria: 'Gallery controls',
+    detailGalleryPreviousImage: 'Previous image',
+    detailGalleryNextImage: 'Next image',
+    detailGalleryFallbackCaption: 'Project visual',
+    detailGalleryViewFull: 'View full size',
+    detailAssistantAccessRequirementsAria: 'Assistant access requirements',
+    detailAssistantEyebrow: 'Project assistant',
+    detailAssistantLoginPrompt: 'Log in to unlock project-specific chat.',
+    detailAssistantLoginCta: 'Log in',
+    detailAssistantVerifyPrompt: 'Verify your email to keep your local account eligible for the assistant.',
+    detailAssistantVerifyCta: 'Verify email',
+    detailAssistantCompleteProfilePrompt: 'Complete your profile with your full name and company to enable the assistant.',
+    detailAssistantCompleteProfileCta: 'Complete profile',
+    detailAssistantGoogleRestriction: 'Google sign-in requires a verified email before the assistant can be enabled.',
+    detailLightboxAria: 'Image preview',
+    detailLightboxClose: 'Close image preview',
+    detailAssistantToggleOpen: 'Ask project assistant',
+    detailAssistantToggleClose: 'Close assistant',
+    detailAssistantPanelAria: 'Project assistant',
+    detailAssistantConversationResume: 'Continue the conversation with context from this browser session only.',
+    detailAssistantConversationIntro: 'Ask detailed questions grounded in the project documentation.',
+    detailAssistantEmpty: 'Try asking about architecture, results, integrations, or tradeoffs.',
+    detailAssistantRoleAssistant: 'Assistant',
+    detailAssistantRoleYou: 'You',
+    detailAssistantThinking: 'Thinking…',
+    detailAssistantPlaceholder: 'Ask a detailed question about this project',
+    detailAssistantClear: 'Clear chat',
+    detailAssistantSend: 'Send',
+    detailAssistantUnavailable: 'Assistant unavailable.',
   },
   de: {
     headerTitle: 'Projektportfolio',
@@ -558,6 +1194,87 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailTimeline: 'Timeline',
     detailClientContext: 'Kundenkontext',
     detailVisualUnavailable: 'Visual der Fallstudie nicht verfügbar',
+    searchResultsEyebrow: 'Öffentliche Suche',
+    searchResultsTitle: 'Suche Projekte nach Technologie, Kunde oder Konzept.',
+    searchResultsIntro: 'Die öffentliche Suche nutzt jetzt dieselbe editorische Sprache wie Katalog und Detailansicht, damit sich die Exploration konsistent anfühlt.',
+    searchResultsCountSingular: 'Projekt gefunden',
+    searchResultsCountPlural: 'Projekte gefunden',
+    searchResultsError: 'Fehler bei der Projektsuche.',
+    searchResultsSearching: 'Suche läuft',
+    searchResultsNoResults: 'Keine Projekte gefunden für',
+    searchResultsViewCatalog: 'Gesamten Katalog ansehen',
+    searchResultsLoadMore: 'Mehr laden',
+    searchResultsLoadingMore: 'Wird geladen…',
+    searchResultsMinCharacters: 'Gib mindestens 2 Zeichen für die Suche ein',
+    searchFiltersTitle: 'Filter',
+    searchFiltersCategory: 'Kategorie',
+    searchFiltersClient: 'Kunde',
+    searchFiltersTechnologies: 'Technologien',
+    searchFiltersClear: 'Filter löschen',
+    searchResultProjectVisual: 'Projektvisual',
+    searchResultMoreTechnologies: 'mehr',
+    searchResultMatchDetailsAria: 'Trefferdetails',
+    searchContextTitle: 'Warum es passt',
+    searchContextEvidenceTitle: 'Verwendete Evidenz',
+    searchContextExplanationPrefix: 'Passt zu deiner Suche',
+    searchContextExplanationConnector: 'in',
+    searchContextAnd: 'und',
+    searchContextRelevantProjectFields: 'relevanten Projektfeldern',
+    searchEvidenceFieldTitle: 'Projekttitel',
+    searchEvidenceFieldSummary: 'Zusammenfassung',
+    searchEvidenceFieldDescription: 'Beschreibung',
+    searchEvidenceFieldClient: 'Kunde',
+    searchEvidenceFieldCategory: 'Kategorie',
+    searchEvidenceFieldTechnology: 'Technologie',
+    searchEvidenceFieldTechnologies: 'Technologien',
+    searchEvidenceFieldSolution: 'Umgesetzte Lösung',
+    searchEvidenceFieldArchitecture: 'Architektur',
+    searchEvidenceFieldBusinessGoal: 'Geschäftsziel',
+    searchEvidenceFieldAIUsage: 'KI-Einsatz',
+    searchEvidenceFieldTechnicalDecisions: 'Technische Entscheidungen',
+    searchEvidenceFieldResults: 'Ergebnisse',
+    searchMatchTypeFTS: 'Passender Text',
+    searchMatchTypeFuzzy: 'Ungefähre Übereinstimmung',
+    searchMatchTypeSemantic: 'Semantische Übereinstimmung',
+    searchMatchTypeStructured: 'Strukturierte Übereinstimmung',
+    searchResultOpenCaseStudy: 'Fallstudie öffnen',
+    detailCaseStudyEyebrow: 'Fallstudie',
+    detailErrorEyebrow: 'Fehler',
+    detailProjectHighlightsAria: 'Projekthighlights',
+    detailAdminMarkdownSource: 'Admin-Markdown-Quelle',
+    detailTechnologiesUsedAria: 'Verwendete Technologien',
+    detailHeroGalleryAria: 'Hauptgalerie des Projekts',
+    detailGalleryFeatured: 'Hervorgehoben',
+    detailGalleryOpenImage: 'Bild öffnen',
+    detailGalleryControlsAria: 'Galeriesteuerung',
+    detailGalleryPreviousImage: 'Vorheriges Bild',
+    detailGalleryNextImage: 'Nächstes Bild',
+    detailGalleryFallbackCaption: 'Projektvisual',
+    detailGalleryViewFull: 'Voll anzeigen',
+    detailAssistantAccessRequirementsAria: 'Zugriffsanforderungen für den Assistenten',
+    detailAssistantEyebrow: 'Projektassistent',
+    detailAssistantLoginPrompt: 'Melde dich an, um den projektspezifischen Chat freizuschalten.',
+    detailAssistantLoginCta: 'Anmelden',
+    detailAssistantVerifyPrompt: 'Verifiziere deine E-Mail, damit dein lokales Konto für den Assistenten berechtigt bleibt.',
+    detailAssistantVerifyCta: 'E-Mail verifizieren',
+    detailAssistantCompleteProfilePrompt: 'Vervollständige dein Profil mit deinem vollständigen Namen und Unternehmen, um den Assistenten zu aktivieren.',
+    detailAssistantCompleteProfileCta: 'Profil vervollständigen',
+    detailAssistantGoogleRestriction: 'Google-Anmeldung erfordert eine verifizierte E-Mail, bevor der Assistent aktiviert werden kann.',
+    detailLightboxAria: 'Bildvorschau',
+    detailLightboxClose: 'Bildvorschau schließen',
+    detailAssistantToggleOpen: 'Projektassistent fragen',
+    detailAssistantToggleClose: 'Assistent schließen',
+    detailAssistantPanelAria: 'Projektassistent',
+    detailAssistantConversationResume: 'Setze die Unterhaltung nur mit dem Kontext dieser Browser-Sitzung fort.',
+    detailAssistantConversationIntro: 'Stelle detaillierte Fragen auf Basis der Projektdokumentation.',
+    detailAssistantEmpty: 'Frage zum Beispiel nach Architektur, Ergebnissen, Integrationen oder Tradeoffs.',
+    detailAssistantRoleAssistant: 'Assistent',
+    detailAssistantRoleYou: 'Du',
+    detailAssistantThinking: 'Denkt nach…',
+    detailAssistantPlaceholder: 'Stelle eine detaillierte Frage zu diesem Projekt',
+    detailAssistantClear: 'Chat leeren',
+    detailAssistantSend: 'Senden',
+    detailAssistantUnavailable: 'Assistent nicht verfügbar.',
   },
 };
 

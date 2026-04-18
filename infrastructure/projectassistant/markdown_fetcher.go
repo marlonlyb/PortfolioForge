@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/marlonlyb/portfolioforge/domain/services"
+	"github.com/marlonlyb/portfolioforge/internal/markdownpolicy"
 )
 
 var (
@@ -30,38 +30,30 @@ const (
 	defaultCurlConnectTime   = 12
 )
 
-var defaultMarkdownAllowlist = []string{"mlbautomation.com", "www.mlbautomation.com"}
-
 type MarkdownFetcher struct {
-	client    *http.Client
-	cache     *MarkdownCache
-	allowlist map[string]struct{}
-	maxBytes  int64
+	client             *http.Client
+	cache              *MarkdownCache
+	maxBytes           int64
+	sourceURLValidator func(string) error
 }
 
 func NewMarkdownFetcher(cache *MarkdownCache) *MarkdownFetcher {
-	allowlist := map[string]struct{}{}
-	for _, host := range defaultMarkdownAllowlist {
-		allowlist[host] = struct{}{}
+	fetcher := &MarkdownFetcher{cache: cache, maxBytes: defaultMarkdownMaxBytes}
+	fetcher.sourceURLValidator = markdownpolicy.ValidateSourceURL
+	fetcher.client = &http.Client{
+		Timeout: defaultMarkdownTimeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) > defaultMarkdownRedirects {
+				return fmt.Errorf("%w: too many redirects", ErrMarkdownFetchFailed)
+			}
+			if err := fetcher.sourceURLValidator(req.URL.String()); err != nil {
+				return mapMarkdownValidationError(err, "redirect host")
+			}
+			return nil
+		},
 	}
 
-	return &MarkdownFetcher{
-		client: &http.Client{
-			Timeout: defaultMarkdownTimeout,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				if len(via) > defaultMarkdownRedirects {
-					return fmt.Errorf("%w: too many redirects", ErrMarkdownFetchFailed)
-				}
-				if _, ok := allowlist[strings.ToLower(req.URL.Hostname())]; !ok {
-					return fmt.Errorf("%w: redirect host", ErrMarkdownHostRejected)
-				}
-				return nil
-			},
-		},
-		cache:     cache,
-		allowlist: allowlist,
-		maxBytes:  defaultMarkdownMaxBytes,
-	}
+	return fetcher
 }
 
 func NewDefaultMarkdownCache() *MarkdownCache {
@@ -75,25 +67,19 @@ func (f *MarkdownFetcher) Fetch(ctx context.Context, projectID string, sourceURL
 		}
 	}
 
-	parsedURL, err := url.Parse(strings.TrimSpace(sourceURL))
-	if err != nil {
-		return nil, fmt.Errorf("%w: invalid url", ErrMarkdownFetchFailed)
-	}
-	if parsedURL.Scheme != "https" {
-		return nil, fmt.Errorf("%w: only https is allowed", ErrMarkdownHostRejected)
-	}
-	if _, ok := f.allowlist[strings.ToLower(parsedURL.Hostname())]; !ok {
-		return nil, fmt.Errorf("%w: host %s", ErrMarkdownHostRejected, parsedURL.Hostname())
+	normalizedURL := strings.TrimSpace(sourceURL)
+	if err := f.sourceURLValidator(normalizedURL); err != nil {
+		return nil, mapMarkdownValidationError(err, "source url")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsedURL.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, normalizedURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: build request", ErrMarkdownFetchFailed)
 	}
 
 	resp, err := f.client.Do(req)
 	if err != nil {
-		body, curlErr := f.fetchViaCurl(ctx, parsedURL.String())
+		body, curlErr := f.fetchViaCurl(ctx, normalizedURL)
 		if curlErr != nil {
 			if f.cache != nil {
 				if cached, ok := f.cache.GetStale(projectID, sourceURL); ok {
@@ -107,7 +93,7 @@ func (f *MarkdownFetcher) Fetch(ctx context.Context, projectID string, sourceURL
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, curlErr := f.fetchViaCurl(ctx, parsedURL.String())
+		body, curlErr := f.fetchViaCurl(ctx, normalizedURL)
 		if curlErr != nil {
 			if f.cache != nil {
 				if cached, ok := f.cache.GetStale(projectID, sourceURL); ok {
@@ -122,7 +108,7 @@ func (f *MarkdownFetcher) Fetch(ctx context.Context, projectID string, sourceURL
 	limited := io.LimitReader(resp.Body, f.maxBytes+1)
 	body, err := io.ReadAll(limited)
 	if err != nil {
-		fallbackBody, curlErr := f.fetchViaCurl(ctx, parsedURL.String())
+		fallbackBody, curlErr := f.fetchViaCurl(ctx, normalizedURL)
 		if curlErr != nil {
 			if f.cache != nil {
 				if cached, ok := f.cache.GetStale(projectID, sourceURL); ok {
@@ -135,6 +121,14 @@ func (f *MarkdownFetcher) Fetch(ctx context.Context, projectID string, sourceURL
 	}
 
 	return f.parseAndCache(projectID, sourceURL, body)
+}
+
+func mapMarkdownValidationError(err error, detail string) error {
+	if errors.Is(err, markdownpolicy.ErrSourceHostRejected) {
+		return fmt.Errorf("%w: %s", ErrMarkdownHostRejected, detail)
+	}
+
+	return fmt.Errorf("%w: %s", ErrMarkdownFetchFailed, detail)
 }
 
 func (f *MarkdownFetcher) parseAndCache(projectID string, sourceURL string, body []byte) ([]services.MarkdownChunkAlias, error) {

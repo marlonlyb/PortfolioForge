@@ -1,3 +1,4 @@
+import { useLocale } from '../../app/providers/LocaleProvider';
 import type { SearchFilters as SearchFiltersType, SearchResult } from '../../shared/types/search';
 
 interface SearchFiltersProps {
@@ -6,16 +7,28 @@ interface SearchFiltersProps {
   onFilterChange: (filters: SearchFiltersType) => void;
 }
 
+interface SearchTechnologyOption {
+  name: string;
+  slug: string;
+}
+
 function uniqueSorted(values: (string | null | undefined)[]): string[] {
   return [...new Set(values.filter((v): v is string => Boolean(v?.trim())))].sort();
 }
 
 export function SearchFilters({ filters, results, onFilterChange }: SearchFiltersProps) {
+  const { t } = useLocale();
   const categories = uniqueSorted(results.map((r) => r.category));
   const clients = uniqueSorted(results.map((r) => r.client_name));
-  const techs = uniqueSorted(
-    results.flatMap((r) => r.technologies.map((t) => t.name)),
-  );
+  const techs = results
+    .flatMap((result) => result.technologies)
+    .reduce<SearchTechnologyOption[]>((options, technology) => {
+      if (options.some((option) => option.slug === technology.slug)) {
+        return options;
+      }
+      return [...options, { name: technology.name, slug: technology.slug }];
+    }, [])
+    .sort((left, right) => left.name.localeCompare(right.name));
 
   const hasActiveFilters =
     filters.category !== null || filters.client !== null || filters.technologies.length > 0;
@@ -38,11 +51,11 @@ export function SearchFilters({ filters, results, onFilterChange }: SearchFilter
     });
   }
 
-  function handleTechnologyToggle(tech: string) {
+  function handleTechnologyToggle(technologySlug: string) {
     const current = filters.technologies;
-    const next = current.includes(tech)
-      ? current.filter((t) => t !== tech)
-      : [...current, tech];
+    const next = current.includes(technologySlug)
+      ? current.filter((technology) => technology !== technologySlug)
+      : [...current, technologySlug];
     onFilterChange({
       ...filters,
       technologies: next,
@@ -60,7 +73,7 @@ export function SearchFilters({ filters, results, onFilterChange }: SearchFilter
   return (
     <aside className="search-filters">
       <h3>
-        Filtros
+        {t.searchFiltersTitle}
         {totalBadgeCount > 0 && (
           <span className="chip chip--active" style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }}>
             {totalBadgeCount}
@@ -70,7 +83,7 @@ export function SearchFilters({ filters, results, onFilterChange }: SearchFilter
 
       {categories.length > 0 && (
         <div className="search-filters__section">
-          <p className="search-filters__label">Categoría</p>
+          <p className="search-filters__label">{t.searchFiltersCategory}</p>
           <div className="search-filters__options">
             {categories.map((cat) => (
               <button
@@ -88,7 +101,7 @@ export function SearchFilters({ filters, results, onFilterChange }: SearchFilter
 
       {clients.length > 0 && (
         <div className="search-filters__section">
-          <p className="search-filters__label">Cliente</p>
+          <p className="search-filters__label">{t.searchFiltersClient}</p>
           <div className="search-filters__options">
             {clients.map((client) => (
               <button
@@ -107,20 +120,20 @@ export function SearchFilters({ filters, results, onFilterChange }: SearchFilter
       {techs.length > 0 && (
         <div className="search-filters__section">
           <p className="search-filters__label">
-            Tecnologías
+            {t.searchFiltersTechnologies}
             {techBadgeCount > 0 && (
               <span style={{ marginLeft: '0.35rem', fontWeight: 400 }}>({techBadgeCount})</span>
             )}
           </p>
           <div className="search-filters__options">
-            {techs.map((tech) => (
+            {techs.map((technology) => (
               <button
-                key={tech}
-                className={`chip${filters.technologies.includes(tech) ? ' chip--active' : ''}`}
+                key={technology.slug}
+                className={`chip${filters.technologies.includes(technology.slug) ? ' chip--active' : ''}`}
                 type="button"
-                onClick={() => handleTechnologyToggle(tech)}
+                onClick={() => handleTechnologyToggle(technology.slug)}
               >
-                {tech}
+                {technology.name}
               </button>
             ))}
           </div>
@@ -133,7 +146,7 @@ export function SearchFilters({ filters, results, onFilterChange }: SearchFilter
           type="button"
           onClick={handleClear}
         >
-          Limpiar filtros
+          {t.searchFiltersClear}
         </button>
       )}
     </aside>

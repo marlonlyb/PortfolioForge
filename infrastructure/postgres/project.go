@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/marlonlyb/portfolioforge/internal/markdownpolicy"
 	"github.com/marlonlyb/portfolioforge/model"
 )
 
@@ -28,12 +29,13 @@ func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (model.Pr
 	var p model.Project
 	var profile model.ProjectProfile
 	var profileUpdatedAt sql.NullInt64
+	var sourceMarkdownURL string
 
 	err := r.db.QueryRow(ctx, `
 		SELECT p.id, p.name,
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
 			p.description, p.category, COALESCE(p.brand, '') AS client_name,
-			p.active, (COALESCE(NULLIF(trim(p.source_markdown_url), ''), '') <> '') AS assistant_available, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
+			p.active, COALESCE(p.source_markdown_url, '') AS source_markdown_url, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
 			COALESCE(pp.business_goal, ''), COALESCE(pp.problem_statement, ''),
 			COALESCE(pp.solution_summary, ''), COALESCE(pp.delivery_scope, ''), COALESCE(pp.responsibility_scope, ''), COALESCE(pp.architecture, ''),
 			COALESCE(pp.integrations, 'null'), COALESCE(pp.ai_usage, ''),
@@ -44,7 +46,7 @@ func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (model.Pr
 		LEFT JOIN project_profiles pp ON pp.project_id = p.id
 		WHERE p.id = $1`, id).Scan(
 		&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName,
-		&p.Active, &p.AssistantAvailable, &p.Images, &p.CreatedAt, &p.UpdatedAt,
+		&p.Active, &sourceMarkdownURL, &p.Images, &p.CreatedAt, &p.UpdatedAt,
 		&profile.BusinessGoal, &profile.ProblemStatement,
 		&profile.SolutionSummary, &profile.DeliveryScope, &profile.ResponsibilityScope, &profile.Architecture,
 		&profile.Integrations, &profile.AIUsage,
@@ -55,6 +57,7 @@ func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (model.Pr
 	if err != nil {
 		return model.Project{}, fmt.Errorf("postgres.ProjectRepository.GetByID: %w", err)
 	}
+	p.AssistantAvailable = markdownpolicy.IsAllowedSourceURL(sourceMarkdownURL)
 
 	p.Status = "published"
 	if !p.Active {
@@ -86,12 +89,13 @@ func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (model.P
 	var p model.Project
 	var profile model.ProjectProfile
 	var profileUpdatedAt sql.NullInt64
+	var sourceMarkdownURL string
 
 	err := r.db.QueryRow(ctx, `
 		SELECT p.id, p.name,
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
 			p.description, p.category, COALESCE(p.brand, '') AS client_name,
-			p.active, (COALESCE(NULLIF(trim(p.source_markdown_url), ''), '') <> '') AS assistant_available, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
+			p.active, COALESCE(p.source_markdown_url, '') AS source_markdown_url, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
 			COALESCE(pp.business_goal, ''), COALESCE(pp.problem_statement, ''),
 			COALESCE(pp.solution_summary, ''), COALESCE(pp.delivery_scope, ''), COALESCE(pp.responsibility_scope, ''), COALESCE(pp.architecture, ''),
 			COALESCE(pp.integrations, 'null'), COALESCE(pp.ai_usage, ''),
@@ -102,7 +106,7 @@ func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (model.P
 		LEFT JOIN project_profiles pp ON pp.project_id = p.id
 		WHERE p.slug = $1 AND p.active = TRUE`, slug).Scan(
 		&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName,
-		&p.Active, &p.AssistantAvailable, &p.Images, &p.CreatedAt, &p.UpdatedAt,
+		&p.Active, &sourceMarkdownURL, &p.Images, &p.CreatedAt, &p.UpdatedAt,
 		&profile.BusinessGoal, &profile.ProblemStatement,
 		&profile.SolutionSummary, &profile.DeliveryScope, &profile.ResponsibilityScope, &profile.Architecture,
 		&profile.Integrations, &profile.AIUsage,
@@ -113,6 +117,7 @@ func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (model.P
 	if err != nil {
 		return model.Project{}, fmt.Errorf("postgres.ProjectRepository.GetBySlug: %w", err)
 	}
+	p.AssistantAvailable = markdownpolicy.IsAllowedSourceURL(sourceMarkdownURL)
 
 	p.Status = "published"
 
@@ -142,7 +147,7 @@ func (r *ProjectRepository) ListPublished(ctx context.Context) ([]model.Project,
 		SELECT p.id, p.name,
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
 			p.description, p.category, COALESCE(p.brand, '') AS client_name,
-			p.active, (COALESCE(NULLIF(trim(p.source_markdown_url), ''), '') <> '') AS assistant_available, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at
+			p.active, COALESCE(p.source_markdown_url, '') AS source_markdown_url, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at
 		FROM products p
 		WHERE p.active = TRUE
 		ORDER BY p.created_at DESC`)
@@ -154,13 +159,15 @@ func (r *ProjectRepository) ListPublished(ctx context.Context) ([]model.Project,
 	var projects []model.Project
 	for rows.Next() {
 		var p model.Project
+		var sourceMarkdownURL string
 		if err := rows.Scan(
 			&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName,
-			&p.Active, &p.AssistantAvailable, &p.Images, &p.CreatedAt, &p.UpdatedAt,
+			&p.Active, &sourceMarkdownURL, &p.Images, &p.CreatedAt, &p.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("postgres.ProjectRepository.ListPublished scan: %w", err)
 		}
 		p.Status = "published"
+		p.AssistantAvailable = markdownpolicy.IsAllowedSourceURL(sourceMarkdownURL)
 		projects = append(projects, p)
 	}
 
@@ -204,6 +211,7 @@ func (r *ProjectRepository) GetAssistantContextBySlug(ctx context.Context, slug 
 	if err != nil {
 		return model.ProjectAssistantContext{}, fmt.Errorf("postgres.ProjectRepository.GetAssistantContextBySlug: %w", err)
 	}
+	project.SourceMarkdownURL = markdownpolicy.SanitizeSourceURL(project.SourceMarkdownURL)
 
 	return project, nil
 }

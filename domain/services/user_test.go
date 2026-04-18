@@ -382,6 +382,36 @@ func TestPublicLoginAllowsAdminUserAndPersistsLastLogin(t *testing.T) {
 	}
 }
 
+func TestAdminLoginRejectsNonAdminLocalUser(t *testing.T) {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("secret-123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("GenerateFromPassword() error = %v", err)
+	}
+
+	userID := uuid.New()
+	repo := &userRepositoryStub{userByEmail: map[string]model.User{
+		"ada@example.com": {
+			ID:             userID,
+			Email:          "ada@example.com",
+			Password:       string(passwordHash),
+			AuthProvider:   "local",
+			LocalAuthState: "ready",
+			EmailVerified:  true,
+			CreatedAt:      time.Now().Add(-1 * time.Hour).Unix(),
+			UpdatedAt:      time.Now().Add(-1 * time.Hour).Unix(),
+		},
+	}}
+	service := NewUser(repo, &verificationMailerStub{})
+
+	_, err = service.AdminLogin("ada@example.com", "secret-123")
+	if !errorsIs(err, model.ErrForbidden) {
+		t.Fatalf("AdminLogin() error = %v, want ErrForbidden", err)
+	}
+	if repo.updatedLastLoginUserID != uuid.Nil {
+		t.Fatalf("unexpected UpdateLastLogin() call for non-admin admin login")
+	}
+}
+
 func TestVerifyEmailVerificationMarksUserVerified(t *testing.T) {
 	userID := uuid.New()
 	codeHash, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)

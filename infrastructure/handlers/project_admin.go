@@ -329,6 +329,10 @@ func normalizeJSONArray(raw json.RawMessage, field string) (json.RawMessage, err
 		return nil, fmt.Errorf("El campo %s debe ser un array JSON válido", field)
 	}
 
+	if err := validateStructuredJSONArray(value, field); err != nil {
+		return nil, err
+	}
+
 	normalized, err := json.Marshal(value)
 	if err != nil {
 		return nil, fmt.Errorf("No se pudo normalizar el campo %s", field)
@@ -348,10 +352,44 @@ func normalizeJSONObject(raw json.RawMessage, field string) (json.RawMessage, er
 		return nil, fmt.Errorf("El campo %s debe ser un objeto JSON válido", field)
 	}
 
+	if err := validateStructuredJSONObject(value, field); err != nil {
+		return nil, err
+	}
+
 	normalized, err := json.Marshal(value)
 	if err != nil {
 		return nil, fmt.Errorf("No se pudo normalizar el campo %s", field)
 	}
 
 	return normalized, nil
+}
+
+func validateStructuredJSONArray(value []interface{}, field string) error {
+	for _, item := range value {
+		switch typed := item.(type) {
+		case string, float64, bool:
+			continue
+		case map[string]interface{}:
+			if err := validateStructuredJSONObject(typed, field); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("El campo %s solo admite arrays de valores primitivos u objetos planos", field)
+		}
+	}
+
+	return nil
+}
+
+func validateStructuredJSONObject(value map[string]interface{}, field string) error {
+	for _, item := range value {
+		switch item.(type) {
+		case string, float64, bool:
+			continue
+		default:
+			return fmt.Errorf("El campo %s solo admite objetos planos con valores primitivos", field)
+		}
+	}
+
+	return nil
 }

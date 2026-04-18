@@ -68,12 +68,23 @@ No corresponde re-analizar el repositorio completo salvo que:
 
 La UI **no** debe copiar el markdown completo ni intentar competir con él.
 
+Tampoco debe reformatear el markdown casi literal cambiando solo el HTML o metiendo prefijos repetitivos.
+
 La UI debe persistir:
 
 - la **versión breve**;
 - la **versión estructurada**;
 - la **versión visualmente clara**;
 - la **versión útil para catálogo, detalle, búsqueda, localización y readiness**.
+- la **versión sintetizada**, con solo los puntos clave por sección.
+
+Contrato explícito:
+
+- el markdown canónico es la fuente de verdad completa;
+- la UI runtime es una vista ejecutiva derivada;
+- cada sección de UI debe condensarse en **1 a 3 ideas breves** o bullets cortos;
+- queda prohibido volcar una línea larga del canónico casi textual dentro de la UI;
+- queda prohibido repetir prefijos redundantes como `decision:`, `challenge:`, `result:`, `phase:`, `why:`, `impact:`, `evidence:` o equivalentes si el contenedor ya aporta el contexto.
 
 ### 3.3 El assistant no lee la UI resumida
 
@@ -115,6 +126,8 @@ Debe quedarse solo en el markdown:
 ### 4.3 Regla práctica
 
 Si un texto en UI obliga al usuario a “leer demasiado para entender lo principal”, está mal comprimido.
+
+Si un bullet de UI se parece demasiado a una línea completa del markdown canónico, también está mal comprimido.
 
 La UI debe mostrar:
 
@@ -427,7 +440,11 @@ Fuente: `Integrations`
 Formato recomendado:
 
 - una línea por integración;
-- convención: `name: ... | type: ... | direction: ... | note: ...`
+- texto directo y breve, sin prefijos redundantes.
+
+Ejemplo correcto:
+
+- `CAN Bus como backbone entre la medición existente y la estación de monitoreo`
 
 Regla de compresión:
 
@@ -441,7 +458,11 @@ Fuente: `Technical Decisions`
 Formato recomendado:
 
 - una línea por decisión;
-- convención: `decision: ... | why: ... | tradeoff: ...`
+- texto directo y breve, sin `decision:`, `why:` ni `tradeoff:`.
+
+Ejemplo correcto:
+
+- `Exponer datos por Ethernet/UDP para consumo externo futuro sin afirmar una integración ERP ya completada`
 
 Regla de compresión:
 
@@ -454,7 +475,11 @@ Fuente: `Challenges`
 Formato recomendado:
 
 - una línea por desafío;
-- convención: `challenge: ... | mitigation: ... | status: ...`
+- texto directo y breve, sin `challenge:`, `mitigation:` ni `status:`.
+
+Ejemplo correcto:
+
+- `La comunicación USB sobre UTP no era confiable para la distancia requerida y se rediseñó alrededor de CAN directa`
 
 Regla de compresión:
 
@@ -467,7 +492,11 @@ Fuente: `Results`
 Formato recomendado:
 
 - una línea por resultado;
-- convención: `result: ... | impact: ... | evidence: ...`
+- texto directo y breve, sin `result:`, `impact:` ni `evidence:`.
+
+Ejemplo correcto:
+
+- `Se instaló visualización en dos pantallas para ambos contextos de grúa y mejoró la supervisión desde piso`
 
 Regla de compresión:
 
@@ -498,7 +527,11 @@ Fuente: `Timeline`
 Formato recomendado:
 
 - una línea por fase;
-- convención: `phase: ... | objective: ... | outcome: ...`
+- texto directo y breve, sin `phase:`, `objective:` ni `outcome:`.
+
+Ejemplo correcto:
+
+- `A inicios de 2024 quedó documentado el retrofit instalado y la arquitectura posterior a la modificación`
 
 Regla de compresión:
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/marlonlyb/portfolioforge/domain/ports/embedding"
@@ -53,6 +54,13 @@ func (s *Search) Search(ctx context.Context, params model.SearchParams) (model.S
 	// 1. Normalize query
 	normalizedQuery := NormalizeQuery(params.Query)
 	params.Query = normalizedQuery
+	if s.semanticEnabled && normalizedQuery != "" && s.embeddingProv != nil {
+		embeddingVec, err := s.embeddingProv.Generate(ctx, normalizedQuery)
+		if err != nil {
+			return model.SearchResponse{}, fmt.Errorf("services.Search.Search generate embedding: %w", err)
+		}
+		params.QueryEmbedding = embeddingVec
+	}
 
 	// 2. Call SearchRepository (CTE query or all-published)
 	results, err := s.searchRepo.Search(ctx, params)
@@ -68,23 +76,58 @@ func (s *Search) Search(ctx context.Context, params model.SearchParams) (model.S
 		results = s.applyThreshold(results)
 	}
 
+	total := len(results)
+	pagedResults, nextCursor := paginateResults(results, params)
+
 	// 5. For each result, extract evidence and generate explanation
-	for i := range results {
+	for i := range pagedResults {
 		// Fetch technologies for evidence extraction
-		techs, _ := s.projectRepo.GetTechnologiesByProjectID(ctx, results[i].Project.ID)
+		techs, _ := s.projectRepo.GetTechnologiesByProjectID(ctx, pagedResults[i].Project.ID)
+		pagedResults[i].Project.Technologies = techs
 
 		// Extract evidence
-		results[i].Evidence = s.extractEvidence(results[i], normalizedQuery, techs)
+		pagedResults[i].Evidence = s.extractEvidence(pagedResults[i], normalizedQuery, techs)
 
 		// Generate explanation
-		explanation, err := s.explanationProv.Explain(ctx, results[i].Project, results[i].Evidence, normalizedQuery)
+		explanation, err := s.explanationProv.Explain(ctx, pagedResults[i].Project, pagedResults[i].Evidence, normalizedQuery)
 		if err == nil && explanation != "" {
-			results[i].Explanation = explanation
+			pagedResults[i].Explanation = explanation
 		}
 	}
 
 	// 6. Build response
-	return s.buildResponse(results, params), nil
+	return s.buildResponse(pagedResults, params, total, nextCursor), nil
+}
+
+func paginateResults(results []model.SearchResult, params model.SearchParams) ([]model.SearchResult, *string) {
+	pageSize := params.PageSize
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+
+	start := 0
+	if params.Cursor != "" {
+		parsed, err := strconv.Atoi(params.Cursor)
+		if err == nil && parsed > 0 {
+			start = parsed
+		}
+	}
+	if start >= len(results) {
+		return []model.SearchResult{}, nil
+	}
+
+	end := start + pageSize
+	if end > len(results) {
+		end = len(results)
+	}
+
+	var nextCursor *string
+	if end < len(results) {
+		cursor := strconv.Itoa(end)
+		nextCursor = &cursor
+	}
+
+	return results[start:end], nextCursor
 }
 
 // fuseAndBoost normalizes raw scores and applies structured boosts.
@@ -296,7 +339,7 @@ func getHeroImage(images json.RawMessage) *string {
 }
 
 // buildResponse converts search results into the API response format.
-func (s *Search) buildResponse(results []model.SearchResult, params model.SearchParams) model.SearchResponse {
+func (s *Search) buildResponse(results []model.SearchResult, params model.SearchParams, total int, cursor *string) model.SearchResponse {
 	items := make([]model.SearchResultItem, 0, len(results))
 
 	for _, r := range results {
@@ -318,6 +361,18 @@ func (s *Search) buildResponse(results []model.SearchResult, params model.Search
 			item.Summary = &r.Project.Profile.SolutionSummary
 		}
 
+		for _, technology := range r.Project.Technologies {
+			tech := model.TechnologySummary{
+				ID:   technology.ID.String(),
+				Name: technology.Name,
+				Slug: technology.Slug,
+			}
+			if strings.TrimSpace(technology.Color) != "" {
+				tech.Color = &technology.Color
+			}
+			item.Technologies = append(item.Technologies, tech)
+		}
+
 		// Hero image
 		if heroImg := getHeroImage(r.Project.Images); heroImg != nil {
 			item.HeroImage = heroImg
@@ -336,12 +391,6 @@ func (s *Search) buildResponse(results []model.SearchResult, params model.Search
 		pageSize = 20
 	}
 
-	var cursor *string
-	if len(items) == pageSize {
-		lastID := items[len(items)-1].ID
-		cursor = &lastID
-	}
-
 	var category *string
 	if params.Category != "" {
 		category = &params.Category
@@ -354,7 +403,7 @@ func (s *Search) buildResponse(results []model.SearchResult, params model.Search
 	return model.SearchResponse{
 		Data: items,
 		Meta: model.SearchMeta{
-			Total:    len(items),
+			Total:    total,
 			PageSize: pageSize,
 			Cursor:   cursor,
 			Query:    params.Query,

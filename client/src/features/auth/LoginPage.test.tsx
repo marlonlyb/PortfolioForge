@@ -3,21 +3,24 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LocaleProvider } from '../../app/providers/LocaleProvider';
+import { useLocale } from '../../app/providers/LocaleProvider';
 import { SessionProvider, type SessionUser } from '../../app/providers/SessionProvider';
 import { API_ERROR_CODES, AppError } from '../../shared/api/errors';
 import { LoginPage } from './LoginPage';
-import { loginWithGoogle, publicLogin, publicSignup } from './api';
+import { adminLogin, loginWithGoogle, publicLogin, publicSignup } from './api';
 
 vi.mock('./api', async () => {
   const actual = await vi.importActual<typeof import('./api')>('./api');
-  return {
-    ...actual,
-    loginWithGoogle: vi.fn(),
-    publicLogin: vi.fn(),
-    publicSignup: vi.fn(),
+    return {
+      ...actual,
+      adminLogin: vi.fn(),
+      loginWithGoogle: vi.fn(),
+      publicLogin: vi.fn(),
+      publicSignup: vi.fn(),
   };
 });
 
+const mockedAdminLogin = vi.mocked(adminLogin);
 const mockedLoginWithGoogle = vi.mocked(loginWithGoogle);
 const mockedPublicLogin = vi.mocked(publicLogin);
 const mockedPublicSignup = vi.mocked(publicSignup);
@@ -48,14 +51,25 @@ function buildLoginResponse(overrides: Partial<SessionUser> = {}) {
 }
 
 function renderLoginPage({ routePath = '/login', variant = 'login', initialEntries = ['/login'] }: { routePath?: '/login' | '/admin/login'; variant?: 'login' | 'signup'; initialEntries?: Array<string | { pathname: string; state?: { from?: string; notice?: string } }>; } = {}) {
+  function LocaleControls() {
+    const { setLocale } = useLocale();
+    return (
+      <div>
+        <button type="button" onClick={() => setLocale('es')}>locale-es</button>
+        <button type="button" onClick={() => setLocale('en')}>locale-en</button>
+      </div>
+    );
+  }
+
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <SessionProvider>
         <LocaleProvider>
+          <LocaleControls />
           <Routes>
             <Route path="/login" element={<LoginPage variant={routePath === '/login' ? variant : 'login'} />} />
             <Route path="/signup" element={<LoginPage variant="signup" />} />
-            <Route path="/admin/login" element={<LoginPage />} />
+            <Route path="/admin/login" element={<LoginPage variant="admin" />} />
             <Route path="/verify-email" element={<p>verify email destination</p>} />
             <Route path="/complete-profile" element={<p>complete profile destination</p>} />
             <Route path="/admin/projects" element={<p>admin destination</p>} />
@@ -70,6 +84,7 @@ function renderLoginPage({ routePath = '/login', variant = 'login', initialEntri
 
 describe('LoginPage', () => {
   beforeEach(() => {
+    mockedAdminLogin.mockReset();
     mockedLoginWithGoogle.mockReset();
     mockedPublicLogin.mockReset();
     mockedPublicSignup.mockReset();
@@ -170,20 +185,39 @@ describe('LoginPage', () => {
     expect(screen.getByRole('link', { name: 'Already have an account? Log in' })).toHaveAttribute('href', '/login');
   });
 
-  it('keeps /admin/login available as a compatibility alias to the shared login form', async () => {
-    mockedPublicLogin.mockResolvedValue(buildLoginResponse({ is_admin: true, email_verified: true }));
+  it('uses a dedicated admin-only login mode on /admin/login', async () => {
+    mockedAdminLogin.mockResolvedValue(buildLoginResponse({ is_admin: true, email_verified: true }));
     renderLoginPage({ routePath: '/admin/login', initialEntries: ['/admin/login'] });
 
-    expect(screen.getByRole('link', { name: 'Need an account? Sign up' })).toHaveAttribute('href', '/signup');
+    expect(screen.getByRole('heading', { name: 'Admin access' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Need an account? Sign up' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Continue with Google')).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'admin@example.com' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret-123' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
     await waitFor(() => {
-      expect(mockedPublicLogin).toHaveBeenCalledWith({ email: 'admin@example.com', password: 'secret-123' });
+      expect(mockedAdminLogin).toHaveBeenCalledWith({ email: 'admin@example.com', password: 'secret-123' });
     });
     expect(await screen.findByText('admin destination')).toBeInTheDocument();
+  });
+
+  it('keeps admin login on-page and shows the admin-only forbidden message for non-admin users', async () => {
+    mockedAdminLogin.mockRejectedValue(new AppError(403, {
+      code: API_ERROR_CODES.FORBIDDEN,
+      message: 'This account does not have admin access',
+    }));
+
+    renderLoginPage({ routePath: '/admin/login', initialEntries: ['/admin/login'] });
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret-123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('This account does not have admin access');
+    expect(screen.getByRole('heading', { name: 'Admin access' })).toBeInTheDocument();
+    expect(screen.queryByText('admin destination')).not.toBeInTheDocument();
   });
 
   it('sends incomplete Google users through complete profile before returning to public pages', async () => {
@@ -203,5 +237,19 @@ describe('LoginPage', () => {
     const callback = initializeGoogle.mock.calls[0]?.[0]?.callback as ((response: { credential?: string }) => Promise<void>) | undefined;
     await callback?.({ credential: 'google-token' });
     expect(await screen.findByText('complete profile destination')).toBeInTheDocument();
+  });
+
+  it('updates auth copy when the locale changes', async () => {
+    renderLoginPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'locale-es' }));
+
+    expect(await screen.findByText('Acceso público')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'locale-en' }));
+
+    expect(await screen.findByText('Public access')).toBeInTheDocument();
+    expect(screen.getByText('Continue with Google')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
   });
 });

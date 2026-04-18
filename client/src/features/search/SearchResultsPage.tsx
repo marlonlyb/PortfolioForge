@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 
 import { useLocale } from '../../app/providers/LocaleProvider';
 import { searchProjects } from './api';
@@ -8,29 +8,40 @@ import { SearchResultCard } from './SearchResultCard';
 import { SearchFilters } from './SearchFilters';
 import type { SearchResult, SearchFilters as SearchFiltersType } from '../../shared/types/search';
 import { AppError } from '../../shared/api/errors';
+import {
+  buildSearchResultsLocationState,
+  matchesActiveSearchState,
+  type ProjectDetailLocationState,
+} from './matchContext';
 
 const PAGE_SIZE = 10;
 
 export function SearchResultsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const { locale, t } = useLocale();
 
   const query = searchParams.get('q') ?? '';
   const categoryParam = searchParams.get('category') ?? null;
+  const clientParam = searchParams.get('client') ?? null;
   const techParam = searchParams.get('technologies') ?? '';
-
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [total, setTotal] = useState(0);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const filters: SearchFiltersType = {
     category: categoryParam,
-    client: null,
+    client: clientParam,
     technologies: techParam ? techParam.split(',').filter(Boolean) : [],
   };
+  const locationState = (location.state as ProjectDetailLocationState | null) ?? null;
+  const canRestoreFromLocation = matchesActiveSearchState(locationState, query, filters);
+  const restoredSnapshot = canRestoreFromLocation ? locationState?.searchResultsSnapshot : undefined;
+
+  const [results, setResults] = useState<SearchResult[]>(() => restoredSnapshot?.results ?? []);
+  const [total, setTotal] = useState(() => restoredSnapshot?.total ?? 0);
+  const [cursor, setCursor] = useState<string | null>(() => restoredSnapshot?.cursor ?? null);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const skipInitialSearchRef = useRef(canRestoreFromLocation);
 
   async function doSearch(q: string, f: SearchFiltersType, nextCursor?: string) {
     const trimmed = q.trim();
@@ -53,6 +64,7 @@ export function SearchResultsPage() {
       const response = await searchProjects({
         q: trimmed,
         category: f.category ?? undefined,
+        client: f.client ?? undefined,
         technologies: f.technologies.length > 0 ? f.technologies.join(',') : undefined,
         pageSize: PAGE_SIZE,
         cursor: nextCursor ?? undefined,
@@ -67,7 +79,7 @@ export function SearchResultsPage() {
       setTotal(response.meta.total);
       setCursor(response.meta.cursor);
     } catch (err: unknown) {
-      setError(err instanceof AppError ? err.message : 'Error al buscar proyectos.');
+      setError(err instanceof AppError ? err.message : t.searchResultsError);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -76,14 +88,26 @@ export function SearchResultsPage() {
 
   // Search when query or filters change
   useEffect(() => {
+    if (skipInitialSearchRef.current) {
+      skipInitialSearchRef.current = false;
+      return;
+    }
+
     doSearch(query, filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryParam, locale, query, techParam]);
+  }, [categoryParam, clientParam, locale, query, techParam]);
+
+  const detailState = buildSearchResultsLocationState(query, filters, {
+    results,
+    total,
+    cursor,
+  });
 
   function handleSearch(newQuery: string) {
     setSearchParams((prev) => {
       prev.set('q', newQuery);
       prev.delete('category');
+      prev.delete('client');
       prev.delete('technologies');
       return prev;
     });
@@ -95,6 +119,11 @@ export function SearchResultsPage() {
         prev.set('category', newFilters.category);
       } else {
         prev.delete('category');
+      }
+      if (newFilters.client) {
+        prev.set('client', newFilters.client);
+      } else {
+        prev.delete('client');
       }
       if (newFilters.technologies.length > 0) {
         prev.set('technologies', newFilters.technologies.join(','));
@@ -116,18 +145,17 @@ export function SearchResultsPage() {
       <article className="card search-results__hero">
         <div className="search-results__header">
           <div>
-            <p className="eyebrow">Public search</p>
-            <h2>Busca proyectos por tecnología, cliente o concepto.</h2>
+            <p className="eyebrow">{t.searchResultsEyebrow}</p>
+            <h2>{t.searchResultsTitle}</h2>
             <p className="search-results__intro">
-              La búsqueda pública ahora comparte el mismo lenguaje editorial del catálogo y del
-              detalle para que la exploración se sienta consistente.
+              {t.searchResultsIntro}
             </p>
           </div>
           <SearchBar initialQuery={query} onSearch={handleSearch} loading={loading} />
         </div>
         {query.trim().length >= 2 && !loading && (
           <p className="search-results__count">
-            {total} proyecto{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
+            {total} {total === 1 ? t.searchResultsCountSingular : t.searchResultsCountPlural}
           </p>
         )}
       </article>
@@ -141,15 +169,15 @@ export function SearchResultsPage() {
       {loading && (
         <div className="search-results__empty">
           <span className="search-bar__spinner" style={{ position: 'static', transform: 'none', margin: '0 auto 1rem' }} />
-          <p>{t.searchButton}…</p>
+          <p>{t.searchResultsSearching}…</p>
         </div>
       )}
 
       {!loading && query.trim().length >= 2 && results.length === 0 && !error && (
         <div className="search-results__empty">
-          <p>No se encontraron proyectos para &lsquo;{query}&rsquo;</p>
+          <p>{t.searchResultsNoResults} &lsquo;{query}&rsquo;</p>
           <Link className="btn btn--ghost" to="/" style={{ marginTop: '1rem' }}>
-            Ver catálogo completo
+            {t.searchResultsViewCatalog}
           </Link>
         </div>
       )}
@@ -158,7 +186,7 @@ export function SearchResultsPage() {
         <div className="search-results__layout">
           <div className="search-results__list">
             {results.map((result, index) => (
-              <SearchResultCard key={result.id} result={result} index={index} />
+              <SearchResultCard key={result.id} result={result} index={index} detailState={detailState} />
             ))}
             {cursor && (
               <div className="search-results__load-more">
@@ -168,7 +196,7 @@ export function SearchResultsPage() {
                   onClick={handleLoadMore}
                   disabled={loadingMore}
                 >
-                  {loadingMore ? 'Cargando…' : 'Cargar más'}
+                  {loadingMore ? t.searchResultsLoadingMore : t.searchResultsLoadMore}
                 </button>
               </div>
             )}
@@ -179,7 +207,7 @@ export function SearchResultsPage() {
 
       {!loading && query.trim().length < 2 && (
         <div className="search-results__empty">
-          <p>Escribe al menos 2 caracteres para buscar</p>
+          <p>{t.searchResultsMinCharacters}</p>
         </div>
       )}
     </section>

@@ -1,4 +1,10 @@
-import type { ProjectProfileMetrics, ProjectProfilePrimitive } from '../../shared/types/project';
+import type {
+  ProjectProfileMetrics,
+  ProjectProfilePrimitive,
+  ProjectProfileStructuredItem,
+  ProjectProfileStructuredList,
+} from '../../shared/types/project';
+import type { ProjectProfileListKind } from '../../shared/lib/projectProfileSummaries';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -8,75 +14,103 @@ function isPrimitiveValue(value: unknown): value is ProjectProfilePrimitive {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
 }
 
-function formatPrimitiveValue(value: ProjectProfilePrimitive): string {
-  return typeof value === 'string' ? value.trim() : String(value);
+function isStructuredItem(value: unknown): value is ProjectProfileStructuredItem {
+  if (isPrimitiveValue(value)) {
+    return true;
+  }
+
+  return isRecord(value) && Object.values(value).every((entryValue) => isPrimitiveValue(entryValue));
 }
 
-export function serializeProfileList(value: unknown): string {
-  if (!Array.isArray(value)) return '';
+function normalizeStructuredItem(value: unknown): ProjectProfileStructuredItem {
+  if (isPrimitiveValue(value)) {
+    return value;
+  }
 
-  return value
-    .map((item) => {
-      if (isPrimitiveValue(item)) {
-        return formatPrimitiveValue(item);
-      }
+  if (!isRecord(value)) {
+    throw new Error('Cada elemento debe ser un valor primitivo o un objeto plano con valores primitivos.');
+  }
 
-      if (isRecord(item)) {
-        const primitiveEntries = Object.entries(item)
-          .flatMap(([entryKey, entryValue]) => (isPrimitiveValue(entryValue)
-            ? [`${entryKey}: ${formatPrimitiveValue(entryValue)}`]
-            : []));
+  const normalizedEntries = Object.entries(value).flatMap(([entryKey, entryValue]) => (
+    isPrimitiveValue(entryValue) ? [[entryKey, entryValue] as const] : []
+  ));
 
-        return primitiveEntries.length > 0 ? primitiveEntries.join(' · ') : null;
-      }
+  if (normalizedEntries.length !== Object.keys(value).length) {
+    throw new Error('Cada elemento debe ser un valor primitivo o un objeto plano con valores primitivos.');
+  }
 
-      return null;
-    })
-    .filter((item): item is string => Boolean(item?.trim()))
-    .join('\n');
+  return Object.fromEntries(normalizedEntries) as Record<string, ProjectProfilePrimitive>;
 }
 
-export function parseProfileList(value: string): string[] {
-  return value
-    .split('\n')
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
+function normalizePrimitiveRecord(value: Record<string, unknown>): ProjectProfileMetrics {
+  return Object.fromEntries(
+    Object.entries(value).map(([entryKey, entryValue]) => [entryKey, entryValue as ProjectProfilePrimitive]),
+  ) as ProjectProfileMetrics;
+}
+
+export function serializeProfileList(
+  value: unknown,
+  _kind?: ProjectProfileListKind,
+): string {
+  if (!Array.isArray(value) || value.length === 0) {
+    return '';
+  }
+
+  if (!value.every((item) => isStructuredItem(item))) {
+    return '';
+  }
+
+  return JSON.stringify(value, null, 2);
+}
+
+export function parseProfileList(value: string): ProjectProfileStructuredList {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return [];
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    throw new Error('El campo debe usar un array JSON válido para preservar la estructura original.');
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error('El campo debe usar un array JSON válido para preservar la estructura original.');
+  }
+
+  return parsed.map((item) => normalizeStructuredItem(item));
 }
 
 export function serializeProfileMetrics(value: unknown): string {
-  if (!isRecord(value)) return '';
+  if (!isRecord(value)) {
+    return '';
+  }
 
-  return Object.entries(value)
-    .flatMap(([entryKey, entryValue]) => (isPrimitiveValue(entryValue)
-      ? [`${entryKey}: ${formatPrimitiveValue(entryValue)}`]
-      : []))
-    .join('\n');
+  if (!Object.values(value).every((entryValue) => isPrimitiveValue(entryValue))) {
+    return '';
+  }
+
+  return JSON.stringify(value, null, 2);
 }
 
 export function parseProfileMetrics(value: string): ProjectProfileMetrics {
-  return value
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .reduce<ProjectProfileMetrics>((metrics, line) => {
-      const separatorIndex = line.indexOf(':');
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return {};
+  }
 
-      if (separatorIndex === -1) {
-        throw new Error(`La línea de métrica "${line}" debe usar el formato clave: valor.`);
-      }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    throw new Error('El campo de métricas debe usar un objeto JSON válido para preservar tipos y claves.');
+  }
 
-      const key = line.slice(0, separatorIndex).trim();
-      const rawValue = line.slice(separatorIndex + 1).trim();
+  if (!isRecord(parsed) || !Object.values(parsed).every((entryValue) => isPrimitiveValue(entryValue))) {
+    throw new Error('El campo de métricas debe usar un objeto JSON plano con valores primitivos.');
+  }
 
-      if (!key) {
-        throw new Error('Cada métrica debe tener una clave antes de los dos puntos.');
-      }
-
-      if (!rawValue) {
-        throw new Error(`La métrica "${key}" debe tener un valor después de los dos puntos.`);
-      }
-
-      metrics[key] = rawValue;
-      return metrics;
-    }, {});
+  return normalizePrimitiveRecord(parsed);
 }

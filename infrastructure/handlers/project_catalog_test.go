@@ -126,6 +126,39 @@ func TestProjectCatalogUpdateClearsSourceMarkdownURL(t *testing.T) {
 	}
 }
 
+func TestProjectCatalogUpdateRejectsOffPolicySourceMarkdownURL(t *testing.T) {
+	projectID := uuid.New()
+	service := &stubProjectCatalogService{current: model.AdminProject{ID: projectID, Name: "PortfolioForge", Slug: "portfolioforge", Description: "Original", Category: "platform", Active: true}}
+	handler := &ProjectCatalog{service: service, responser: *response.New()}
+
+	rec := performProjectCatalogUpdate(t, handler, projectID, map[string]any{
+		"name":                "PortfolioForge",
+		"description":         "Updated project",
+		"category":            "platform",
+		"source_markdown_url": "https://example.com/docs.md",
+		"images":              []string{},
+		"active":              true,
+	})
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+	if service.updated != nil {
+		t.Fatal("off-policy markdown url should not reach service update")
+	}
+
+	var payload model.APIErrorResponse
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Error.Code != "validation_error" {
+		t.Fatalf("error code = %q", payload.Error.Code)
+	}
+	if payload.Error.Message != "La URL markdown debe ser una URL HTTPS válida en mlbautomation.com o www.mlbautomation.com" {
+		t.Fatalf("error message = %q", payload.Error.Message)
+	}
+}
+
 func TestProjectCatalogUpdateRejectsLegacyMediaKeys(t *testing.T) {
 	tests := []struct {
 		name        string

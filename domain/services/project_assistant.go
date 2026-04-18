@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/marlonlyb/portfolioforge/internal/markdownpolicy"
 	"github.com/marlonlyb/portfolioforge/model"
 )
 
@@ -76,7 +77,8 @@ func (s ProjectAssistant) Answer(ctx context.Context, slug string, request model
 	if !project.Active {
 		return model.ProjectAssistantResponse{}, ErrAssistantProjectNotFound
 	}
-	if strings.TrimSpace(project.SourceMarkdownURL) == "" {
+	project.SourceMarkdownURL = markdownpolicy.SanitizeSourceURL(project.SourceMarkdownURL)
+	if project.SourceMarkdownURL == "" {
 		return model.ProjectAssistantResponse{}, ErrAssistantUnavailable
 	}
 

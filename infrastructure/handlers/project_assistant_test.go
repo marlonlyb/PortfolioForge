@@ -29,9 +29,11 @@ func (s *stubAssistantHandlerRepo) GetAssistantContextBySlug(context.Context, st
 type stubAssistantHandlerRetriever struct {
 	chunks []services.MarkdownChunkAlias
 	err    error
+	calls  int
 }
 
 func (s *stubAssistantHandlerRetriever) Fetch(context.Context, string, string) ([]services.MarkdownChunkAlias, error) {
+	s.calls++
 	return s.chunks, s.err
 }
 
@@ -191,6 +193,32 @@ func TestProjectAssistantHandlerCreateMessageMapsErrors(t *testing.T) {
 				t.Fatalf("error code = %q, want %q", payload.Error.Code, tt.wantCode)
 			}
 		})
+	}
+}
+
+func TestProjectAssistantHandlerCreateMessageTreatsOffPolicyMarkdownAsUnavailable(t *testing.T) {
+	retriever := &stubAssistantHandlerRetriever{chunks: []services.MarkdownChunkAlias{{Heading: "Architecture", Body: "Uses Go."}}}
+	handler := NewProjectAssistantHandler(services.NewProjectAssistant(
+		&stubAssistantHandlerRepo{context: model.ProjectAssistantContext{ID: uuid.New(), Name: "PortfolioForge", Active: true, SourceMarkdownURL: "https://example.com/docs.md"}},
+		retriever,
+		&stubAssistantHandlerProvider{resp: "Should not be used."},
+	))
+
+	rec := performAssistantRequest(t, handler, `{"question":"How does it work?"}`, model.User{ID: uuid.New(), AuthProvider: "google", EmailVerified: true, FullName: "Ada Lovelace", Company: "Analytical Engines", ProfileCompleted: true, AssistantEligible: true, CanUseProjectAssistant: true})
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusConflict)
+	}
+	if retriever.calls != 0 {
+		t.Fatalf("retriever calls = %d, want 0", retriever.calls)
+	}
+
+	var payload model.APIErrorResponse
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Error.Code != "assistant_unavailable" {
+		t.Fatalf("error code = %q, want assistant_unavailable", payload.Error.Code)
 	}
 }
 

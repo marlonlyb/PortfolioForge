@@ -176,7 +176,7 @@ func TestLogin_AdminLoginUsesUnifiedPasswordFlow(t *testing.T) {
 	}
 }
 
-func TestLogin_AdminLoginRuntimeAllowsNonAdminUserForCompatibilityAlias(t *testing.T) {
+func TestLogin_AdminLoginRuntimeRejectsNonAdminUser(t *testing.T) {
 	os.Setenv("JWT_SECRET_KEY", "secret")
 	defer os.Unsetenv("JWT_SECRET_KEY")
 
@@ -204,11 +204,9 @@ func TestLogin_AdminLoginRuntimeAllowsNonAdminUserForCompatibilityAlias(t *testi
 		response.HTTPErrorHandler(err, c)
 	}
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
-	}
-	if repo.updatedLastLoginID != userID {
-		t.Fatalf("updated last login id = %s, want %s", repo.updatedLastLoginID, userID)
+	assertAPIError(t, rec, http.StatusForbidden, "forbidden")
+	if repo.updatedLastLoginID != uuid.Nil {
+		t.Fatalf("unexpected UpdateLastLogin() call for non-admin admin login")
 	}
 }
 

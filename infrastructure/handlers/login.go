@@ -56,6 +56,8 @@ func (h *Login) handlePasswordLogin(c echo.Context, authenticate func(email, pas
 		switch {
 		case errors.Is(serviceErr, model.ErrInvalidCredentials):
 			return response.ContractError(401, "invalid_credentials", "Invalid email or password")
+		case errors.Is(serviceErr, model.ErrForbidden):
+			return response.ContractError(403, "forbidden", "This account does not have admin access")
 		case errors.Is(serviceErr, model.ErrProviderConflict):
 			return response.ContractError(409, "account_provider_conflict", "That email already uses Google sign-in. Continue with Google.")
 		case errors.Is(serviceErr, model.ErrPasswordSetupRequired):

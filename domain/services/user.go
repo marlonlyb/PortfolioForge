@@ -175,7 +175,15 @@ func (u *User) AdminSoftDelete(actorID, targetID uuid.UUID) error {
 }
 
 func (u *User) AdminLogin(email, password string) (model.User, error) {
-	return u.localPasswordLogin(email, password)
+	userData, err := u.authenticateLocalUser(email, password)
+	if err != nil {
+		return model.User{}, err
+	}
+	if !userData.IsAdmin {
+		return model.User{}, model.ErrForbidden
+	}
+
+	return u.completeLocalLogin(userData)
 }
 
 func (u *User) PublicSignup(email, password string) (model.EmailVerificationDispatchResult, error) {
@@ -220,6 +228,15 @@ func (u *User) PublicLogin(email, password string) (model.User, error) {
 }
 
 func (u *User) localPasswordLogin(email, password string) (model.User, error) {
+	userData, err := u.authenticateLocalUser(email, password)
+	if err != nil {
+		return model.User{}, err
+	}
+
+	return u.completeLocalLogin(userData)
+}
+
+func (u *User) authenticateLocalUser(email, password string) (model.User, error) {
 	normalizedEmail := normalizeEmail(email)
 	trimmedPassword := strings.TrimSpace(password)
 	if normalizedEmail == "" || trimmedPassword == "" {
@@ -248,6 +265,11 @@ func (u *User) localPasswordLogin(email, password string) (model.User, error) {
 		return model.User{}, model.ErrInvalidCredentials
 	}
 
+	return userData, nil
+}
+
+
+func (u *User) completeLocalLogin(userData model.User) (model.User, error) {
 	now := time.Now().Unix()
 	updatedUser, err := u.Repository.UpdateLastLogin(userData.ID, now, now)
 	if err != nil {

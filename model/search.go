@@ -4,12 +4,13 @@ import "github.com/google/uuid"
 
 // SearchParams holds the input parameters for a hybrid retrieval search.
 type SearchParams struct {
-	Query        string
-	Category     string
-	Client       string
-	Technologies []string
-	Cursor       string
-	PageSize     int
+	Query          string
+	QueryEmbedding []float32
+	Category       string
+	Client         string
+	Technologies   []string
+	Cursor         string
+	PageSize       int
 }
 
 // SearchResult represents a single project match with relevance metadata.

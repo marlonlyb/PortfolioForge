@@ -30,7 +30,7 @@ export const router = createBrowserRouter([
       { path: 'search', element: <SearchResultsPage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'signup', element: <LoginPage variant="signup" /> },
-      { path: 'admin/login', element: <LoginPage /> },
+      { path: 'admin/login', element: <LoginPage variant="admin" /> },
       { path: 'verify-email', element: <VerifyEmailOtpPage /> },
       { path: 'complete-profile', element: <CompleteProfilePage /> },
     ],

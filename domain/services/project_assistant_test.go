@@ -24,9 +24,11 @@ func (s *stubAssistantRepo) GetAssistantContextBySlug(context.Context, string) (
 type stubAssistantRetriever struct {
 	chunks []MarkdownChunkAlias
 	err    error
+	calls  int
 }
 
 func (s *stubAssistantRetriever) Fetch(context.Context, string, string) ([]MarkdownChunkAlias, error) {
+	s.calls++
 	return s.chunks, s.err
 }
 
@@ -254,5 +256,26 @@ func TestProjectAssistantAnswerRejectsUnavailableProject(t *testing.T) {
 	}
 	if provider.called {
 		t.Fatal("provider should not be invoked when assistant is unavailable")
+	}
+}
+
+func TestProjectAssistantAnswerRejectsOffPolicyMarkdownURL(t *testing.T) {
+	retriever := &stubAssistantRetriever{chunks: []MarkdownChunkAlias{{Heading: "Architecture", Body: "Uses Go and Echo."}}}
+	provider := &stubAssistantProvider{}
+	service := NewProjectAssistant(
+		&stubAssistantRepo{context: model.ProjectAssistantContext{ID: uuid.New(), Name: "PortfolioForge", Active: true, SourceMarkdownURL: "https://example.com/docs.md"}},
+		retriever,
+		provider,
+	)
+
+	_, err := service.Answer(context.Background(), "portfolioforge", model.ProjectAssistantRequest{Question: "How does it work?"})
+	if !errors.Is(err, ErrAssistantUnavailable) {
+		t.Fatalf("error = %v, want ErrAssistantUnavailable", err)
+	}
+	if retriever.calls != 0 {
+		t.Fatalf("retriever calls = %d, want 0", retriever.calls)
+	}
+	if provider.called {
+		t.Fatal("provider should not be invoked when markdown policy rejects the source")
 	}
 }

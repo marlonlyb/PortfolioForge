@@ -15,6 +15,7 @@ var (
 	ErrOTPInvalid                = errors.New("otp is invalid")
 	ErrOTPExpired                = errors.New("otp is expired")
 	ErrOTPRateLimited            = errors.New("otp is rate limited")
+	ErrForbidden                 = errors.New("forbidden")
 	ErrAdminUserUpdateScope      = errors.New("admin user update scope is invalid")
 	ErrAdminUserProtected        = errors.New("admin user target is protected")
 	ErrAdminSelfDelete           = errors.New("admin user self delete is forbidden")

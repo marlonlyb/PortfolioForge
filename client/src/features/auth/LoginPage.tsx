@@ -5,6 +5,7 @@ import { useLocale } from '../../app/providers/LocaleProvider';
 import { useSession, type SessionUser } from '../../app/providers/SessionProvider';
 import { API_ERROR_CODES, AppError } from '../../shared/api/errors';
 import {
+  adminLogin,
   loginWithGoogle,
   publicLogin,
   publicSignup,
@@ -16,12 +17,13 @@ interface LoginLocationState {
   notice?: string;
 }
 
-const PUBLIC_AUTH_VARIANT = {
+const AUTH_VARIANT = {
   LOGIN: 'login',
   SIGNUP: 'signup',
+  ADMIN: 'admin',
 } as const;
 
-type PublicAuthVariant = (typeof PUBLIC_AUTH_VARIANT)[keyof typeof PUBLIC_AUTH_VARIANT];
+type AuthVariant = (typeof AUTH_VARIANT)[keyof typeof AUTH_VARIANT];
 
 interface GoogleCredentialResponse {
   credential?: string;
@@ -46,7 +48,7 @@ declare global {
 }
 
 interface LoginPageProps {
-  variant?: PublicAuthVariant;
+  variant?: AuthVariant;
 }
 
 interface SignupSuccessState {
@@ -54,15 +56,19 @@ interface SignupSuccessState {
   response: EmailVerificationDispatchResponse;
 }
 
-function formatValidationDetail(field?: string, issue?: string): string | null {
-  if (field === 'email' && issue === 'required') return 'Email is required.';
-  if (field === 'password' && issue === 'invalid') return 'Password must contain at least 8 characters.';
-  if (field === 'confirm_password' && issue === 'required') return 'Confirm password is required.';
-  if (field === 'confirm_password' && issue === 'mismatch') return 'Passwords must match.';
+function formatValidationDetail(
+  field: string | undefined,
+  issue: string | undefined,
+  t: ReturnType<typeof useLocale>['t'],
+): string | null {
+  if (field === 'email' && issue === 'required') return t.authValidationEmailRequired;
+  if (field === 'password' && issue === 'invalid') return t.authValidationPasswordInvalid;
+  if (field === 'confirm_password' && issue === 'required') return t.authValidationConfirmRequired;
+  if (field === 'confirm_password' && issue === 'mismatch') return t.authValidationConfirmMismatch;
   return null;
 }
 
-export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProps) {
+export function LoginPage({ variant = AUTH_VARIANT.LOGIN }: LoginPageProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLocale();
@@ -70,7 +76,8 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
   const state = (location.state as LoginLocationState | null) ?? null;
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-  const isSignupVariant = variant === PUBLIC_AUTH_VARIANT.SIGNUP;
+  const isSignupVariant = variant === AUTH_VARIANT.SIGNUP;
+  const isAdminVariant = variant === AUTH_VARIANT.ADMIN;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -87,10 +94,10 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
     setFormError(null);
     setGoogleError(null);
     setSignupSuccess(null);
-  }, [isSignupVariant]);
+  }, [isAdminVariant, isSignupVariant]);
 
   useEffect(() => {
-    if (!googleClientId) return;
+    if (isAdminVariant || !googleClientId) return;
 
     if (window.google?.accounts.id) {
       setGoogleReady(true);
@@ -110,10 +117,10 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
     script.dataset.googleIdentity = 'true';
     script.onload = () => setGoogleReady(true);
     document.head.appendChild(script);
-  }, [googleClientId]);
+  }, [googleClientId, isAdminVariant]);
 
   useEffect(() => {
-    if (!googleClientId || !googleReady || !googleButtonRef.current || !window.google?.accounts.id) {
+    if (isAdminVariant || !googleClientId || !googleReady || !googleButtonRef.current || !window.google?.accounts.id) {
       return;
     }
 
@@ -121,7 +128,7 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
       client_id: googleClientId,
       callback: async (response) => {
         if (!response.credential) {
-          setGoogleError('Google sign-in did not return a valid credential.');
+          setGoogleError(t.authGoogleCredentialMissing);
           return;
         }
 
@@ -133,7 +140,7 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
           const session = await loginWithGoogle({ id_token: response.credential });
           handleSuccessfulLogin(session.user, session);
         } catch (err) {
-          setGoogleError(err instanceof AppError ? err.message : 'Unable to complete Google sign-in.');
+          setGoogleError(err instanceof AppError ? err.message : t.authGoogleSignInFailed);
         } finally {
           setGoogleSubmitting(false);
         }
@@ -148,7 +155,7 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
       text: isSignupVariant ? 'signup_with' : 'continue_with',
       shape: 'pill',
     });
-  }, [googleClientId, googleReady, isSignupVariant, login, navigate, state?.from]);
+  }, [googleClientId, googleReady, isAdminVariant, isSignupVariant, login, navigate, state?.from]);
 
   function resolvePostLoginPath(user: SessionUser): string {
     if (state?.from) {
@@ -161,7 +168,7 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
   function handleSuccessfulLogin(user: SessionUser, response: Parameters<typeof login>[0]) {
     login(response);
 
-    if (!user.profile_completed) {
+    if (!isAdminVariant && !user.is_admin && !user.profile_completed) {
       navigate('/complete-profile', { replace: true, state: { from: resolvePostLoginPath(user) } });
       return;
     }
@@ -183,22 +190,26 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
         return;
       }
 
-      const response = await publicLogin({ email: email.trim(), password });
+      const response = isAdminVariant
+        ? await adminLogin({ email: email.trim(), password })
+        : await publicLogin({ email: email.trim(), password });
       handleSuccessfulLogin(response.user, response);
     } catch (err) {
       if (err instanceof AppError) {
         if (err.code === API_ERROR_CODES.VALIDATION_ERROR) {
           const detail = err.details[0];
-          setFormError(formatValidationDetail(detail?.field, detail?.issue) ?? err.message);
+          setFormError(formatValidationDetail(detail?.field, detail?.issue, t) ?? err.message);
         } else if (err.code === API_ERROR_CODES.INVALID_CREDENTIALS) {
-          setFormError('Invalid email or password.');
+          setFormError(t.authInvalidCredentials);
+        } else if (err.code === API_ERROR_CODES.FORBIDDEN && isAdminVariant) {
+          setFormError(t.authForbiddenAdmin);
         } else if (err.code === API_ERROR_CODES.PASSWORD_SETUP_REQUIRED) {
-          setFormError('This account still needs a password setup or reset before it can sign in.');
+          setFormError(t.authPasswordSetupRequired);
         } else {
           setFormError(err.message);
         }
       } else {
-        setFormError('An unexpected error occurred. Please try again.');
+        setFormError(t.authUnexpectedError);
       }
     } finally {
       setSubmitting(false);
@@ -210,15 +221,15 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
       <>
         <div className="auth-page__google-block">
           <div className="auth-page__google-button-wrap" ref={googleButtonRef} aria-live="polite" />
-          <span className="auth-page__google-copy">Continue with Google</span>
+          <span className="auth-page__google-copy">{t.authGoogleContinue}</span>
         </div>
 
         {!googleClientId ? (
-          <p className="auth-page__alt">Google sign-in is not configured in this environment.</p>
+          <p className="auth-page__alt">{t.authGoogleNotConfigured}</p>
         ) : !googleReady ? (
-          <p className="auth-page__alt">Loading Google sign-in…</p>
+          <p className="auth-page__alt">{t.authGoogleLoading}</p>
         ) : null}
-        {googleSubmitting ? <p className="auth-page__alt">Completing Google sign-in…</p> : null}
+        {googleSubmitting ? <p className="auth-page__alt">{t.authGoogleCompleting}</p> : null}
         {googleError ? <div className="auth-page__error" role="alert">{googleError}</div> : null}
       </>
     );
@@ -229,10 +240,10 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
 
     return (
       <section className="auth-page__panel auth-page__panel--primary">
-        <p className="eyebrow">Public sign up</p>
-        <h2>Check your email</h2>
+        <p className="eyebrow">{t.authSignupSuccessEyebrow}</p>
+        <h2>{t.authSignupSuccessTitle}</h2>
         <p className="auth-page__redirect-note">{signupSuccess.response.message}</p>
-        <p className="auth-page__helper">Verify the code first, then log in with your new password.</p>
+        <p className="auth-page__helper">{t.authSignupSuccessHelper}</p>
 
         <div className="auth-page__form">
           <Link
@@ -240,10 +251,10 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
             to="/verify-email"
             state={{ email: signupSuccess.email, cooldownSeconds: signupSuccess.response.cooldown_seconds }}
           >
-            Verify email
+            {t.authSignupSuccessVerifyCta}
           </Link>
           <Link className="btn btn--secondary" to="/login">
-            Back to login
+            {t.authSignupSuccessBackLogin}
           </Link>
         </div>
       </section>
@@ -253,21 +264,29 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
   function renderPublicForm() {
     if (signupSuccess) return renderPublicSuccess();
 
+    const eyebrow = isAdminVariant ? t.authAdminEyebrow : t.authPublicEyebrow;
+    const title = isAdminVariant
+      ? t.authAdminTitle
+      : (isSignupVariant ? t.authPublicSignupTitle : t.authPublicLoginTitle);
+    const description = isAdminVariant
+      ? t.authAdminDescription
+      : (isSignupVariant ? t.authPublicSignupDescription : t.authPublicLoginDescription);
+
     return (
       <section className="auth-page__panel auth-page__panel--primary">
-        <p className="eyebrow">{t.authPublicEyebrow}</p>
-        <h2>{isSignupVariant ? t.authPublicSignupTitle : t.authPublicLoginTitle}</h2>
-        <p className="auth-page__redirect-note">{isSignupVariant ? t.authPublicSignupDescription : t.authPublicLoginDescription}</p>
+        <p className="eyebrow">{eyebrow}</p>
+        <h2>{title}</h2>
+        <p className="auth-page__redirect-note">{description}</p>
 
-        {renderGoogleBlock()}
+        {isAdminVariant ? null : renderGoogleBlock()}
 
-        <p className="auth-page__helper">{t.authPublicLocalRestriction}</p>
+        {isAdminVariant ? null : <p className="auth-page__helper">{t.authPublicLocalRestriction}</p>}
         {formNotice ? <p className="auth-page__alt">{formNotice}</p> : null}
         {formError ? <div className="auth-page__error" role="alert">{formError}</div> : null}
 
         <form className="auth-page__form" onSubmit={handleSubmit}>
           <label className="auth-page__label">
-            Email
+            {t.authFieldEmail}
             <input
               type="email"
               className="auth-page__input"
@@ -280,7 +299,7 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
           </label>
 
           <label className="auth-page__label">
-            Password
+            {t.authFieldPassword}
             <input
               type="password"
               className="auth-page__input"
@@ -294,7 +313,7 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
 
           {isSignupVariant ? (
             <label className="auth-page__label">
-              Confirm password
+              {t.authFieldConfirmPassword}
               <input
                 type="password"
                 className="auth-page__input"
@@ -308,17 +327,21 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
           ) : null}
 
           <button type="submit" className="btn btn--primary" disabled={submitting}>
-            {submitting ? (isSignupVariant ? 'Creating account…' : 'Signing in…') : (isSignupVariant ? 'Create account' : 'Sign in')}
+            {submitting
+              ? (isSignupVariant ? t.authSubmitCreatingAccount : t.authSubmitSigningIn)
+              : (isSignupVariant ? t.authSubmitCreateAccount : t.authSubmitSignIn)}
           </button>
         </form>
 
-        <p className="auth-page__alt">
-          {isSignupVariant ? (
-            <Link to="/login">Already have an account? Log in</Link>
-          ) : (
-            <Link to="/signup">Need an account? Sign up</Link>
-          )}
-        </p>
+        {isAdminVariant ? null : (
+          <p className="auth-page__alt">
+            {isSignupVariant ? (
+              <Link to="/login">{t.authAltAlreadyHaveAccount}</Link>
+            ) : (
+              <Link to="/signup">{t.authAltNeedAccount}</Link>
+            )}
+          </p>
+        )}
       </section>
     );
   }
@@ -331,7 +354,9 @@ export function LoginPage({ variant = PUBLIC_AUTH_VARIANT.LOGIN }: LoginPageProp
         </div>
 
         <p className="auth-page__alt auth-page__alt--footer">
-          <Link to="/">{t.authBackToPortfolio}</Link>
+          <Link to={isAdminVariant ? '/login' : '/'}>
+            {isAdminVariant ? t.authBackToPublicLogin : t.authBackToPortfolio}
+          </Link>
         </p>
       </article>
     </section>

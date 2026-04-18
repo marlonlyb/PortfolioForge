@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { LocaleProvider } from '../../app/providers/LocaleProvider';
+import { useLocale } from '../../app/providers/LocaleProvider';
 import { AppError } from '../../shared/api/errors';
 import { ProjectAssistantChat } from './ProjectAssistantChat';
 import { sendProjectAssistantMessage } from './api';
@@ -26,6 +28,31 @@ function createDeferredResponse(): DeferredResponse {
   return { promise, resolve };
 }
 
+function renderProjectAssistantChat(props: { slug?: string; enabled?: boolean; lang?: string } = {}) {
+  function LocaleControls() {
+    const { setLocale } = useLocale();
+    return (
+      <div>
+        <button type="button" onClick={() => setLocale('es')}>locale-es</button>
+        <button type="button" onClick={() => setLocale('en')}>locale-en</button>
+      </div>
+    );
+  }
+
+  const {
+    slug = 'portfolioforge',
+    enabled = true,
+    lang = 'en',
+  } = props;
+
+  return render(
+    <LocaleProvider>
+      <LocaleControls />
+      <ProjectAssistantChat slug={slug} enabled={enabled} lang={lang} />
+    </LocaleProvider>,
+  );
+}
+
 describe('ProjectAssistantChat', () => {
   beforeEach(() => {
     mockedSendProjectAssistantMessage.mockReset();
@@ -35,6 +62,8 @@ describe('ProjectAssistantChat', () => {
       value: scrollIntoViewMock,
     });
     window.sessionStorage.clear();
+    window.localStorage.clear();
+    window.localStorage.setItem('portfolioforge.locale', 'en');
   });
 
   afterEach(() => {
@@ -42,17 +71,17 @@ describe('ProjectAssistantChat', () => {
   });
 
   it('does not render when disabled', () => {
-    const { container } = render(<ProjectAssistantChat slug="portfolioforge" enabled={false} lang="es" />);
+    const { container } = renderProjectAssistantChat({ enabled: false, lang: 'es' });
 
-    expect(container).toBeEmptyDOMElement();
+    expect(container.querySelector('.assistant-chat')).toBeNull();
   });
 
   it('sends the approved contract and renders the answer', async () => {
     mockedSendProjectAssistantMessage.mockResolvedValue({ answer: 'Grounded answer.' });
 
-    render(<ProjectAssistantChat slug="portfolioforge" enabled lang="en" />);
+    renderProjectAssistantChat();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask project assistant' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask project assistant' }));
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'How does the architecture work?' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
@@ -88,9 +117,9 @@ describe('ProjectAssistantChat', () => {
       { nope: true },
     ]));
 
-    render(<ProjectAssistantChat slug="portfolioforge" enabled lang="en" />);
+    renderProjectAssistantChat();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask project assistant' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask project assistant' }));
 
     expect(screen.queryByText('Message 1')).not.toBeInTheDocument();
     expect(screen.queryByText('Message 2')).not.toBeInTheDocument();
@@ -122,9 +151,9 @@ describe('ProjectAssistantChat', () => {
   it('submits on Enter and keeps Shift+Enter for editing', async () => {
     mockedSendProjectAssistantMessage.mockResolvedValue({ answer: 'Answer.' });
 
-    render(<ProjectAssistantChat slug="portfolioforge" enabled lang="en" />);
+    renderProjectAssistantChat();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask project assistant' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask project assistant' }));
     const textbox = screen.getByRole('textbox');
 
     fireEvent.change(textbox, { target: { value: 'First line' } });
@@ -149,9 +178,9 @@ describe('ProjectAssistantChat', () => {
       { role: 'assistant', content: 'Restored answer.' },
     ]));
 
-    render(<ProjectAssistantChat slug="portfolioforge" enabled lang="en" />);
+    renderProjectAssistantChat();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask project assistant' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask project assistant' }));
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Tell me more about the rollout.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
@@ -168,9 +197,9 @@ describe('ProjectAssistantChat', () => {
     const deferred = createDeferredResponse();
     mockedSendProjectAssistantMessage.mockReturnValue(deferred.promise);
 
-    render(<ProjectAssistantChat slug="portfolioforge" enabled lang="en" />);
+    renderProjectAssistantChat();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask project assistant' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask project assistant' }));
     const callsAfterOpen = scrollIntoViewMock.mock.calls.length;
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Explain the deployment flow' } });
@@ -200,9 +229,9 @@ describe('ProjectAssistantChat', () => {
       { role: 'assistant', content: 'Restored answer.' },
     ]));
 
-    render(<ProjectAssistantChat slug="portfolioforge" enabled lang="en" />);
+    renderProjectAssistantChat();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask project assistant' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask project assistant' }));
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Hi there' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
@@ -219,12 +248,20 @@ describe('ProjectAssistantChat', () => {
       { role: 'assistant', content: 'Portfolio history.' },
     ]));
 
-    const { rerender } = render(<ProjectAssistantChat slug="portfolioforge" enabled lang="en" />);
+    const { rerender } = render(
+      <LocaleProvider>
+        <ProjectAssistantChat slug="portfolioforge" enabled lang="en" />
+      </LocaleProvider>,
+    );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask project assistant' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask project assistant' }));
     expect(screen.getByText('Portfolio history.')).toBeInTheDocument();
 
-    rerender(<ProjectAssistantChat slug="other-project" enabled lang="en" />);
+    rerender(
+      <LocaleProvider>
+        <ProjectAssistantChat slug="other-project" enabled lang="en" />
+      </LocaleProvider>,
+    );
 
     expect(screen.queryByText('Portfolio history.')).not.toBeInTheDocument();
     expect(screen.getByText('Try asking about architecture, results, integrations, or tradeoffs.')).toBeInTheDocument();
@@ -248,15 +285,15 @@ describe('ProjectAssistantChat', () => {
       { role: 'assistant', content: 'Restored answer.' },
     ]));
 
-    render(<ProjectAssistantChat slug="portfolioforge" enabled lang="en" />);
+    renderProjectAssistantChat();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask project assistant' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask project assistant' }));
     expect(screen.getByText('Restored answer.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Close assistant' }));
     expect(screen.queryByLabelText('Project assistant')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask project assistant' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask project assistant' }));
     expect(screen.getByText('Restored answer.')).toBeInTheDocument();
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Continue the conversation' } });
@@ -281,9 +318,9 @@ describe('ProjectAssistantChat', () => {
       { role: 'assistant', content: 'Other project answer.' },
     ]));
 
-    render(<ProjectAssistantChat slug="portfolioforge" enabled lang="en" />);
+    renderProjectAssistantChat();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask project assistant' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask project assistant' }));
     expect(screen.getByText('Current project answer.')).toBeInTheDocument();
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Draft to discard' } });
 
@@ -304,5 +341,19 @@ describe('ProjectAssistantChat', () => {
         lang: 'en',
       });
     });
+  });
+
+  it('updates assistant copy when the locale changes', async () => {
+    renderProjectAssistantChat();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask project assistant' }));
+
+    expect(screen.getByText('Ask detailed questions grounded in the project documentation.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Clear chat' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'locale-es' }));
+
+    expect(await screen.findByText('Haz preguntas detalladas apoyadas en la documentación del proyecto.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Limpiar chat' })).toBeInTheDocument();
   });
 });

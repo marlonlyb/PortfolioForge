@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -244,4 +245,72 @@ func assertExecContains(t *testing.T, execs []string, fragments []string) {
 			t.Fatalf("expected executed SQL containing %q, got %#v", fragment, execs)
 		}
 	}
+}
+
+func TestNormalizeEnrichmentProfilePreservesStructuredProjectProfiles(t *testing.T) {
+	profile := &EnrichmentProfileReq{
+		Integrations: json.RawMessage(`[{"name":"CAN Bus","type":"fieldbus","note":"backbone"}]`),
+		TechnicalDecisions: json.RawMessage(`[{"decision":"Expose Ethernet/UDP","why":"future integration"}]`),
+		Challenges: json.RawMessage(`[]`),
+		Results: json.RawMessage(`[{"result":"Installed two operator displays","impact":"clearer monitoring"}]`),
+		Metrics: json.RawMessage(`{"users_impacted":1200,"verified":true}`),
+		Timeline: json.RawMessage(`[{"phase":"Installation","outcome":"Delivered"}]`),
+	}
+
+	if err := normalizeEnrichmentProfile(profile); err != nil {
+		t.Fatalf("normalizeEnrichmentProfile() error = %v", err)
+	}
+
+	assertJSONEqual(t, string(profile.Integrations), `[{"name":"CAN Bus","type":"fieldbus","note":"backbone"}]`)
+	assertJSONEqual(t, string(profile.TechnicalDecisions), `[{"decision":"Expose Ethernet/UDP","why":"future integration"}]`)
+	assertJSONEqual(t, string(profile.Results), `[{"result":"Installed two operator displays","impact":"clearer monitoring"}]`)
+	assertJSONEqual(t, string(profile.Metrics), `{"users_impacted":1200,"verified":true}`)
+	assertJSONEqual(t, string(profile.Timeline), `[{"phase":"Installation","outcome":"Delivered"}]`)
+}
+
+func TestNormalizeEnrichmentProfileRejectsNestedStructuredListItems(t *testing.T) {
+	profile := &EnrichmentProfileReq{
+		Integrations: json.RawMessage(`[{"name":"CAN Bus","meta":{"type":"fieldbus"}}]`),
+		TechnicalDecisions: json.RawMessage(`[]`),
+		Challenges: json.RawMessage(`[]`),
+		Results: json.RawMessage(`[]`),
+		Metrics: json.RawMessage(`{}`),
+		Timeline: json.RawMessage(`[]`),
+	}
+
+	err := normalizeEnrichmentProfile(profile)
+	if err == nil {
+		t.Fatal("expected validation error for nested structured list item")
+	}
+	if !strings.Contains(err.Error(), "integrations") {
+		t.Fatalf("error = %q, want field-specific integrations message", err.Error())
+	}
+}
+
+func assertJSONEqual(t *testing.T, got string, want string) {
+	t.Helper()
+
+	var gotValue interface{}
+	if err := json.Unmarshal([]byte(got), &gotValue); err != nil {
+		t.Fatalf("unmarshal got json: %v", err)
+	}
+
+	var wantValue interface{}
+	if err := json.Unmarshal([]byte(want), &wantValue); err != nil {
+		t.Fatalf("unmarshal want json: %v", err)
+	}
+
+	if !deepJSONEqual(gotValue, wantValue) {
+		t.Fatalf("json mismatch\n got: %s\nwant: %s", got, want)
+	}
+}
+
+func deepJSONEqual(got interface{}, want interface{}) bool {
+	gotJSON, gotErr := json.Marshal(got)
+	wantJSON, wantErr := json.Marshal(want)
+	if gotErr != nil || wantErr != nil {
+		return false
+	}
+
+	return string(gotJSON) == string(wantJSON)
 }

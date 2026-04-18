@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LocaleProvider } from '../../app/providers/LocaleProvider';
+import { useLocale } from '../../app/providers/LocaleProvider';
 import { SessionProvider, type SessionUser } from '../../app/providers/SessionProvider';
 import { VerifyEmailOtpPage } from './VerifyEmailOtpPage';
 import { resendEmailVerification, verifyEmailVerification } from './api';
@@ -37,10 +38,21 @@ function buildSessionUser(overrides: Partial<SessionUser> = {}): SessionUser {
 }
 
 function renderVerifyPage(initialEntry: string | { pathname: string; state?: { email?: string; from?: string; cooldownSeconds?: number } }) {
+  function LocaleControls() {
+    const { setLocale } = useLocale();
+    return (
+      <div>
+        <button type="button" onClick={() => setLocale('es')}>locale-es</button>
+        <button type="button" onClick={() => setLocale('en')}>locale-en</button>
+      </div>
+    );
+  }
+
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <SessionProvider>
         <LocaleProvider>
+          <LocaleControls />
           <Routes>
             <Route path="/verify-email" element={<VerifyEmailOtpPage />} />
             <Route path="/login" element={<p>login destination</p>} />
@@ -70,6 +82,8 @@ describe('VerifyEmailOtpPage', () => {
     mockedVerifyEmailVerification.mockResolvedValue({ user: buildSessionUser({ email_verified: true }) });
     renderVerifyPage({ pathname: '/verify-email', state: { email: 'ada@example.com', cooldownSeconds: 0 } });
 
+    fireEvent.click(screen.getByRole('button', { name: 'locale-en' }));
+
     fireEvent.change(screen.getByLabelText('Verification code'), { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Verify email' }));
 
@@ -84,6 +98,7 @@ describe('VerifyEmailOtpPage', () => {
     });
 
     renderVerifyPage({ pathname: '/verify-email', state: { email: 'ada@example.com', cooldownSeconds: 0 } });
+    fireEvent.click(screen.getByRole('button', { name: 'locale-en' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Resend code' }));
 
     await waitFor(() => {
@@ -108,6 +123,7 @@ describe('VerifyEmailOtpPage', () => {
 
     mockedVerifyEmailVerification.mockResolvedValue({ user: buildSessionUser({ email_verified: true }) });
     renderVerifyPage({ pathname: '/verify-email', state: { email: 'ada@example.com', from: '/dashboard', cooldownSeconds: 0 } });
+    fireEvent.click(screen.getByRole('button', { name: 'locale-en' }));
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('ada@example.com')).toBeInTheDocument();
@@ -118,5 +134,17 @@ describe('VerifyEmailOtpPage', () => {
 
     expect(await screen.findByText('dashboard destination')).toBeInTheDocument();
     expect(privateMeCalls).toBeGreaterThan(0);
+  });
+
+  it('updates verification copy when the locale changes', async () => {
+    renderVerifyPage({ pathname: '/verify-email', state: { email: 'ada@example.com', cooldownSeconds: 0 } });
+
+    expect(await screen.findByText('Verifica tu email')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'locale-en' }));
+
+    expect(await screen.findByText('Verify your email')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Verify email' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Resend code' })).toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 
+import { useLocale } from '../../app/providers/LocaleProvider';
 import { useSession } from '../../app/providers/SessionProvider';
 import { AppError } from '../../shared/api/errors';
 import { updateMyProfile } from './api';
@@ -10,6 +11,7 @@ interface CompleteProfileLocationState {
 }
 
 export function CompleteProfilePage() {
+  const { t } = useLocale();
   const { token, user, refreshSession, setUser } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
@@ -42,7 +44,7 @@ export function CompleteProfilePage() {
       if (err instanceof AppError) {
         setError(err.message);
       } else {
-        setError('Unable to save your profile right now.');
+        setError(t.authCompleteProfileUnableToSave);
       }
     } finally {
       setSubmitting(false);
@@ -50,17 +52,17 @@ export function CompleteProfilePage() {
   }
 
   return (
-    <section className="auth-page">
+      <section className="auth-page">
       <article className="card">
-        <p className="eyebrow">Complete your profile</p>
-        <h2>Unlock the project assistant</h2>
-        <p className="auth-page__redirect-note">Add your full name and company to continue with project-specific chat.</p>
+        <p className="eyebrow">{t.authCompleteProfileEyebrow}</p>
+        <h2>{t.authCompleteProfileTitle}</h2>
+        <p className="auth-page__redirect-note">{t.authCompleteProfileDescription}</p>
 
         {error ? <div className="auth-page__error" role="alert">{error}</div> : null}
 
         <form className="auth-page__form" onSubmit={handleSubmit}>
           <label className="auth-page__label">
-            Full name
+            {t.authCompleteProfileFullName}
             <input
               type="text"
               className="auth-page__input"
@@ -73,7 +75,7 @@ export function CompleteProfilePage() {
           </label>
 
           <label className="auth-page__label">
-            Company
+            {t.authCompleteProfileCompany}
             <input
               type="text"
               className="auth-page__input"
@@ -86,12 +88,12 @@ export function CompleteProfilePage() {
           </label>
 
           <button type="submit" className="btn btn--primary" disabled={submitting}>
-            {submitting ? 'Saving…' : 'Save profile'}
+            {submitting ? t.authCompleteProfileSaving : t.authCompleteProfileSave}
           </button>
         </form>
 
         <p className="auth-page__alt">
-          <Link to={state?.from ?? '/'}>Back to project</Link>
+          <Link to={state?.from ?? '/'}>{t.authCompleteProfileBack}</Link>
         </p>
       </article>
     </section>

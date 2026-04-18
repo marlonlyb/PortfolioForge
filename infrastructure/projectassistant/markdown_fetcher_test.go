@@ -6,9 +6,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/marlonlyb/portfolioforge/internal/markdownpolicy"
 )
 
 func TestMarkdownFetcherRejectsHostOutsideAllowlist(t *testing.T) {
@@ -16,6 +18,18 @@ func TestMarkdownFetcherRejectsHostOutsideAllowlist(t *testing.T) {
 	_, err := fetcher.Fetch(context.Background(), "project-1", "https://example.com/doc.md")
 	if !errors.Is(err, ErrMarkdownHostRejected) {
 		t.Fatalf("error = %v, want ErrMarkdownHostRejected", err)
+	}
+}
+
+func TestMarkdownFetcherUsesSharedMarkdownPolicy(t *testing.T) {
+	if err := markdownpolicy.ValidateSourceURL("https://example.com/doc.md"); !errors.Is(err, markdownpolicy.ErrSourceHostRejected) {
+		t.Fatalf("shared policy error = %v, want ErrSourceHostRejected", err)
+	}
+
+	fetcher := NewMarkdownFetcher(NewMarkdownCache(time.Minute))
+	_, err := fetcher.Fetch(context.Background(), "project-1", "https://example.com/doc.md")
+	if !errors.Is(err, ErrMarkdownHostRejected) {
+		t.Fatalf("fetch error = %v, want ErrMarkdownHostRejected", err)
 	}
 }
 
@@ -27,14 +41,15 @@ func TestMarkdownFetcherCachesChunks(t *testing.T) {
 	}))
 	defer server.Close()
 
-	parsedURL, err := url.Parse(server.URL)
-	if err != nil {
-		t.Fatalf("parse url: %v", err)
-	}
-
 	fetcher := NewMarkdownFetcher(NewMarkdownCache(time.Minute))
 	fetcher.client = server.Client()
-	fetcher.allowlist = map[string]struct{}{parsedURL.Hostname(): {}}
+	fetcher.sourceURLValidator = func(raw string) error {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == server.URL {
+			return nil
+		}
+		return markdownpolicy.ValidateSourceURL(trimmed)
+	}
 
 	chunksA, err := fetcher.Fetch(context.Background(), "project-1", server.URL)
 	if err != nil {
@@ -64,17 +79,18 @@ func TestMarkdownFetcherCacheKeyIncludesSourceURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	parsedURL, err := url.Parse(server.URL)
-	if err != nil {
-		t.Fatalf("parse url: %v", err)
-	}
+	firstURL := server.URL + "/first.md"
+	secondURL := server.URL + "/second.md"
 
 	fetcher := NewMarkdownFetcher(NewMarkdownCache(time.Minute))
 	fetcher.client = server.Client()
-	fetcher.allowlist = map[string]struct{}{parsedURL.Hostname(): {}}
-
-	firstURL := server.URL + "/first.md"
-	secondURL := server.URL + "/second.md"
+	fetcher.sourceURLValidator = func(raw string) error {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == firstURL || trimmed == secondURL {
+			return nil
+		}
+		return markdownpolicy.ValidateSourceURL(trimmed)
+	}
 
 	firstChunks, err := fetcher.Fetch(context.Background(), "project-1", firstURL)
 	if err != nil {
@@ -106,17 +122,17 @@ func TestMarkdownFetcherReturnsFetchFailedOnTimeout(t *testing.T) {
 	}))
 	defer server.Close()
 
-	parsedURL, err := url.Parse(server.URL)
-	if err != nil {
-		t.Fatalf("parse url: %v", err)
-	}
-
 	fetcher := NewMarkdownFetcher(NewMarkdownCache(time.Minute))
 	fetcher.client = server.Client()
 	fetcher.client.Timeout = 10 * time.Millisecond
-	fetcher.allowlist = map[string]struct{}{parsedURL.Hostname(): {}}
+	fetcher.sourceURLValidator = func(raw string) error {
+		if strings.TrimSpace(raw) == server.URL {
+			return nil
+		}
+		return markdownpolicy.ValidateSourceURL(raw)
+	}
 
-	_, err = fetcher.Fetch(context.Background(), "project-1", server.URL)
+	_, err := fetcher.Fetch(context.Background(), "project-1", server.URL)
 	if !errors.Is(err, ErrMarkdownFetchFailed) {
 		t.Fatalf("error = %v, want ErrMarkdownFetchFailed", err)
 	}
@@ -128,17 +144,17 @@ func TestMarkdownFetcherRejectsResponsesOverSizeCap(t *testing.T) {
 	}))
 	defer server.Close()
 
-	parsedURL, err := url.Parse(server.URL)
-	if err != nil {
-		t.Fatalf("parse url: %v", err)
-	}
-
 	fetcher := NewMarkdownFetcher(NewMarkdownCache(time.Minute))
 	fetcher.client = server.Client()
-	fetcher.allowlist = map[string]struct{}{parsedURL.Hostname(): {}}
+	fetcher.sourceURLValidator = func(raw string) error {
+		if strings.TrimSpace(raw) == server.URL {
+			return nil
+		}
+		return markdownpolicy.ValidateSourceURL(raw)
+	}
 	fetcher.maxBytes = 8
 
-	_, err = fetcher.Fetch(context.Background(), "project-1", server.URL)
+	_, err := fetcher.Fetch(context.Background(), "project-1", server.URL)
 	if !errors.Is(err, ErrMarkdownTooLarge) {
 		t.Fatalf("error = %v, want ErrMarkdownTooLarge", err)
 	}

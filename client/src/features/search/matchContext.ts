@@ -1,31 +1,17 @@
 import type { Project } from '../../shared/types/project';
-import { MATCH_TYPE, type EvidenceField, type MatchType, type SearchResult } from '../../shared/types/search';
+import type { getMessages } from '../../shared/i18n/messages';
+import {
+  MATCH_TYPE,
+  type EvidenceField,
+  type MatchType,
+  type SearchFilters,
+  type SearchResult,
+} from '../../shared/types/search';
 
 const MAX_EVIDENCE_TEXT_LENGTH = 160;
 const MAX_LOCAL_EVIDENCE_ITEMS = 3;
 
-const FIELD_LABELS: Record<string, string> = {
-  title: 'Título del proyecto',
-  summary: 'Resumen',
-  description: 'Descripción',
-  client_name: 'Cliente',
-  category: 'Categoría',
-  technology: 'Tecnología',
-  technologies: 'Tecnologías',
-  solution_summary: 'Solución implementada',
-  architecture: 'Arquitectura',
-  business_goal: 'Objetivo de negocio',
-  ai_usage: 'Uso de IA',
-  technical_decisions: 'Decisiones técnicas',
-  results: 'Resultados',
-};
-
-const MATCH_TYPE_LABELS: Record<MatchType, string> = {
-  fts: 'Texto coincidente',
-  fuzzy: 'Coincidencia aproximada',
-  semantic: 'Coincidencia semántica',
-  structured: 'Coincidencia estructurada',
-};
+type SearchMatchMessages = ReturnType<typeof getMessages>;
 
 export interface SearchMatchContext {
   explanation: string | null;
@@ -36,6 +22,81 @@ export interface ProjectDetailLocationState {
   searchMatchContext?: SearchMatchContext;
   activeSearchQuery?: string;
   activeSearchCategory?: string;
+  activeSearchClient?: string;
+  activeSearchTechnologies?: string[];
+  searchResultsSnapshot?: SearchResultsSnapshot;
+}
+
+export interface SearchResultsSnapshot {
+  results: SearchResult[];
+  total: number;
+  cursor: string | null;
+}
+
+function normalizeActiveSearchValue(value?: string | null): string | undefined {
+  const trimmed = value?.trim() ?? '';
+  return trimmed || undefined;
+}
+
+export function normalizeActiveSearchTechnologies(technologies?: string[]): string[] | undefined {
+  const normalized = technologies
+    ?.map((technology) => technology.trim())
+    .filter((technology) => technology.length > 0);
+
+  return normalized && normalized.length > 0 ? normalized : undefined;
+}
+
+export function buildSearchResultsLocationState(
+  query: string,
+  filters: SearchFilters,
+  snapshot?: SearchResultsSnapshot,
+): ProjectDetailLocationState | undefined {
+  const activeSearchQuery = normalizeActiveSearchValue(query);
+  const activeSearchCategory = normalizeActiveSearchValue(filters.category);
+  const activeSearchClient = normalizeActiveSearchValue(filters.client);
+  const activeSearchTechnologies = normalizeActiveSearchTechnologies(filters.technologies);
+
+  if (!activeSearchQuery && !snapshot) {
+    return undefined;
+  }
+
+  return {
+    activeSearchQuery,
+    activeSearchCategory,
+    activeSearchClient,
+    activeSearchTechnologies,
+    searchResultsSnapshot: snapshot,
+  };
+}
+
+export function buildSearchResultsPath(query: string, filters: SearchFilters): string {
+  const searchParams = new URLSearchParams();
+  const trimmedQuery = query.trim();
+
+  if (trimmedQuery) searchParams.set('q', trimmedQuery);
+  if (filters.category) searchParams.set('category', filters.category);
+  if (filters.client) searchParams.set('client', filters.client);
+  if (filters.technologies.length > 0) {
+    searchParams.set('technologies', filters.technologies.join(','));
+  }
+
+  const serializedSearch = searchParams.toString();
+  return serializedSearch ? `/search?${serializedSearch}` : '/search';
+}
+
+export function matchesActiveSearchState(
+  locationState: ProjectDetailLocationState | null,
+  query: string,
+  filters: SearchFilters,
+): boolean {
+  if (!locationState?.searchResultsSnapshot) {
+    return false;
+  }
+
+  return locationState.activeSearchQuery === normalizeActiveSearchValue(query)
+    && locationState.activeSearchCategory === normalizeActiveSearchValue(filters.category)
+    && locationState.activeSearchClient === normalizeActiveSearchValue(filters.client)
+    && JSON.stringify(locationState.activeSearchTechnologies ?? []) === JSON.stringify(filters.technologies);
 }
 
 interface ProjectSearchField {
@@ -108,10 +169,10 @@ function buildLocalEvidence(project: Project, query: string): EvidenceField[] {
   return evidence;
 }
 
-function joinEvidenceLabels(labels: string[]): string {
-  if (labels.length <= 1) return labels[0] ?? 'campos relevantes del proyecto';
-  if (labels.length === 2) return `${labels[0]} y ${labels[1]}`;
-  return `${labels.slice(0, -1).join(', ')} y ${labels.at(-1)}`;
+function joinEvidenceLabels(labels: string[], t: SearchMatchMessages): string {
+  if (labels.length <= 1) return labels[0] ?? t.searchContextRelevantProjectFields;
+  if (labels.length === 2) return `${labels[0]} ${t.searchContextAnd} ${labels[1]}`;
+  return `${labels.slice(0, -1).join(', ')} ${t.searchContextAnd} ${labels.at(-1)}`;
 }
 
 export function buildSearchMatchContext(result: SearchResult): SearchMatchContext | undefined {
@@ -128,27 +189,54 @@ export function buildSearchMatchContext(result: SearchResult): SearchMatchContex
   };
 }
 
-export function buildProjectSearchMatchContext(project: Project, query: string): SearchMatchContext | undefined {
+export function buildProjectSearchMatchContext(
+  project: Project,
+  query: string,
+  t: SearchMatchMessages,
+): SearchMatchContext | undefined {
   const trimmedQuery = query.trim();
   if (!trimmedQuery) return undefined;
 
   const evidence = buildLocalEvidence(project, trimmedQuery);
   if (evidence.length === 0) return undefined;
 
-  const evidenceLabels = [...new Set(evidence.map((item) => formatEvidenceField(item.field)))];
+  const evidenceLabels = [...new Set(evidence.map((item) => formatEvidenceField(item.field, t)))];
 
   return {
-    explanation: `Coincide con la búsqueda “${trimmedQuery}” en ${joinEvidenceLabels(evidenceLabels)}.`,
+    explanation: `${t.searchContextExplanationPrefix} “${trimmedQuery}” ${t.searchContextExplanationConnector} ${joinEvidenceLabels(evidenceLabels, t)}.`,
     evidence,
   };
 }
 
-export function formatEvidenceField(field: string): string {
-  return FIELD_LABELS[field] ?? field.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+export function formatEvidenceField(field: string, t: SearchMatchMessages): string {
+  const fieldLabels: Record<string, string> = {
+    title: t.searchEvidenceFieldTitle,
+    summary: t.searchEvidenceFieldSummary,
+    description: t.searchEvidenceFieldDescription,
+    client_name: t.searchEvidenceFieldClient,
+    category: t.searchEvidenceFieldCategory,
+    technology: t.searchEvidenceFieldTechnology,
+    technologies: t.searchEvidenceFieldTechnologies,
+    solution_summary: t.searchEvidenceFieldSolution,
+    architecture: t.searchEvidenceFieldArchitecture,
+    business_goal: t.searchEvidenceFieldBusinessGoal,
+    ai_usage: t.searchEvidenceFieldAIUsage,
+    technical_decisions: t.searchEvidenceFieldTechnicalDecisions,
+    results: t.searchEvidenceFieldResults,
+  };
+
+  return fieldLabels[field] ?? field.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export function formatMatchType(matchType: MatchType): string {
-  return MATCH_TYPE_LABELS[matchType] ?? matchType;
+export function formatMatchType(matchType: MatchType, t: SearchMatchMessages): string {
+  const matchTypeLabels: Record<MatchType, string> = {
+    fts: t.searchMatchTypeFTS,
+    fuzzy: t.searchMatchTypeFuzzy,
+    semantic: t.searchMatchTypeSemantic,
+    structured: t.searchMatchTypeStructured,
+  };
+
+  return matchTypeLabels[matchType] ?? matchType;
 }
 
 export function truncateEvidenceText(text: string): string {

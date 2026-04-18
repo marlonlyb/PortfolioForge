@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 
+import { useLocale } from '../../app/providers/LocaleProvider';
 import { sendProjectAssistantMessage } from './api';
 import { AppError } from '../../shared/api/errors';
 import type { ProjectAssistantMessage } from '../../shared/types/project';
@@ -17,6 +18,7 @@ interface ProjectAssistantChatProps {
 }
 
 export function ProjectAssistantChat({ slug, enabled, lang }: ProjectAssistantChatProps) {
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState('');
   const [history, setHistory] = useState<ProjectAssistantMessage[]>(() => getAssistantHistory(slug));
@@ -76,7 +78,7 @@ export function ProjectAssistantChat({ slug, enabled, lang }: ProjectAssistantCh
     } catch (err: unknown) {
       setPendingQuestion(null);
       setQuestion(nextQuestion);
-      setError(err instanceof AppError ? err.message : 'Assistant unavailable.');
+      setError(err instanceof AppError ? err.message : t.detailAssistantUnavailable);
     } finally {
       setLoading(false);
     }
@@ -113,43 +115,43 @@ export function ProjectAssistantChat({ slug, enabled, lang }: ProjectAssistantCh
   return (
     <div className={`assistant-chat ${open ? 'assistant-chat--open' : ''}`}>
       <button type="button" className="assistant-chat__toggle" onClick={() => setOpen((current) => !current)}>
-        {open ? 'Close assistant' : 'Ask project assistant'}
+        {open ? t.detailAssistantToggleClose : t.detailAssistantToggleOpen}
       </button>
 
       {open ? (
-        <section className="assistant-chat__panel card" aria-label="Project assistant">
+        <section className="assistant-chat__panel card" aria-label={t.detailAssistantPanelAria}>
           <div className="assistant-chat__header">
-            <p className="eyebrow">Project assistant</p>
+            <p className="eyebrow">{t.detailAssistantEyebrow}</p>
             <p className="assistant-chat__copy">
               {hasConversation
-                ? 'Continue the conversation with context from this browser session only.'
-                : 'Ask detailed questions grounded in the project documentation.'}
+                ? t.detailAssistantConversationResume
+                : t.detailAssistantConversationIntro}
             </p>
           </div>
 
           <div className="assistant-chat__history">
             {history.length === 0 ? (
-              <p className="assistant-chat__empty">Try asking about architecture, results, integrations, or tradeoffs.</p>
+              <p className="assistant-chat__empty">{t.detailAssistantEmpty}</p>
             ) : null}
 
             {history.map((message, index) => (
               <article key={`${message.role}-${index}`} className={`assistant-chat__message assistant-chat__message--${message.role}`}>
-                <strong>{message.role === 'assistant' ? 'Assistant' : 'You'}</strong>
+                <strong>{message.role === 'assistant' ? t.detailAssistantRoleAssistant : t.detailAssistantRoleYou}</strong>
                 <p>{message.content}</p>
               </article>
             ))}
 
             {pendingQuestion ? (
               <article className="assistant-chat__message assistant-chat__message--user assistant-chat__message--pending">
-                <strong>You</strong>
+                <strong>{t.detailAssistantRoleYou}</strong>
                 <p>{pendingQuestion}</p>
               </article>
             ) : null}
 
             {loading ? (
               <article className="assistant-chat__message assistant-chat__message--assistant assistant-chat__message--typing" aria-live="polite">
-                <strong>Assistant</strong>
-                <p>Thinking…</p>
+                <strong>{t.detailAssistantRoleAssistant}</strong>
+                <p>{t.detailAssistantThinking}</p>
               </article>
             ) : null}
 
@@ -163,17 +165,17 @@ export function ProjectAssistantChat({ slug, enabled, lang }: ProjectAssistantCh
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
               onKeyDown={handleInputKeyDown}
-              placeholder="Ask a detailed question about this project"
+              placeholder={t.detailAssistantPlaceholder}
             />
 
             {error ? <p className="admin__error assistant-chat__error">{error}</p> : null}
 
             <div className="assistant-chat__actions">
               <button className="assistant-chat__clear" type="button" onClick={handleClearChat} disabled={loading || (!hasConversation && question.length === 0 && !error)}>
-                Clear chat
+                {t.detailAssistantClear}
               </button>
               <button className="btn" type="submit" disabled={loading || question.trim().length < 2}>
-                {loading ? 'Thinking…' : 'Send'}
+                {loading ? t.detailAssistantThinking : t.detailAssistantSend}
               </button>
             </div>
           </form>

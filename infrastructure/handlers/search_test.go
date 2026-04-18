@@ -18,9 +18,11 @@ import (
 
 type stubSearchPublicRepo struct {
 	results []model.SearchResult
+	params  []model.SearchParams
 }
 
-func (s *stubSearchPublicRepo) Search(context.Context, model.SearchParams) ([]model.SearchResult, error) {
+func (s *stubSearchPublicRepo) Search(_ context.Context, params model.SearchParams) ([]model.SearchResult, error) {
+	s.params = append(s.params, params)
 	return s.results, nil
 }
 
@@ -108,5 +110,78 @@ func TestSearchHandlerLocalizesClientNameInResults(t *testing.T) {
 	}
 	if len(body.Data.Data) != 1 || body.Data.Data[0].ClientName == nil || *body.Data.Data[0].ClientName != "Acme Industries" {
 		t.Fatalf("client_name = %#v", body.Data.Data)
+	}
+}
+
+func TestSearchHandlerPreservesCursorAndFiltersAcrossServiceBoundary(t *testing.T) {
+	projectID := uuid.New()
+	searchRepo := &stubSearchPublicRepo{results: []model.SearchResult{{
+		Project: model.Project{
+			ID:          projectID,
+			Slug:        "portfolioforge",
+			Name:        "PortfolioForge",
+			Description: "Descripción base",
+			Category:    "platform",
+			ClientName:  "Acme",
+			Profile:     &model.ProjectProfile{ProjectID: projectID, SolutionSummary: "Resumen base"},
+		},
+		LexicalScore: 1,
+	}}}
+	searchService := services.NewSearch(
+		searchRepo,
+		&stubSearchProjectReader{},
+		embedding.NewNoOpEmbeddingProvider(),
+		&stubExplanationProvider{},
+		false,
+	)
+	handler := NewSearch(searchService, false, localization.NewService(nil, nil))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/public/search?q=portfolio&category=platform&client=Acme&technologies=react,node&pageSize=5&cursor=2", nil)
+	rec := httptest.NewRecorder()
+	e := echo.New()
+	c := e.NewContext(req, rec)
+
+	if err := handler.Search(c); err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	if len(searchRepo.params) != 1 {
+		t.Fatalf("repo calls = %d, want 1", len(searchRepo.params))
+	}
+	got := searchRepo.params[0]
+	if got.Category != "platform" || got.Client != "Acme" {
+		t.Fatalf("filters = %#v", got)
+	}
+	if got.Cursor != "2" {
+		t.Fatalf("cursor = %q, want 2", got.Cursor)
+	}
+	if len(got.Technologies) != 2 || got.Technologies[0] != "react" || got.Technologies[1] != "node" {
+		t.Fatalf("technologies = %#v", got.Technologies)
+	}
+
+	var body struct {
+		Data struct {
+			Meta struct {
+				FiltersApplied struct {
+					Client       *string  `json:"client"`
+					Category     *string  `json:"category"`
+					Technologies []string `json:"technologies"`
+				} `json:"filters_applied"`
+			} `json:"meta"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Data.Meta.FiltersApplied.Client == nil || *body.Data.Meta.FiltersApplied.Client != "Acme" {
+		t.Fatalf("client filter = %#v", body.Data.Meta.FiltersApplied.Client)
+	}
+	if body.Data.Meta.FiltersApplied.Category == nil || *body.Data.Meta.FiltersApplied.Category != "platform" {
+		t.Fatalf("category filter = %#v", body.Data.Meta.FiltersApplied.Category)
+	}
+	if len(body.Data.Meta.FiltersApplied.Technologies) != 2 {
+		t.Fatalf("technology filters = %#v", body.Data.Meta.FiltersApplied.Technologies)
 	}
 }
