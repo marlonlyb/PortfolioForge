@@ -48,8 +48,15 @@ Para trabajo operativo dentro de este repo, esta guía debe tratarse como la **r
 Si un proyecto ya tiene markdown canónico confiable, ese archivo se usa primero y se trata como:
 
 - fuente editorial principal;
+- fuente base en castellano para el contenido runtime;
 - fuente de `source_markdown_url` para el assistant;
 - referencia principal para poblar o corregir la UI.
+
+Regla de coherencia obligatoria:
+
+- el archivo canónico local y la copia publicada en `source_markdown_url` deben estar ambos en castellano y representar la misma versión editorial del proyecto;
+- si el archivo local ya fue corregido a castellano pero la URL publicada sigue en inglés u otro idioma, la fuente todavía está desalineada y no debe darse por cerrada.
+- la convención de publicación remota debe ser estable y basada en slug: `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`.
 
 No corresponde re-analizar el repositorio completo salvo que:
 
@@ -119,14 +126,16 @@ La UI debe mostrar:
 ## 5. Flujo correcto hoy
 
 1. leer el markdown canónico completo;
-2. confirmar si ese markdown sigue siendo la fuente correcta;
-3. resolver tecnologías antes de guardar el proyecto;
-4. poblar campos base del proyecto;
-5. poblar `project_profiles` con versión resumida y estructurada;
-6. cargar o revisar media solo si el markdown la define con claridad suficiente;
-7. guardar `source_markdown_url` si el proyecto debe exponer assistant;
-8. verificar el resultado real en admin/público o DB;
-9. refrescar búsqueda y re-embed cuando cambie contenido indexable.
+2. confirmar que el markdown canónico local y la URL publicada en `source_markdown_url` estén alineados y en castellano;
+3. confirmar si ese markdown sigue siendo la fuente correcta;
+4. resolver tecnologías antes de guardar el proyecto;
+5. poblar campos base del proyecto;
+6. poblar `project_profiles` con versión resumida y estructurada;
+7. cargar o revisar media solo si el markdown la define con claridad suficiente;
+8. guardar `source_markdown_url` si el proyecto debe exponer assistant;
+9. si cambió la base en castellano, regenerar localizaciones derivadas (`ca`, `en`, `de`) desde esa base;
+10. verificar el resultado real en admin/público o DB;
+11. refrescar búsqueda y re-embed cuando cambie contenido indexable.
 
 ---
 
@@ -170,6 +179,13 @@ Mapping operativo actual:
 - `Technologies` → `technology_ids`
 - `Media` → `media[]` + `images` legacy derivado
 - `Markdown source URL` → `source_markdown_url`
+
+Regla de localización asociada:
+
+- el contenido base siempre se escribe y corrige primero en castellano (`es`);
+- las versiones públicas `ca`, `en` y `de` se derivan desde ese castellano;
+- `client_name` participa en esa misma localización pública, aunque storage/admin legacy aún acepten `brand`.
+- identificadores técnicos, marcas o nombres de plataforma pueden mantenerse en idioma original si traducirlos degrada precisión.
 
 ---
 
@@ -225,7 +241,7 @@ Regla:
 
 - preferir taxonomías estables como `industrial automation`, `embedded systems`, `web platform`, etc.
 
-### 7.4 `brand` / Client-Context
+### 7.4 `client_name` / `brand` / Client-Context
 
 Fuente: `Client / Context`
 
@@ -239,6 +255,11 @@ Regla:
 
 - no usar una frase excesivamente larga si puede comprimirse sin perder sentido;
 - si el nombre del cliente no debe publicarse, usar contexto operativo sanitizado.
+- ese valor en castellano es la fuente de verdad; otras locales se regeneran desde aquí y cualquier ajuste no automático debe guardarse como override manual.
+
+Excepción:
+
+- si el campo contiene un identificador técnico, un nombre de producto o una marca cuyo cambio degrade precisión, se puede mantener igual entre idiomas.
 
 ### 7.5 `source_markdown_url`
 
@@ -254,6 +275,8 @@ Reglas:
 - no se expone en la API pública;
 - si existe y no está vacía, el proyecto puede declarar `assistant_available=true` en público;
 - el assistant sigue requiriendo sesión elegible.
+- la convención por defecto debe ser: `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`.
+- `<slug>` debe coincidir con el `Slug` del markdown canónico y con el `slug` runtime del proyecto.
 
 ### 7.6 `active`
 
@@ -525,7 +548,9 @@ Reglas:
 - el contenido base vive en español;
 - los cambios deben sincronizar traducciones automáticas cuando aplique;
 - las traducciones manuales no deben sobrescribirse;
-- no dejar filas auto vacías que degraden el fallback de arrays, métricas o listas.
+- no dejar filas auto vacías que degraden el fallback de arrays, métricas o listas;
+- si el markdown canónico estaba en otro idioma por error, primero se corrige la base en castellano y recién después se regeneran `ca`, `en` y `de`.
+- la URL publicada en `source_markdown_url` debe reflejar también esa base en castellano; no debe quedar una copia remota en otro idioma.
 
 ### 9.3 Assistant
 
@@ -534,6 +559,7 @@ Reglas:
 - el assistant responde sobre el markdown remoto en `source_markdown_url`;
 - la UI solo controla si el proyecto está preparado para declararlo disponible;
 - `source_markdown_url` nunca debe filtrarse públicamente.
+- si el assistant debe responder en coherencia con la base española, la copia remota publicada también debe estar en castellano.
 
 ---
 

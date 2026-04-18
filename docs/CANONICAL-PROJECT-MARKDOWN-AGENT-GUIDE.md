@@ -51,9 +51,16 @@ Ese markdown tendrá dos usos posteriores:
 
 Por eso el documento debe ser:
 
+- redactado en castellano como fuente editorial canónica de PortfolioForge;
 - editorialmente claro para humanos;
 - fácilmente mapeable a campos estructurados;
 - suficientemente rico para responder preguntas en el assistant.
+
+Regla adicional obligatoria:
+
+- si ese markdown se publica luego en `source_markdown_url`, la **copia remota publicada también debe seguir en castellano** y mantenerse alineada con el archivo canónico local;
+- no debe existir una situación donde el archivo canónico local esté en castellano pero la URL publicada siga en otro idioma.
+- la convención de publicación remota debe ser: `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`.
 
 Y además debe ser **seguro para publicación**:
 
@@ -71,6 +78,10 @@ Y además debe ser **seguro para publicación**:
 4. **Separar estrategia, ejecución y técnica**.
 5. **El markdown debe ser estable**: no escribirlo como una nota improvisada.
 6. **El documento debe poder resumirse luego en UI sin perder sentido**.
+7. **El idioma canónico siempre es castellano (`es`)**: las demás locales públicas se derivan desde esta versión.
+8. **Identificadores técnicos o de producto pueden mantenerse en su idioma original** cuando traducirlos reduzca corrección (`PLC`, `HMI`, `CAN Bus`, `Ethernet/IP`, nombres de plataforma, etc.).
+9. **La publicación remota debe respetar el mismo idioma canónico**: no publicar en `source_markdown_url` una versión en inglés u otro idioma si la base editorial oficial es castellano.
+10. **La URL publicada debe seguir una convención estable por slug**: `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`.
 
 ---
 
@@ -208,6 +219,16 @@ Regla de sanitización del mapeo:
 
 - `Client / Context` debe priorizar contexto operativo sobre razón social si el nombre del cliente no es público.
 - Cualquier referencia a personas debe escribirse por rol o función, nunca por nombre propio, correo o teléfono.
+
+Regla de idioma fuente para PortfolioForge:
+
+- el markdown canónico que alimenta PortfolioForge debe escribirse en castellano como fuente editorial primaria;
+- `Summary`, `Client / Context` y los bloques estructurados deben quedar también en castellano como base de runtime;
+- otras locales públicas (`ca`, `en`, `de`) se derivan desde ese markdown en castellano;
+- la copia publicada en `source_markdown_url` debe coincidir con esa base en castellano;
+- la URL remota debe construirse usando el mismo slug del markdown y del proyecto: `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`;
+- `Client / Context` se mapeará a `client_name` y servirá como base para las demás locales públicas;
+- nombres propios, marcas o identificadores técnicos pueden conservarse sin traducir cuando hacerlo reduzca corrección.
 
 ---
 
@@ -410,7 +431,8 @@ Antes de considerar terminado el `.md`, verifica que:
 9. no aparecen nombres propios, IDs documentales, montos exactos ni rutas internas innecesarias;
 10. no existe una sección `Evidence Sources` ni trazabilidad documental sensible;
 11. las métricas están expresadas como porcentajes, ratios, comparativas o unidades operativas seguras;
-12. si `Repository Source` aparece, está sanitizado y no expone rutas privadas.
+12. si `Repository Source` aparece, está sanitizado y no expone rutas privadas;
+13. el markdown completo quedó redactado en castellano salvo identificadores técnicos o de producto cuya traducción degrade precisión.
 
 ---
 

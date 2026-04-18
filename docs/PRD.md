@@ -30,11 +30,16 @@ Regla explícita:
 ## 2. Principios del producto real
 
 1. **El repositorio fuente no se publica directamente**: primero se transforma en un `.md` canónico.
-2. **El `.md` canónico es la fuente editorial principal**: resume, organiza y estabiliza el proyecto.
+2. **El `.md` canónico es la fuente editorial principal y se redacta en castellano**: resume, organiza y estabiliza el proyecto.
 3. **La UI admin no debe reinventar el proyecto**: debe persistir y ajustar lo ya definido en el markdown.
 4. **La DB y la UI son la capa runtime estructurada**: exponen catálogo, detalle, búsqueda, readiness, localización y media optimizada.
 5. **El assistant no usa chat libre**: responde sobre un proyecto concreto usando solo el markdown remoto configurado.
 6. **El dominio funcional es `project`** aunque persistan nombres legacy como `product` y `brand`.
+
+Regla asociada:
+
+- si el markdown canónico se publica en `source_markdown_url`, esa copia remota también debe mantenerse en castellano y alineada con el archivo canónico local.
+- la convención de URL para esa publicación remota debe ser `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`.
 
 ---
 
@@ -117,6 +122,14 @@ Relación entre capas:
 - la UI/DB alimenta catálogo, detalle, búsqueda y localización;
 - `source_markdown_url` publica ese mismo `.md` para el assistant.
 
+No es válido dejar desalineadas estas capas así:
+
+- markdown local en castellano;
+- runtime base en castellano;
+- pero `source_markdown_url` todavía en inglés u otro idioma.
+
+Cuando eso ocurra, el flujo editorial debe considerarse incompleto hasta corregir la copia remota.
+
 ---
 
 ## 5. Estado funcional real
@@ -131,7 +144,7 @@ El repositorio actual implementa o soporta:
 - enriquecimiento estructurado mediante `project_profiles`;
 - media optimizada por variantes `low_url` / `medium_url` / `high_url` con `fallback_url` como respaldo final;
 - localización persistida por proyecto y campo;
-- auto-traducción desde español base y override manual;
+- auto-traducción derivada solo desde español base (`es`) y override manual;
 - readiness de búsqueda;
 - recomposición del documento de búsqueda y re-embedding;
 - transición progresiva de legacy `product` hacia dominio `project`.
@@ -235,13 +248,21 @@ Locales públicos soportados:
 
 Los campos traducibles persistidos incluyen:
 
-- `name`, `description`, `category`
+- `name`, `description`, `category`, `client_name`
 - `business_goal`, `problem_statement`, `solution_summary`
 - `delivery_scope`, `responsibility_scope`
 - `architecture`, `ai_usage`
 - `integrations`, `technical_decisions`, `challenges`, `results`, `metrics`, `timeline`
 
 Cada traducción se guarda por `project_id + locale + field_key`, con modo `auto` o `manual`.
+
+Reglas operativas explícitas:
+
+- `es` vive en las tablas canónicas del proyecto (`products` + `project_profiles`) y es la única fuente automática para derivar `ca`, `en` y `de`.
+- `client_name` es el campo público/localizable; `brand` queda solo como alias legacy de storage/admin durante la transición.
+- Los procesos de regeneración deben recalcular solo filas `auto` y preservar cualquier override `manual` existente.
+- Identificadores técnicos, nombres propios de producto o términos cuyo cambio reduzca corrección pueden mantenerse sin traducir.
+- El markdown canónico local también debe mantenerse en castellano; las demás locales públicas derivan de esa base, no de una fuente inglesa alterna.
 
 ---
 
@@ -253,6 +274,7 @@ Debe cumplir estos roles:
 
 - condensar la evidencia real del repositorio/carpeta;
 - estabilizar naming, narrativa y estructura;
+- fijar una base editorial en castellano para runtime y localización;
 - servir como insumo para poblar los campos del proyecto en la UI;
 - servir como documento que luego puede publicarse para el assistant;
 - separar la autoría editorial de la representación runtime en DB.
@@ -272,6 +294,11 @@ Si ya existe un markdown canónico confiable para un proyecto, ese archivo debe 
 ## 8. Rol de `source_markdown_url`
 
 `source_markdown_url` es la URL HTTPS pública del markdown canónico usado por el assistant.
+
+Convención vigente:
+
+- `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`
+- el mismo `<slug>` debe coincidir con el slug del proyecto y con el slug declarado en el markdown canónico.
 
 Reglas reales del sistema:
 
@@ -438,7 +465,8 @@ Condiciones típicas de elegibilidad del usuario:
 1. el contenido base se mantiene en español;
 2. al cambiar campos traducibles, el sistema sincroniza traducciones automáticas para `ca`, `en`, `de`;
 3. el admin puede sobrescribir manualmente cualquier campo;
-4. la API pública aplica localización cuando recibe `?lang=`.
+4. la API pública aplica localización cuando recibe `?lang=`;
+5. si un proyecto quedó cargado con base no española por error, primero se corrige `es` en `products`/`project_profiles` y luego se regenera la localización derivada.
 
 ## 11.7 Flujo de búsqueda y enriquecimiento
 
