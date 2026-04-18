@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 
 import { sendProjectAssistantMessage } from './api';
 import { AppError } from '../../shared/api/errors';
@@ -23,6 +23,7 @@ export function ProjectAssistantChat({ slug, enabled, lang }: ProjectAssistantCh
   const [loading, setLoading] = useState(false);
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const historyEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setHistory(getAssistantHistory(slug));
@@ -34,6 +35,14 @@ export function ProjectAssistantChat({ slug, enabled, lang }: ProjectAssistantCh
   useEffect(() => {
     setAssistantHistory(slug, history);
   }, [history, slug]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    historyEndRef.current?.scrollIntoView({ block: 'end' });
+  }, [history, loading, open, pendingQuestion]);
 
   if (!enabled) {
     return null;
@@ -143,6 +152,8 @@ export function ProjectAssistantChat({ slug, enabled, lang }: ProjectAssistantCh
                 <p>Thinking…</p>
               </article>
             ) : null}
+
+            <div ref={historyEndRef} aria-hidden="true" />
           </div>
 
           <form className="assistant-chat__form" onSubmit={handleSubmit}>

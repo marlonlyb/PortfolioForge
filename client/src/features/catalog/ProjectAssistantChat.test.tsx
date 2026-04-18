@@ -10,6 +10,7 @@ vi.mock('./api', () => ({
 }));
 
 const mockedSendProjectAssistantMessage = vi.mocked(sendProjectAssistantMessage);
+const scrollIntoViewMock = vi.fn();
 
 interface DeferredResponse {
   promise: Promise<{ answer: string }>;
@@ -28,6 +29,11 @@ function createDeferredResponse(): DeferredResponse {
 describe('ProjectAssistantChat', () => {
   beforeEach(() => {
     mockedSendProjectAssistantMessage.mockReset();
+    scrollIntoViewMock.mockReset();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoViewMock,
+    });
     window.sessionStorage.clear();
   });
 
@@ -156,6 +162,32 @@ describe('ProjectAssistantChat', () => {
     deferred.resolve({ answer: 'Here is more detail.' });
 
     expect(await screen.findByText('Here is more detail.')).toBeInTheDocument();
+  });
+
+  it('auto-scrolls the transcript when the conversation state changes', async () => {
+    const deferred = createDeferredResponse();
+    mockedSendProjectAssistantMessage.mockReturnValue(deferred.promise);
+
+    render(<ProjectAssistantChat slug="portfolioforge" enabled lang="en" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ask project assistant' }));
+    const callsAfterOpen = scrollIntoViewMock.mock.calls.length;
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Explain the deployment flow' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => {
+      expect(scrollIntoViewMock.mock.calls.length).toBeGreaterThan(callsAfterOpen);
+    });
+
+    const callsWhilePending = scrollIntoViewMock.mock.calls.length;
+    deferred.resolve({ answer: 'Deployment runs from CI after review.' });
+
+    expect(await screen.findByText('Deployment runs from CI after review.')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(scrollIntoViewMock.mock.calls.length).toBeGreaterThan(callsWhilePending);
+    });
   });
 
   it('restores the draft and preserves previous transcript when the request fails', async () => {

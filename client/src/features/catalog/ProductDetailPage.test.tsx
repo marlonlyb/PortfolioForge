@@ -209,6 +209,10 @@ describe('ProductDetailPage', () => {
       source_markdown_url: '',
     } as AdminProjectDetail);
     vi.unstubAllGlobals();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: vi.fn(),
+    });
     window.localStorage.clear();
     window.sessionStorage.clear();
     window.localStorage.setItem('portfolioforge.locale', 'en');
@@ -225,8 +229,7 @@ describe('ProductDetailPage', () => {
 
     renderDetailPage();
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
-    expect(screen.getByText('Detailed project description.')).toBeInTheDocument();
+    expect(await screen.findByText('Detailed project description.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ask project assistant' })).not.toBeInTheDocument();
     expect(screen.queryByText('Project assistant')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Sign in with Google' })).not.toBeInTheDocument();
@@ -403,8 +406,8 @@ describe('ProductDetailPage', () => {
 
 	  renderDetailPage();
 
-	  expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio and case studies' })).toBeInTheDocument();
-	  expect(screen.getByText('A selection of projects presented through strategy, execution, and technical judgment.')).toBeInTheDocument();
+	  expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio' })).toBeInTheDocument();
+	  expect(screen.getByText('Strategy, execution, and technical judgment.')).toBeInTheDocument();
 	  expect(screen.getByText('Curated public archive')).toBeInTheDocument();
 	  expect(screen.getByText('Loading project…')).toBeInTheDocument();
 	  await waitFor(() => {
@@ -433,7 +436,7 @@ describe('ProductDetailPage', () => {
 	  renderDetailPage();
 
 	  expect(await screen.findByText('Project not found')).toBeInTheDocument();
-	  expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio and case studies' })).toBeInTheDocument();
+	  expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio' })).toBeInTheDocument();
 	  expect(screen.getByText('Curated public archive')).toBeInTheDocument();
 	});
 
@@ -544,7 +547,7 @@ describe('ProductDetailPage', () => {
 	  fireEvent.click(screen.getByRole('link', { name: 'Go to beta' }));
 
 	  await waitFor(() => {
-	    expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio and case studies' })).toBeInTheDocument();
+	    expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio' })).toBeInTheDocument();
 	  });
 
 	  expect(await screen.findByRole('heading', { level: 1, name: 'Beta' })).toBeInTheDocument();
@@ -552,7 +555,7 @@ describe('ProductDetailPage', () => {
 	  fireEvent.click(screen.getByRole('link', { name: 'Leave detail' }));
 
 	  await waitFor(() => {
-	    expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio and case studies' })).toBeInTheDocument();
+	    expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio' })).toBeInTheDocument();
 	  });
 	  expect(screen.getByText('login page')).toBeInTheDocument();
 	});

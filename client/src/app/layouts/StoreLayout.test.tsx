@@ -93,12 +93,8 @@ describe('StoreLayout', () => {
       </MemoryRouter>,
     );
 
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Project portfolio and case studies' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('A selection of projects presented through strategy, execution, and technical judgment.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio' })).toBeInTheDocument();
+    expect(screen.getByText('Strategy, execution, and technical judgment.')).toBeInTheDocument();
     expect(screen.getByText('Curated public archive')).toBeInTheDocument();
     expect(screen.getByText('search content')).toBeInTheDocument();
     expect(mockedFetchPublicSiteSettings).not.toHaveBeenCalled();
@@ -121,12 +117,8 @@ describe('StoreLayout', () => {
     );
 
     expect(await screen.findByText('landing content')).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Project portfolio and case studies' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('A selection of projects presented through strategy, execution, and technical judgment.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio' })).toBeInTheDocument();
+    expect(screen.getByText('Strategy, execution, and technical judgment.')).toBeInTheDocument();
     expect(screen.getByText('Curated public archive')).toBeInTheDocument();
   });
 
@@ -148,7 +140,7 @@ describe('StoreLayout', () => {
     expect(await screen.findByText('detail content')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
     expect(screen.getByText('platform · Analytical Engines')).toBeInTheDocument();
-    expect(screen.queryByText('A selection of projects presented through strategy, execution, and technical judgment.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Strategy, execution, and technical judgment.')).not.toBeInTheDocument();
     expect(document.querySelector('.app-header--detail-compact')).not.toBeNull();
     expect(document.querySelector('.app-header__summary')).toBeNull();
   });

@@ -1,5 +1,10 @@
 import type { PublicLocale } from './config';
 
+export interface LandingQuickPrompt {
+  label: string;
+  query: string;
+}
+
 interface Messages {
   headerTitle: string;
   headerSummary: string;
@@ -13,6 +18,12 @@ interface Messages {
   searchButton: string;
   searchClear: string;
   searchSuggestionsLabel: string;
+  landingSearchEyebrow: string;
+  landingSearchTitle: string;
+  landingSearchLead: string;
+  landingSearchPlaceholder: string;
+  landingSearchContextHint: string;
+  landingQuickPrompts: LandingQuickPrompt[];
   landingEyebrow: string;
   landingTitle: string;
   landingLead: string;
@@ -181,18 +192,29 @@ const authMessages: Record<PublicLocale, Pick<Messages, AuthMessageKey>> = {
 
 const baseMessages: Record<PublicLocale, CoreMessages> = {
   es: {
-    headerTitle: 'Portfolio de proyectos y casos de estudio',
-    headerSummary: 'Una selección de proyectos presentados desde la estrategia, la ejecución y el criterio técnico.',
+    headerTitle: 'Portfolio de proyectos',
+    headerSummary: 'Estrategia, ejecución y criterio técnico.',
     navHome: 'Inicio',
     navLogin: 'Login',
     navSearch: 'Buscar',
     navAdmin: 'Admin',
     navLogout: 'Salir',
-    headerCaption: 'Archivo público curado',
+    headerCaption: 'Ing. Marlon Ly Bellido',
     searchPlaceholder: 'Busca proyectos por tecnología, cliente o concepto…',
     searchButton: 'Buscar',
     searchClear: 'Limpiar búsqueda',
     searchSuggestionsLabel: 'Sugerencias de búsqueda',
+    landingSearchEyebrow: 'BÚSQUEDA GUIADA',
+    landingSearchTitle: '',
+    landingSearchLead: 'Busca proyectos, casos y experiencias reales.',
+    landingSearchPlaceholder: 'Busca un proyecto, tecnología o tema...',
+    landingSearchContextHint: '',
+    landingQuickPrompts: [
+      { label: 'Muéstrame la migración PLC de Printer 05', query: 'Printer 05' },
+      { label: 'Quiero casos con Allen-Bradley y CompactLogix', query: 'CompactLogix' },
+      { label: 'Enséñame automatización industrial con Ethernet/IP', query: 'Ethernet/IP' },
+      { label: 'Busca motion control con SEW Eurodrive', query: 'SEW Eurodrive' },
+    ],
     landingEyebrow: 'Trabajo digital seleccionado',
     landingTitle: 'Una portada más editorial para presentar producto, arquitectura y ejecución.',
     landingLead:
@@ -201,7 +223,7 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     landingSecondaryCta: 'Ver catálogo',
     landingDesignIntent: 'Intención visual',
     landingPrinciples: [
-      'Case studies con narrativa clara y foco en decisiones.',
+      'Casos de estudio con narrativa clara y foco en decisiones.',
       'Composición modular pensada para desktop, tablet y móvil.',
       'Paleta dark mantenida con contraste editorial y ritmo visual.',
     ],
@@ -217,13 +239,13 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     landingQuoteEyebrow: 'Ritmo editorial',
     landingQuote: '“Bloques sólidos, mejor uso del ancho y una estructura visual que prioriza contexto, narrativa y exploración.”',
     catalogEyebrow: 'Índice de proyectos',
-    catalogTitle: 'Case studies seleccionados',
-    catalogIntro: 'Un catálogo modular con mejor lectura de categorías, clientes y acceso rápido al detalle.',
+    catalogTitle: 'Casos de estudio seleccionados',
+    catalogIntro: '',
     catalogSearchLabel: 'Buscar proyectos',
     catalogSearchPlaceholder: 'Buscar por nombre del proyecto…',
     catalogCategoryPlaceholder: 'Categoría',
     catalogClearFilters: 'Limpiar filtros',
-    catalogViewCaseStudy: 'Ver case study',
+    catalogViewCaseStudy: 'Ver caso de estudio',
     catalogOpenProject: 'Abrir proyecto',
     catalogNoImage: 'Sin imagen',
     catalogNoSummary: 'Sin resumen disponible.',
@@ -259,21 +281,32 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailMetrics: 'Métricas',
     detailTimeline: 'Timeline',
     detailClientContext: 'Contexto cliente',
-    detailVisualUnavailable: 'Visual del case study no disponible',
+    detailVisualUnavailable: 'Visual del caso de estudio no disponible',
   },
   ca: {
-    headerTitle: 'Portfoli de projectes i casos d’estudi',
-    headerSummary: 'Una selecció de projectes presentats des de l’estratègia, l’execució i el criteri tècnic.',
+    headerTitle: 'Portfoli de projectes',
+    headerSummary: 'Estratègia, execució i criteri tècnic.',
     navHome: 'Inici',
     navLogin: 'Login',
     navSearch: 'Cercar',
     navAdmin: 'Admin',
     navLogout: 'Sortir',
-    headerCaption: 'Arxiu públic curat',
+    headerCaption: 'Eng. Marlon Ly Bellido',
     searchPlaceholder: 'Cerca projectes per tecnologia, client o concepte…',
     searchButton: 'Cercar',
     searchClear: 'Netejar cerca',
     searchSuggestionsLabel: 'Suggeriments de cerca',
+    landingSearchEyebrow: 'CERCA GUIADA',
+    landingSearchTitle: '',
+    landingSearchLead: 'Cerca projectes, casos i experiències reals.',
+    landingSearchPlaceholder: 'Cerca un projecte, tecnologia o tema...',
+    landingSearchContextHint: '',
+    landingQuickPrompts: [
+      { label: 'Mostra’m la migració PLC de Printer 05', query: 'Printer 05' },
+      { label: 'Vull casos amb Allen-Bradley i CompactLogix', query: 'CompactLogix' },
+      { label: 'Ensenya’m automatització industrial amb Ethernet/IP', query: 'Ethernet/IP' },
+      { label: 'Busca motion control amb SEW Eurodrive', query: 'SEW Eurodrive' },
+    ],
     landingEyebrow: 'Treball digital seleccionat',
     landingTitle: 'Una portada més editorial per presentar producte, arquitectura i execució.',
     landingLead:
@@ -282,7 +315,7 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     landingSecondaryCta: 'Veure catàleg',
     landingDesignIntent: 'Intenció visual',
     landingPrinciples: [
-      'Case studies amb narrativa clara i focus en decisions.',
+      'Casos d’estudi amb narrativa clara i focus en decisions.',
       'Composició modular pensada per a escriptori, tauleta i mòbil.',
       'Paleta dark mantinguda amb contrast editorial i ritme visual.',
     ],
@@ -298,13 +331,13 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     landingQuoteEyebrow: 'Ritme editorial',
     landingQuote: '“Blocs sòlids, millor ús de l’amplada i una estructura visual que prioritza context, narrativa i exploració.”',
     catalogEyebrow: 'Índex de projectes',
-    catalogTitle: 'Case studies seleccionats',
-    catalogIntro: 'Un catàleg modular amb millor lectura de categories, clients i accés ràpid al detall.',
+    catalogTitle: 'Casos d’estudi seleccionats',
+    catalogIntro: '',
     catalogSearchLabel: 'Cercar projectes',
     catalogSearchPlaceholder: 'Cercar pel nom del projecte…',
     catalogCategoryPlaceholder: 'Categoria',
     catalogClearFilters: 'Netejar filtres',
-    catalogViewCaseStudy: 'Veure case study',
+    catalogViewCaseStudy: 'Veure cas d’estudi',
     catalogOpenProject: 'Obrir projecte',
     catalogNoImage: 'Sense imatge',
     catalogNoSummary: 'Sense resum disponible.',
@@ -340,21 +373,32 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailMetrics: 'Mètriques',
     detailTimeline: 'Timeline',
     detailClientContext: 'Context client',
-    detailVisualUnavailable: 'Visual del case study no disponible',
+    detailVisualUnavailable: 'Visual del cas d’estudi no disponible',
   },
   en: {
-    headerTitle: 'Project portfolio and case studies',
-    headerSummary: 'A selection of projects presented through strategy, execution, and technical judgment.',
+    headerTitle: 'Project portfolio',
+    headerSummary: 'Strategy, execution, and technical judgment.',
     navHome: 'Home',
     navLogin: 'Login',
     navSearch: 'Search',
     navAdmin: 'Admin',
     navLogout: 'Logout',
-    headerCaption: 'Curated public archive',
+    headerCaption: 'Marlon Ly Bellido · Engineer',
     searchPlaceholder: 'Search projects by technology, client, or concept…',
     searchButton: 'Search',
     searchClear: 'Clear search',
     searchSuggestionsLabel: 'Search suggestions',
+    landingSearchEyebrow: 'GUIDED SEARCH',
+    landingSearchTitle: '',
+    landingSearchLead: 'Search projects, cases, and real-world work.',
+    landingSearchPlaceholder: 'Search a project, technology, or topic...',
+    landingSearchContextHint: '',
+    landingQuickPrompts: [
+      { label: 'Show me the Printer 05 PLC migration', query: 'Printer 05' },
+      { label: 'I want Allen-Bradley and CompactLogix work', query: 'CompactLogix' },
+      { label: 'Find industrial automation projects with Ethernet/IP', query: 'Ethernet/IP' },
+      { label: 'Search motion-control work with SEW Eurodrive', query: 'SEW Eurodrive' },
+    ],
     landingEyebrow: 'Selected digital work',
     landingTitle: 'A more editorial cover to present product, architecture, and execution.',
     landingLead:
@@ -380,7 +424,7 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     landingQuote: '“Solid blocks, better use of width, and a visual structure that prioritizes context, narrative, and exploration.”',
     catalogEyebrow: 'Project index',
     catalogTitle: 'Selected case studies',
-    catalogIntro: 'A modular catalog with clearer category and client reading plus faster access to the detail view.',
+    catalogIntro: '',
     catalogSearchLabel: 'Search projects',
     catalogSearchPlaceholder: 'Search by project name…',
     catalogCategoryPlaceholder: 'Category',
@@ -424,18 +468,29 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailVisualUnavailable: 'Case study visual unavailable',
   },
   de: {
-    headerTitle: 'Projektportfolio und Fallstudien',
-    headerSummary: 'Eine Auswahl von Projekten, dargestellt aus Strategie, Umsetzung und technischer Perspektive.',
+    headerTitle: 'Projektportfolio',
+    headerSummary: 'Strategie, Umsetzung und technisches Urteilsvermögen.',
     navHome: 'Start',
     navLogin: 'Login',
     navSearch: 'Suche',
     navAdmin: 'Admin',
     navLogout: 'Abmelden',
-    headerCaption: 'Kuratiertes öffentliches Archiv',
+    headerCaption: 'Ing. Marlon Ly Bellido',
     searchPlaceholder: 'Projekte nach Technologie, Kunde oder Konzept suchen…',
     searchButton: 'Suchen',
     searchClear: 'Suche löschen',
     searchSuggestionsLabel: 'Suchvorschläge',
+    landingSearchEyebrow: 'GEFÜHRTE SUCHE',
+    landingSearchTitle: '',
+    landingSearchLead: 'Suche Projekte, Fälle und reale Arbeit.',
+    landingSearchPlaceholder: 'Suche ein Projekt, eine Technologie oder ein Thema...',
+    landingSearchContextHint: '',
+    landingQuickPrompts: [
+      { label: 'Zeig mir die PLC-Migration von Printer 05', query: 'Printer 05' },
+      { label: 'Ich suche Arbeiten mit Allen-Bradley und CompactLogix', query: 'CompactLogix' },
+      { label: 'Finde Industrial-Automation-Projekte mit Ethernet/IP', query: 'Ethernet/IP' },
+      { label: 'Suche Motion-Control mit SEW Eurodrive', query: 'SEW Eurodrive' },
+    ],
     landingEyebrow: 'Ausgewählte digitale Arbeit',
     landingTitle: 'Eine editorischere Startseite für Produkt, Architektur und Umsetzung.',
     landingLead:
@@ -460,13 +515,13 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     landingQuoteEyebrow: 'Editorialer Rhythmus',
     landingQuote: '„Solide Blöcke, bessere Nutzung der Breite und eine visuelle Struktur, die Kontext, Narration und Exploration priorisiert.“',
     catalogEyebrow: 'Projektindex',
-    catalogTitle: 'Ausgewählte Case Studies',
-    catalogIntro: 'Ein modularer Katalog mit klarerer Lesbarkeit von Kategorien, Kunden und schnellem Zugang zur Detailseite.',
+    catalogTitle: 'Ausgewählte Fallstudien',
+    catalogIntro: '',
     catalogSearchLabel: 'Projekte suchen',
     catalogSearchPlaceholder: 'Nach Projektnamen suchen…',
     catalogCategoryPlaceholder: 'Kategorie',
     catalogClearFilters: 'Filter löschen',
-    catalogViewCaseStudy: 'Case Study ansehen',
+    catalogViewCaseStudy: 'Fallstudie ansehen',
     catalogOpenProject: 'Projekt öffnen',
     catalogNoImage: 'Kein Bild',
     catalogNoSummary: 'Keine Zusammenfassung verfügbar.',
@@ -502,7 +557,7 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailMetrics: 'Metriken',
     detailTimeline: 'Timeline',
     detailClientContext: 'Kundenkontext',
-    detailVisualUnavailable: 'Case-Study-Visual nicht verfügbar',
+    detailVisualUnavailable: 'Visual der Fallstudie nicht verfügbar',
   },
 };
 

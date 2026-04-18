@@ -78,6 +78,9 @@ func TestProjectAssistantHandlerCreateMessageReturnsAnswerOnly(t *testing.T) {
 	if provider.input.Question != "¿Cómo está implementada la arquitectura?" {
 		t.Fatalf("question = %q", provider.input.Question)
 	}
+	if provider.input.ProjectName != "PortfolioForge" {
+		t.Fatalf("project name = %q, want PortfolioForge", provider.input.ProjectName)
+	}
 	if len(provider.input.History) != 1 || provider.input.History[0].Content != "Resumen previo" {
 		t.Fatalf("history = %#v", provider.input.History)
 	}

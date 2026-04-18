@@ -18,7 +18,10 @@ var (
 	ErrAssistantUpstream        = errors.New("assistant upstream failure")
 )
 
-const assistantHistoryLimit = 8
+const (
+	assistantHistoryLimit         = 8
+	assistantRelevantSectionLimit = 4
+)
 
 type projectAssistantRepository interface {
 	GetAssistantContextBySlug(ctx context.Context, slug string) (model.ProjectAssistantContext, error)
@@ -151,8 +154,8 @@ func selectRelevantChunks(question string, history []model.ProjectAssistantMessa
 		queryTerms = append(queryTerms, tokenizeAssistantText(item.Content)...)
 	}
 	if len(queryTerms) == 0 {
-		if len(chunks) > 4 {
-			return chunks[:4]
+		if len(chunks) > assistantRelevantSectionLimit {
+			return chunks[:assistantRelevantSectionLimit]
 		}
 		return chunks
 	}
@@ -172,8 +175,8 @@ func selectRelevantChunks(question string, history []model.ProjectAssistantMessa
 	}
 
 	if len(scored) == 0 {
-		if len(chunks) > 4 {
-			return chunks[:4]
+		if len(chunks) > assistantRelevantSectionLimit {
+			return chunks[:assistantRelevantSectionLimit]
 		}
 		return chunks
 	}
@@ -185,7 +188,7 @@ func selectRelevantChunks(question string, history []model.ProjectAssistantMessa
 		return scored[i].score > scored[j].score
 	})
 
-	limit := min(6, len(scored))
+	limit := min(assistantRelevantSectionLimit, len(scored))
 	selected := make([]markdownChunk, 0, limit)
 	for _, item := range scored[:limit] {
 		selected = append(selected, item.chunk)

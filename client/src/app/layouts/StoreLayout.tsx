@@ -131,27 +131,24 @@ export function StoreLayout() {
               <h1>{t.headerTitle}</h1>
             </NavLink>
             <p className="app-header__summary">{t.headerSummary}</p>
+            <div className="locale-switcher" aria-label="Language selector">
+              {(Object.keys(PUBLIC_LOCALE_LABELS) as PublicLocale[]).map((option) => (
+                <button
+                  key={option}
+                  className={option === locale ? 'locale-switcher__button locale-switcher__button--active' : 'locale-switcher__button'}
+                  type="button"
+                  onClick={() => setLocale(option)}
+                >
+                  {PUBLIC_LOCALE_LABELS[option]}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="app-header__actions landing-composition__actions">
             <div className="app-header__toolbar">
-              <div className="locale-switcher" aria-label="Language selector">
-                {(Object.keys(PUBLIC_LOCALE_LABELS) as PublicLocale[]).map((option) => (
-                  <button
-                    key={option}
-                    className={option === locale ? 'locale-switcher__button locale-switcher__button--active' : 'locale-switcher__button'}
-                    type="button"
-                    onClick={() => setLocale(option)}
-                  >
-                    {PUBLIC_LOCALE_LABELS[option]}
-                  </button>
-                ))}
-              </div>
-
               {renderPrimaryNav()}
             </div>
-
-            <p className="app-header__caption">{t.headerCaption}</p>
           </div>
 
           <aside className="card landing-hero landing-hero--logo landing-composition__logo" aria-label="Brand logo slot">
@@ -167,6 +164,7 @@ export function StoreLayout() {
                   </div>
                 </>
               )}
+              <p className="landing-hero__logo-caption">{t.headerCaption}</p>
             </div>
           </aside>
 

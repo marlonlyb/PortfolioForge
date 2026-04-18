@@ -13,6 +13,7 @@ interface SearchBarProps {
   suggestions?: string[];
   onSuggestionSelect?: (query: string) => void;
   contextHint?: string;
+  placeholderOverride?: string;
 }
 
 export function SearchBar({
@@ -25,6 +26,7 @@ export function SearchBar({
   suggestions = [],
   onSuggestionSelect,
   contextHint,
+  placeholderOverride,
 }: SearchBarProps) {
   const [internalQuery, setInternalQuery] = useState(initialQuery);
   const navigate = useNavigate();
@@ -87,7 +89,7 @@ export function SearchBar({
         <input
           className={showSubmit ? 'search-bar__input' : 'search-bar__input search-bar__input--compact'}
           type="text"
-          placeholder={t.searchPlaceholder}
+          placeholder={placeholderOverride ?? t.searchPlaceholder}
           value={query}
           onChange={(e) => updateQuery(e.target.value)}
           onKeyDown={handleKeyDown}

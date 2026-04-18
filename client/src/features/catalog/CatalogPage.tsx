@@ -386,7 +386,7 @@ export function CatalogPage({
           <p className="eyebrow">{t.catalogEyebrow}</p>
           <h2>{t.catalogTitle}</h2>
         </div>
-        <p className="catalog__intro">{t.catalogIntro}</p>
+        {t.catalogIntro ? <p className="catalog__intro">{t.catalogIntro}</p> : null}
       </div>
 
       <div className="catalog__toolbar">

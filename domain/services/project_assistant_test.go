@@ -120,6 +120,27 @@ func TestNormalizeAssistantHistory(t *testing.T) {
 	}
 }
 
+func TestNormalizeAssistantLanguage(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{name: "defaults to spanish", raw: "", want: "es"},
+		{name: "supports catalan alias", raw: "Catalan", want: "ca"},
+		{name: "supports english alias", raw: " ENGLISH ", want: "en"},
+		{name: "supports german code", raw: "de", want: "de"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := normalizeAssistantLanguage(tt.raw); got != tt.want {
+				t.Fatalf("normalizeAssistantLanguage() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestProjectAssistantAnswerUsesNormalizedHistoryForProviderAndRetrieval(t *testing.T) {
 	provider := &stubAssistantProvider{resp: "Detailed grounded answer."}
 	service := NewProjectAssistant(
@@ -183,11 +204,39 @@ func TestSelectRelevantChunksFallsBackWhenHistoryNormalizesToEmpty(t *testing.T)
 	}
 
 	selected := selectRelevantChunks("  ", normalizeAssistantHistory([]model.ProjectAssistantMessage{{Role: "system", Content: "ignore"}, {Role: "user", Content: "   "}}), chunks)
-	if len(selected) != 4 {
-		t.Fatalf("fallback chunks length = %d, want 4", len(selected))
+	if len(selected) != assistantRelevantSectionLimit {
+		t.Fatalf("fallback chunks length = %d, want %d", len(selected), assistantRelevantSectionLimit)
 	}
 	if selected[0].Heading != "Architecture" || selected[3].Heading != "Tradeoffs" {
 		t.Fatalf("fallback chunks = %#v, want first four original chunks", selected)
+	}
+}
+
+func TestSelectRelevantChunksKeepsHighestSignalBoundedToFourSections(t *testing.T) {
+	chunks := []markdownChunk{
+		{Heading: "Authentication", Body: "Token auth and session flow details."},
+		{Heading: "Deployment", Body: "Deployment steps and rollout plan."},
+		{Heading: "Observability", Body: "Monitoring, logs, alerts, and observability dashboards."},
+		{Heading: "Architecture", Body: "Architecture decisions, service boundaries, and Go adapters."},
+		{Heading: "Tradeoffs", Body: "Tradeoffs for architecture and deployment."},
+		{Heading: "Roadmap", Body: "Future ideas only."},
+	}
+
+	selected := selectRelevantChunks("Explain the architecture deployment tradeoffs and monitoring", nil, chunks)
+	if len(selected) != assistantRelevantSectionLimit {
+		t.Fatalf("selected chunks length = %d, want %d", len(selected), assistantRelevantSectionLimit)
+	}
+	headings := make(map[string]bool, len(selected))
+	for _, chunk := range selected {
+		headings[chunk.Heading] = true
+		if chunk.Heading == "Roadmap" {
+			t.Fatalf("unexpected low-signal chunk selected: %#v", selected)
+		}
+	}
+	for _, heading := range []string{"Architecture", "Deployment", "Tradeoffs"} {
+		if !headings[heading] {
+			t.Fatalf("selected headings = %#v, missing %q", selected, heading)
+		}
 	}
 }
 
