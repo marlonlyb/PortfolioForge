@@ -9,6 +9,8 @@ import (
 	"github.com/sashabaranov/go-openai"
 )
 
+const localizationTranslationMaxTokens = 4000
+
 type chatCompletionClient interface {
 	CreateChatCompletion(ctx context.Context, request openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error)
 }
@@ -47,7 +49,7 @@ func (t *OpenAITranslator) TranslateFields(ctx context.Context, sourceLocale str
 			},
 		},
 		Temperature: 0.2,
-		MaxTokens:   1800,
+		MaxTokens:   localizationTranslationMaxTokens,
 	}
 
 	response, err := t.client.CreateChatCompletion(ctx, request)

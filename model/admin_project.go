@@ -102,6 +102,8 @@ type AdminProject struct {
 	SourceMarkdownURL string                `json:"source_markdown_url,omitempty"`
 	Images            []string              `json:"images"`
 	Media             []ProjectMedia        `json:"media,omitempty"`
+	Profile           *ProjectProfile       `json:"profile,omitempty"`
+	Technologies      []Technology          `json:"technologies,omitempty"`
 	Active            bool                  `json:"active"`
 	PriceFrom         float64               `json:"price_from,omitempty"`
 	AvailableColors   []string              `json:"available_colors,omitempty"`
@@ -214,17 +216,24 @@ func AdminProjectsFromStoreProducts(items []StoreProduct) []AdminProject {
 	return projects
 }
 
+func (p *AdminProject) ApplyEnrichment(project Project) {
+	p.Profile = project.Profile
+	p.Technologies = project.Technologies
+}
+
 func (p AdminProject) ToProject() Project {
 	images, _ := json.Marshal(p.Images)
 	return Project{
-		ID:          p.ID,
-		Name:        p.Name,
-		Slug:        p.Slug,
-		Description: p.Description,
-		Category:    p.Category,
-		ClientName:  p.ClientName,
-		Active:      p.Active,
-		Images:      images,
-		Media:       p.Media,
+		ID:           p.ID,
+		Name:         p.Name,
+		Slug:         p.Slug,
+		Description:  p.Description,
+		Category:     p.Category,
+		ClientName:   p.ClientName,
+		Active:       p.Active,
+		Images:       images,
+		Profile:      p.Profile,
+		Technologies: p.Technologies,
+		Media:        p.Media,
 	}
 }

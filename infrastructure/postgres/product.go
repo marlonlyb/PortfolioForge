@@ -263,7 +263,13 @@ func (p ProjectCatalogRepository) GetAdminByID(ID uuid.UUID) (model.AdminProject
 		return model.AdminProject{}, pgx.ErrNoRows
 	}
 
-	return model.AdminProjectFromStoreProduct(products[0]), nil
+	adminProject := model.AdminProjectFromStoreProduct(products[0])
+	projectDetails, err := NewProjectRepository(p.db).GetByID(context.Background(), ID)
+	if err == nil {
+		adminProject.ApplyEnrichment(projectDetails)
+	}
+
+	return adminProject, nil
 }
 
 func (p ProjectCatalogRepository) GetStoreAll() ([]model.StoreProduct, error) {

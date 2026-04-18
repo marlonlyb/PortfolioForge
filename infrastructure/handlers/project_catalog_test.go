@@ -197,6 +197,7 @@ func TestProjectCatalogUpdateRejectsLegacyMediaKeys(t *testing.T) {
 
 func TestProjectCatalogGetByIDReturnsCanonicalMediaKeys(t *testing.T) {
 	projectID := uuid.New()
+	technologyID := uuid.New()
 	service := &stubProjectCatalogService{current: model.AdminProject{
 		ID:          projectID,
 		Name:        "PortfolioForge",
@@ -204,6 +205,18 @@ func TestProjectCatalogGetByIDReturnsCanonicalMediaKeys(t *testing.T) {
 		Description: "Original",
 		Category:    "platform",
 		Active:      true,
+		Profile: &model.ProjectProfile{
+			ProjectID:          projectID,
+			BusinessGoal:       "Modernize legacy PLC reporting.",
+			TechnicalDecisions: json.RawMessage(`[{"title":"Use Ignition edge gateway"}]`),
+			Metrics:            json.RawMessage(`{"downtime_hours":12}`),
+		},
+		Technologies: []model.Technology{{
+			ID:       technologyID,
+			Name:     "Ignition",
+			Slug:     "ignition",
+			Category: "scada",
+		}},
 		Media: []model.ProjectMedia{{
 			ID:          uuid.New(),
 			ProjectID:   projectID,
@@ -266,6 +279,26 @@ func TestProjectCatalogGetByIDReturnsCanonicalMediaKeys(t *testing.T) {
 	}
 	if _, exists := item["url"]; exists {
 		t.Fatalf("url leaked in admin media response: %#v", item)
+	}
+
+	profile, ok := payload["data"]["profile"].(map[string]any)
+	if !ok {
+		t.Fatalf("profile = %#v", payload["data"]["profile"])
+	}
+	if profile["business_goal"] != "Modernize legacy PLC reporting." {
+		t.Fatalf("business_goal = %#v", profile["business_goal"])
+	}
+
+	technologies, ok := payload["data"]["technologies"].([]any)
+	if !ok || len(technologies) != 1 {
+		t.Fatalf("technologies = %#v", payload["data"]["technologies"])
+	}
+	technology, ok := technologies[0].(map[string]any)
+	if !ok {
+		t.Fatalf("technology item = %#v", technologies[0])
+	}
+	if technology["slug"] != "ignition" {
+		t.Fatalf("technology slug = %#v", technology["slug"])
 	}
 }
 

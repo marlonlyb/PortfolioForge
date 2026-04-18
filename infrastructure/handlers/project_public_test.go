@@ -195,6 +195,7 @@ func TestProjectPublicGetBySlugLocalizesPublicFields(t *testing.T) {
 			projectID: {
 				{ProjectID: projectID, Locale: model.LocaleEN, FieldKey: "name", Value: json.RawMessage(`"PortfolioForge EN"`)},
 				{ProjectID: projectID, Locale: model.LocaleEN, FieldKey: "description", Value: json.RawMessage(`"Localized description"`)},
+				{ProjectID: projectID, Locale: model.LocaleEN, FieldKey: "client_name", Value: json.RawMessage(`"Acme Industries"`)},
 			},
 		}}, nil),
 	)
@@ -222,7 +223,53 @@ func TestProjectPublicGetBySlugLocalizesPublicFields(t *testing.T) {
 	if data["description"] != "Localized description" {
 		t.Fatalf("description = %#v, want localized value", data["description"])
 	}
+	if data["client_name"] != "Acme Industries" {
+		t.Fatalf("client_name = %#v, want localized value", data["client_name"])
+	}
 	if _, exists := data["source_markdown_url"]; exists {
 		t.Fatal("source_markdown_url leaked in localized public response")
+	}
+}
+
+func TestProjectPublicListPublishedFallsBackToSpanishClientName(t *testing.T) {
+	projectID := uuid.New()
+	handler := NewProjectPublic(
+		services.NewProject(&stubPublicProjectRepo{project: model.Project{
+			ID:          projectID,
+			Name:        "PortfolioForge",
+			Slug:        "portfolioforge",
+			Description: "Proyecto original",
+			Category:    "platform",
+			ClientName:  "Cliente base",
+			Status:      "published",
+			Active:      true,
+		}}),
+		localization.NewService(&stubProjectLocalizationRepo{rowsByProject: map[uuid.UUID][]model.ProjectLocalization{
+			projectID: {{ProjectID: projectID, Locale: model.LocaleEN, FieldKey: "name", Value: json.RawMessage(`"PortfolioForge EN"`)}},
+		}}, nil),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/public/projects?lang=en", nil)
+	rec := httptest.NewRecorder()
+	e := echo.New()
+	c := e.NewContext(req, rec)
+
+	if err := handler.ListPublished(c); err != nil {
+		t.Fatalf("ListPublished() error = %v", err)
+	}
+
+	var body struct {
+		Data struct {
+			Items []map[string]any `json:"items"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(body.Data.Items) != 1 {
+		t.Fatalf("items = %#v", body.Data.Items)
+	}
+	if body.Data.Items[0]["client_name"] != "Cliente base" {
+		t.Fatalf("client_name fallback = %#v", body.Data.Items[0]["client_name"])
 	}
 }

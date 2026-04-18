@@ -25,6 +25,7 @@ var TranslatableProjectFieldKeys = []string{
 	"name",
 	"description",
 	"category",
+	"client_name",
 	"business_goal",
 	"problem_statement",
 	"solution_summary",

@@ -63,6 +63,7 @@ func BuildProjectFieldMap(project model.Project) map[string]json.RawMessage {
 		"name":        mustMarshal(project.Name),
 		"description": mustMarshal(project.Description),
 		"category":    mustMarshal(project.Category),
+		"client_name": normalizeRaw(project.ClientName),
 	}
 
 	profile := project.Profile
@@ -101,6 +102,14 @@ func BuildProjectFieldMap(project model.Project) map[string]json.RawMessage {
 }
 
 func (s *Service) SyncFromSpanish(ctx context.Context, projectID uuid.UUID, previousFields map[string]json.RawMessage, currentFields map[string]json.RawMessage) error {
+	return s.syncFromSpanish(ctx, projectID, previousFields, currentFields, nil, false)
+}
+
+func (s *Service) RegenerateFromSpanish(ctx context.Context, projectID uuid.UUID, currentFields map[string]json.RawMessage, locales []string) error {
+	return s.syncFromSpanish(ctx, projectID, nil, currentFields, locales, true)
+}
+
+func (s *Service) syncFromSpanish(ctx context.Context, projectID uuid.UUID, previousFields map[string]json.RawMessage, currentFields map[string]json.RawMessage, locales []string, forceAll bool) error {
 	if s == nil || s.repo == nil {
 		return nil
 	}
@@ -109,9 +118,11 @@ func (s *Service) SyncFromSpanish(ctx context.Context, projectID uuid.UUID, prev
 	sourceHashes := map[string]string{}
 	for _, fieldKey := range model.TranslatableProjectFieldKeys {
 		current := normalizeKnownField(currentFields[fieldKey], fieldKey)
-		previous := normalizeKnownField(previousFields[fieldKey], fieldKey)
-		if jsonEqual(previous, current) {
-			continue
+		if !forceAll {
+			previous := normalizeKnownField(previousFields[fieldKey], fieldKey)
+			if jsonEqual(previous, current) {
+				continue
+			}
 		}
 		changedFields[fieldKey] = current
 		sourceHashes[fieldKey] = hashRaw(current)
@@ -126,8 +137,12 @@ func (s *Service) SyncFromSpanish(ctx context.Context, projectID uuid.UUID, prev
 		return fmt.Errorf("load existing localizations: %w", err)
 	}
 	existing := indexRows(existingRows)
+	targetLocales, err := normalizeTargetLocales(locales)
+	if err != nil {
+		return err
+	}
 
-	for _, locale := range model.SupportedTranslationLocales {
+	for _, locale := range targetLocales {
 		fieldsForLocale := map[string]json.RawMessage{}
 		for fieldKey, value := range changedFields {
 			row, ok := existing[locale][fieldKey]
@@ -316,6 +331,8 @@ func applyLocalizedFields(project *model.Project, rows []model.ProjectLocalizati
 			project.Description = decodeString(row.Value, project.Description)
 		case "category":
 			project.Category = decodeString(row.Value, project.Category)
+		case "client_name":
+			project.ClientName = decodeString(row.Value, project.ClientName)
 		case "business_goal":
 			ensureProfile(project)
 			project.Profile.BusinessGoal = decodeString(row.Value, project.Profile.BusinessGoal)
@@ -369,8 +386,39 @@ func applyLocalizedSearchResult(item *model.SearchResultItem, rows []model.Proje
 			item.Summary = &summary
 		case "category":
 			item.Category = decodeString(row.Value, item.Category)
+		case "client_name":
+			clientName := decodeString(row.Value, derefString(item.ClientName))
+			if strings.TrimSpace(clientName) != "" {
+				item.ClientName = &clientName
+			}
 		}
 	}
+}
+
+func normalizeTargetLocales(locales []string) ([]string, error) {
+	if len(locales) == 0 {
+		return append([]string(nil), model.SupportedTranslationLocales...), nil
+	}
+
+	normalized := make([]string, 0, len(locales))
+	seen := map[string]struct{}{}
+	for _, locale := range locales {
+		candidate := strings.ToLower(strings.TrimSpace(locale))
+		if !model.IsSupportedTranslationLocale(candidate) {
+			return nil, fmt.Errorf("unsupported translation locale: %s", locale)
+		}
+		if _, ok := seen[candidate]; ok {
+			continue
+		}
+		seen[candidate] = struct{}{}
+		normalized = append(normalized, candidate)
+	}
+
+	if len(normalized) == 0 {
+		return nil, fmt.Errorf("at least one translation locale is required")
+	}
+
+	return normalized, nil
 }
 
 func decodeString(raw json.RawMessage, fallback string) string {
@@ -460,4 +508,8 @@ func SortedFieldKeys() []string {
 	keys := append([]string(nil), model.TranslatableProjectFieldKeys...)
 	sort.Strings(keys)
 	return keys
+}
+
+func NormalizeLocalesForBackfill(locales []string) ([]string, error) {
+	return normalizeTargetLocales(locales)
 }

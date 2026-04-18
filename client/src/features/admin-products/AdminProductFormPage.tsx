@@ -27,6 +27,7 @@ import {
   serializeProfileList,
   serializeProfileMetrics,
 } from './profileFormSerializers';
+import { buildCanonicalMarkdownURLFromName, buildCanonicalMarkdownURLFromSlug } from '../../shared/lib/sourceMarkdownUrl';
 import {
   PUBLIC_CONTENT_FIELDS,
   PUBLIC_LOCALE,
@@ -108,6 +109,7 @@ const TRANSLATION_FIELD_LABELS: Record<PublicContentFieldKey, string> = {
   name: 'Título',
   description: 'Descripción',
   category: 'Categoría',
+  client_name: 'Cliente / Contexto',
   business_goal: 'Business Goal',
   problem_statement: 'Problem Statement',
   solution_summary: 'Solution Summary',
@@ -264,6 +266,7 @@ export function AdminProductFormPage() {
   const [category, setCategory] = useState('');
   const [brand, setBrand] = useState('');
   const [sourceMarkdownURL, setSourceMarkdownURL] = useState('');
+  const [sourceMarkdownURLManuallyEdited, setSourceMarkdownURLManuallyEdited] = useState(false);
   const [mediaItems, setMediaItems] = useState<MediaFormItem[]>([createEmptyMediaItem(0)]);
   const [active, setActive] = useState(true);
 
@@ -326,11 +329,15 @@ export function AdminProductFormPage() {
     fetchAdminProjectById(id)
       .then((project) => {
         if (!cancelled) {
+          const inferredMarkdownURL = buildCanonicalMarkdownURLFromSlug(project.slug || project.name);
+          const explicitMarkdownURL = project.source_markdown_url?.trim() ?? '';
+
           setName(project.name);
           setDescription(project.description);
           setCategory(project.category);
           setBrand(project.brand ?? '');
-          setSourceMarkdownURL(project.source_markdown_url ?? '');
+          setSourceMarkdownURL(explicitMarkdownURL || inferredMarkdownURL);
+          setSourceMarkdownURLManuallyEdited(Boolean(explicitMarkdownURL) && explicitMarkdownURL !== inferredMarkdownURL);
           setMediaItems(project.media && project.media.length > 0 ? project.media : createFallbackMediaItems(project.images ?? []));
           setActive(project.active);
 
@@ -401,6 +408,14 @@ export function AdminProductFormPage() {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (sourceMarkdownURLManuallyEdited) {
+      return;
+    }
+
+    setSourceMarkdownURL(buildCanonicalMarkdownURLFromName(name));
+  }, [name, sourceMarkdownURLManuallyEdited]);
 
   // Refresh readiness after save
   function refreshReadiness() {
@@ -601,13 +616,16 @@ export function AdminProductFormPage() {
               <input
                 className="admin__input"
                 type="url"
-                placeholder="https://www.mlbautomation.com/case-study.md"
+                placeholder="https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md"
                 value={sourceMarkdownURL}
-                onChange={(event) => setSourceMarkdownURL(event.target.value)}
+                onChange={(event) => {
+                  setSourceMarkdownURL(event.target.value);
+                  setSourceMarkdownURLManuallyEdited(true);
+                }}
               />
             </label>
             <p className="admin__field-hint">
-              Solo se usa en backend para el assistant. Déjalo vacío para deshabilitar el chat público.
+              Se completa automáticamente desde el slug usando la convención remota oficial. Puedes sobrescribirla o dejarla vacía para deshabilitar el chat público.
             </p>
 
             <div className="admin__label">
@@ -964,7 +982,7 @@ export function AdminProductFormPage() {
                   const baseMode = translationModes[activeTranslationLocale][fieldKey];
                   const isDirty = value.trim() !== translationSnapshot[activeTranslationLocale][fieldKey].trim();
                   const effectiveMode = isDirty ? TRANSLATION_MODE.MANUAL : baseMode;
-                  const isLargeField = !['name', 'category'].includes(fieldKey);
+                  const isLargeField = !['name', 'category', 'client_name'].includes(fieldKey);
 
                   return (
                     <label key={`${activeTranslationLocale}-${fieldKey}`} className="admin__label">
