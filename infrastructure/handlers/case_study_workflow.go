@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 )
 
 type CaseStudyWorkflowService interface {
+	GetAvailability(ctx context.Context) (model.CaseStudyWorkflowAvailability, error)
 	StartRun(ctx context.Context, req model.StartCaseStudyWorkflowRunRequest) (model.CaseStudyWorkflowRun, error)
 	GetRun(ctx context.Context, runID uuid.UUID) (model.CaseStudyWorkflowRun, error)
 	ListLogs(ctx context.Context, runID uuid.UUID) ([]model.CaseStudyWorkflowLogEntry, error)
@@ -28,6 +30,14 @@ type CaseStudyWorkflowHandler struct {
 
 func NewCaseStudyWorkflowHandler(service CaseStudyWorkflowService) *CaseStudyWorkflowHandler {
 	return &CaseStudyWorkflowHandler{service: service}
+}
+
+func (h *CaseStudyWorkflowHandler) GetAvailability(c echo.Context) error {
+	availability, err := h.service.GetAvailability(c.Request().Context())
+	if err != nil {
+		return mapCaseStudyWorkflowError(err)
+	}
+	return c.JSON(response.ContractOK(availability))
 }
 
 func (h *CaseStudyWorkflowHandler) StartRun(c echo.Context) error {
@@ -123,6 +133,10 @@ func parseWorkflowRunID(c echo.Context) (uuid.UUID, error) {
 func mapCaseStudyWorkflowError(err error) error {
 	if err == nil {
 		return nil
+	}
+	var unavailableErr *model.CaseStudyWorkflowUnavailableError
+	if errors.As(err, &unavailableErr) {
+		return response.ContractError(503, "workflow_unavailable", unavailableErr.Error())
 	}
 	lower := strings.ToLower(err.Error())
 	if strings.Contains(lower, "obligatorio") || strings.Contains(lower, "inválido") || strings.Contains(lower, "allowlist") || strings.Contains(lower, "fuera de las raíces") || strings.Contains(lower, "todavía no está listo") || strings.Contains(lower, "confirmación") || strings.Contains(lower, "no es reintentable") {

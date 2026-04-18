@@ -393,7 +393,7 @@ Reglas:
 2. evita placeholders o assets genéricos;
 3. evita media que no pertenezca claramente al proyecto;
 4. si no hay media suficiente, deja explícito el gap;
-5. si hay suficiente material, intenta dejar definido un set de al menos 5 assets relevantes;
+5. si hay suficiente material, intenta dejar definido un set de al menos 7 assets relevantes;
 6. no uses etiquetas ambiguas como `Main images` si solo enumeran una variante; documenta cada asset con `low | medium | high`.
 
 ---

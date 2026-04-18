@@ -10,6 +10,7 @@ import (
 	"github.com/marlonlyb/portfolioforge/domain/ports/embedding"
 	"github.com/marlonlyb/portfolioforge/domain/ports/mailer"
 	searchPorts "github.com/marlonlyb/portfolioforge/domain/ports/search"
+	workflowPorts "github.com/marlonlyb/portfolioforge/domain/ports/workflow"
 	"github.com/marlonlyb/portfolioforge/domain/services"
 	"github.com/marlonlyb/portfolioforge/infrastructure/casestudy"
 	infraemail "github.com/marlonlyb/portfolioforge/infrastructure/email"
@@ -122,23 +123,17 @@ func main() {
 	// Project Admin
 	projAdminHandlers := handlers.NewProjectAdminHandler(dbPool, embeddingProv, semanticEnabled, projRepository, projectLocalizationService)
 	siteSettingsHandlers := handlers.NewSiteSettingsHandler(siteSettingsRepository)
-	workflowEnvConfig, err := LoadCaseStudyWorkflowEnvConfig()
-	if err != nil {
-		log.Fatal(err)
+	workflowEnvConfig := LoadCaseStudyWorkflowEnvConfig()
+	workflowHandlers, workflowDisabledReason := buildCaseStudyWorkflowHandler(workflowEnvConfig, caseStudyWorkflowDependencies{
+		repository:   postgres.NewCaseStudyWorkflowRepository(dbPool),
+		publisher:    workflowPublisherAdapter{config: workflowEnvConfig.Publish},
+		importer:     workflowImporterAdapter{importer: casestudy.NewProjectImporter(projectCatalogService)},
+		localization: localization.NewBackfillService(projRepository, projectLocalizationService),
+		searchRepo:   searchRepo,
+	})
+	if workflowDisabledReason != "" {
+		log.Printf("WARNING: case-study workflow disabled: %s", workflowDisabledReason)
 	}
-	workflowRepository := postgres.NewCaseStudyWorkflowRepository(dbPool)
-	workflowPublisher := workflowPublisherAdapter{config: workflowEnvConfig.Publish}
-	workflowImporter := workflowImporterAdapter{importer: casestudy.NewProjectImporter(projectCatalogService)}
-	workflowLocalization := localization.NewBackfillService(projRepository, projectLocalizationService)
-	workflowService := services.NewCaseStudyWorkflowService(
-		workflowRepository,
-		workflowPublisher,
-		workflowImporter,
-		workflowLocalization,
-		searchRepo,
-		services.CaseStudyWorkflowConfig{AllowedSourceRoots: workflowEnvConfig.AllowedSourceRoots},
-	)
-	workflowHandlers := handlers.NewCaseStudyWorkflowHandler(workflowService)
 
 	httpServer := NewServer(uService, uHandlers, verificationHandlers, projectCatalogHandlers, productPublicCompatHandlers, lHandlers, projHandlers, assistantHandlers, searchHandlers, searchAdminHandlers, techHandlers, projAdminHandlers, siteSettingsHandlers, workflowHandlers)
 	httpServer.Initialize()
@@ -147,6 +142,30 @@ func main() {
 
 type workflowPublisherAdapter struct {
 	config casestudy.PublishConfig
+}
+
+type caseStudyWorkflowDependencies struct {
+	repository   workflowPorts.Repository
+	publisher    services.CaseStudyPublisher
+	importer     services.CaseStudyProjectImporter
+	localization services.CaseStudyLocalizationBackfiller
+	searchRepo   searchPorts.SearchRepository
+}
+
+func buildCaseStudyWorkflowHandler(config CaseStudyWorkflowEnvConfig, deps caseStudyWorkflowDependencies) (*handlers.CaseStudyWorkflowHandler, string) {
+	if !config.Configured {
+		return handlers.NewCaseStudyWorkflowHandler(services.NewUnavailableCaseStudyWorkflowService(config.Reason)), config.Diagnostic
+	}
+
+	workflowService := services.NewCaseStudyWorkflowService(
+		deps.repository,
+		deps.publisher,
+		deps.importer,
+		deps.localization,
+		deps.searchRepo,
+		services.CaseStudyWorkflowConfig{AllowedSourceRoots: config.AllowedSourceRoots},
+	)
+	return handlers.NewCaseStudyWorkflowHandler(workflowService), ""
 }
 
 func (p workflowPublisherAdapter) ResolvePublishTarget(inputPath, explicitSlug string) (services.CaseStudyPublishTarget, error) {

@@ -9,6 +9,7 @@ import {
   updateAdminSiteSettings,
 } from '../../shared/api/siteSettings';
 import {
+	fetchCaseStudyWorkflowAvailability,
 	confirmCaseStudyWorkflowStep,
   fetchCaseStudyWorkflowLogs,
 	fetchCaseStudyWorkflowRun,
@@ -16,6 +17,7 @@ import {
 	retryCaseStudyWorkflowStep,
 	startCaseStudyWorkflowStep,
   startCaseStudyWorkflowRun,
+	type CaseStudyWorkflowAvailability,
 	type CaseStudyWorkflowRun,
 } from './api';
 
@@ -32,6 +34,7 @@ vi.mock('./api', async () => {
   const actual = await vi.importActual<typeof import('./api')>('./api');
   return {
     ...actual,
+		fetchCaseStudyWorkflowAvailability: vi.fn(),
 		confirmCaseStudyWorkflowStep: vi.fn(),
     fetchCaseStudyWorkflowLogs: vi.fn(),
 		fetchCaseStudyWorkflowRun: vi.fn(),
@@ -44,6 +47,7 @@ vi.mock('./api', async () => {
 
 const mockedFetchAdminSiteSettings = vi.mocked(fetchAdminSiteSettings);
 const mockedUpdateAdminSiteSettings = vi.mocked(updateAdminSiteSettings);
+const mockedFetchCaseStudyWorkflowAvailability = vi.mocked(fetchCaseStudyWorkflowAvailability);
 const mockedConfirmCaseStudyWorkflowStep = vi.mocked(confirmCaseStudyWorkflowStep);
 const mockedFetchCaseStudyWorkflowLogs = vi.mocked(fetchCaseStudyWorkflowLogs);
 const mockedFetchCaseStudyWorkflowRun = vi.mocked(fetchCaseStudyWorkflowRun);
@@ -51,6 +55,12 @@ const mockedResumeCaseStudyWorkflowRun = vi.mocked(resumeCaseStudyWorkflowRun);
 const mockedRetryCaseStudyWorkflowStep = vi.mocked(retryCaseStudyWorkflowStep);
 const mockedStartCaseStudyWorkflowStep = vi.mocked(startCaseStudyWorkflowStep);
 const mockedStartCaseStudyWorkflowRun = vi.mocked(startCaseStudyWorkflowRun);
+
+const configuredWorkflowAvailability: CaseStudyWorkflowAvailability = { configured: true };
+const unavailableWorkflowAvailability: CaseStudyWorkflowAvailability = {
+	configured: false,
+	reason: 'Case-study workflow is not configured in this environment.',
+};
 
 const awaitingConfirmationRun: CaseStudyWorkflowRun = {
 	id: 'run-1',
@@ -138,6 +148,7 @@ describe('Admin settings workflow pages', () => {
   beforeEach(() => {
     mockedFetchAdminSiteSettings.mockReset();
     mockedUpdateAdminSiteSettings.mockReset();
+    mockedFetchCaseStudyWorkflowAvailability.mockReset();
     mockedConfirmCaseStudyWorkflowStep.mockReset();
     mockedFetchCaseStudyWorkflowLogs.mockReset();
     mockedFetchCaseStudyWorkflowRun.mockReset();
@@ -154,6 +165,7 @@ describe('Admin settings workflow pages', () => {
 
   it('shows the case-study workflow entry on the settings hub', async () => {
     mockedFetchAdminSiteSettings.mockResolvedValue({ public_hero_logo_url: '', public_hero_logo_alt: '' });
+    mockedFetchCaseStudyWorkflowAvailability.mockResolvedValue(configuredWorkflowAvailability);
 
     render(
       <MemoryRouter>
@@ -165,7 +177,8 @@ describe('Admin settings workflow pages', () => {
     expect(screen.getByRole('link', { name: 'Open workflow' })).toHaveAttribute('href', '/admin/settings/case-studies');
   });
 
-  it('starts a workflow run from the dedicated settings subpage', async () => {
+	it('starts a workflow run from the dedicated settings subpage', async () => {
+		mockedFetchCaseStudyWorkflowAvailability.mockResolvedValue(configuredWorkflowAvailability);
 		mockedStartCaseStudyWorkflowRun.mockResolvedValue(awaitingConfirmationRun);
 		mockedFetchCaseStudyWorkflowLogs.mockResolvedValue({ items: [] });
 
@@ -178,10 +191,10 @@ describe('Admin settings workflow pages', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByLabelText('Canonical source path'), {
-      target: { value: '/safe/root/90. dev_portfolioforge/demo' },
-    });
-    fireEvent.change(screen.getByLabelText('Localization locales (optional comma-separated subset)'), {
+		fireEvent.change(await screen.findByLabelText('Canonical source path'), {
+			target: { value: '/safe/root/90. dev_portfolioforge/demo' },
+		});
+		fireEvent.change(screen.getByLabelText('Localization locales (optional comma-separated subset)'), {
       target: { value: 'ca,en' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Start workflow run' }));
@@ -203,6 +216,7 @@ describe('Admin settings workflow pages', () => {
 	});
 
 	it('keeps branding save isolated from workflow actions on the settings hub', async () => {
+		mockedFetchCaseStudyWorkflowAvailability.mockResolvedValue(configuredWorkflowAvailability);
 		mockedFetchAdminSiteSettings.mockResolvedValue({
 			public_hero_logo_url: 'https://cdn.example.com/logo.svg',
 			public_hero_logo_alt: 'PortfolioForge',
@@ -237,6 +251,7 @@ describe('Admin settings workflow pages', () => {
 	});
 
 	it('supports confirm, start, retry, and resume semantics on the workflow page', async () => {
+		mockedFetchCaseStudyWorkflowAvailability.mockResolvedValue(configuredWorkflowAvailability);
 		mockedFetchCaseStudyWorkflowRun.mockResolvedValue(failedImportRun);
 		mockedFetchCaseStudyWorkflowLogs.mockResolvedValue({
 			items: [
@@ -357,4 +372,40 @@ describe('Admin settings workflow pages', () => {
 			expect(mockedStartCaseStudyWorkflowStep).toHaveBeenCalledWith('run-1', 'publish_canonical');
 		});
   });
+
+	it('shows disabled workflow copy on the settings hub without breaking branding settings', async () => {
+		mockedFetchAdminSiteSettings.mockResolvedValue({ public_hero_logo_url: '', public_hero_logo_alt: '' });
+		mockedFetchCaseStudyWorkflowAvailability.mockResolvedValue(unavailableWorkflowAvailability);
+
+		render(
+			<MemoryRouter>
+				<AdminSiteSettingsPage />
+			</MemoryRouter>,
+		);
+
+		expect(await screen.findByText(/Workflow unavailable\./)).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'View workflow status' })).toHaveAttribute('href', '/admin/settings/case-studies');
+		expect(screen.getByRole('button', { name: 'Save settings' })).toBeInTheDocument();
+	});
+
+	it('shows unavailable workflow page state and clears stale run storage when disabled', async () => {
+		mockedFetchCaseStudyWorkflowAvailability.mockResolvedValue(unavailableWorkflowAvailability);
+		sessionStorage.setItem('admin.case-study-workflow.last-run-id', 'run-stale');
+
+		render(
+			<MemoryRouter initialEntries={['/admin/settings/case-studies?run=run-stale']}>
+				<Routes>
+					<Route path="/admin/settings" element={<p>settings</p>} />
+					<Route path="/admin/settings/case-studies" element={<AdminCaseStudyWorkflowPage />} />
+				</Routes>
+			</MemoryRouter>,
+		);
+
+		expect(await screen.findByText(/Workflow unavailable\./)).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Back to settings' })).toHaveAttribute('href', '/admin/settings');
+		expect(mockedFetchCaseStudyWorkflowRun).not.toHaveBeenCalled();
+		expect(mockedFetchCaseStudyWorkflowLogs).not.toHaveBeenCalled();
+		expect(mockedStartCaseStudyWorkflowRun).not.toHaveBeenCalled();
+		expect(sessionStorage.getItem('admin.case-study-workflow.last-run-id')).toBeNull();
+	});
 });

@@ -1,4 +1,5 @@
 import { httpGet, httpPost } from '../../shared/api/http';
+import { API_ERROR_CODES, AppError } from '../../shared/api/errors';
 
 export type CaseStudyWorkflowStepName =
   | 'resolve_source'
@@ -67,12 +68,25 @@ export interface CaseStudyWorkflowLogEntry {
   created_at: string;
 }
 
+export interface CaseStudyWorkflowAvailability {
+  configured: boolean;
+  reason?: string;
+}
+
 export interface StartCaseStudyWorkflowPayload {
   source_path: string;
   slug?: string;
   run_localization_backfill?: boolean;
   run_reembed?: boolean;
   locales?: string[];
+}
+
+export function fetchCaseStudyWorkflowAvailability(): Promise<CaseStudyWorkflowAvailability> {
+  return httpGet<CaseStudyWorkflowAvailability>('/api/v1/admin/settings/case-study-workflow');
+}
+
+export function isWorkflowUnavailableError(error: unknown): error is AppError {
+  return error instanceof AppError && error.code === API_ERROR_CODES.WORKFLOW_UNAVAILABLE;
 }
 
 export function startCaseStudyWorkflowRun(

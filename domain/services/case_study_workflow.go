@@ -124,6 +124,10 @@ func (s *CaseStudyWorkflowService) StartRun(ctx context.Context, req model.Start
 	return s.repository.GetRun(ctx, run.ID)
 }
 
+func (s *CaseStudyWorkflowService) GetAvailability(context.Context) (model.CaseStudyWorkflowAvailability, error) {
+	return model.CaseStudyWorkflowAvailability{Configured: true}, nil
+}
+
 func (s *CaseStudyWorkflowService) GetRun(ctx context.Context, runID uuid.UUID) (model.CaseStudyWorkflowRun, error) {
 	return s.repository.GetRun(ctx, runID)
 }

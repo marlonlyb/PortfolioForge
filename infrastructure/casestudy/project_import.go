@@ -40,6 +40,9 @@ func (i *ProjectImporter) ImportFromCanonical(ctx context.Context, source Publis
 	}
 
 	if existing != nil {
+		projectMedia := assignProjectIDToMedia(ensureMinimumProjectMedia(existing.Media, source.Slug, defaultProjectMediaCount), existing.ID)
+		legacyImages := model.BuildProjectImageList(projectMedia, existing.Images)
+
 		payload := model.AdminProjectWrite{
 			ID:                existing.ID,
 			Name:              base.Name,
@@ -47,18 +50,22 @@ func (i *ProjectImporter) ImportFromCanonical(ctx context.Context, source Publis
 			Category:          base.Category,
 			ClientName:        base.ClientName,
 			SourceMarkdownURL: canonicalURL,
-			Media:             adminMediaFromProject(existing.Media),
+			Media:             adminMediaFromProject(projectMedia),
 			Variants:          adminVariantsFromProject(existing.Variants),
 			Active:            boolPtr(existing.Active),
-		}
-		if len(existing.Images) > 0 {
-			payload.Images = mustMarshalRaw(existing.Images)
+			Images:            mustMarshalRaw(legacyImages),
 		}
 		if err := i.service.Update(&payload); err != nil {
 			return uuid.Nil, fmt.Errorf("update existing project %s: %w", existing.ID, err)
 		}
+		if err := i.service.ReplaceMedia(existing.ID, projectMedia); err != nil {
+			return uuid.Nil, fmt.Errorf("replace project media %s: %w", existing.ID, err)
+		}
 		return existing.ID, nil
 	}
+
+	projectMedia := assignProjectIDToMedia(ensureMinimumProjectMedia(nil, source.Slug, defaultProjectMediaCount), uuid.Nil)
+	legacyImages := model.BuildProjectImageList(projectMedia, nil)
 
 	payload := model.AdminProjectWrite{
 		Name:              base.Name,
@@ -66,12 +73,17 @@ func (i *ProjectImporter) ImportFromCanonical(ctx context.Context, source Publis
 		Category:          base.Category,
 		ClientName:        base.ClientName,
 		SourceMarkdownURL: canonicalURL,
-		Images:            mustMarshalRaw([]string{}),
+		Media:             adminMediaFromProject(projectMedia),
+		Images:            mustMarshalRaw(legacyImages),
 		Features:          mustMarshalRaw([]string{}),
 		Active:            boolPtr(false),
 	}
 	if err := i.service.Create(&payload); err != nil {
 		return uuid.Nil, fmt.Errorf("create project from canonical %s: %w", source.Slug, err)
+	}
+	projectMedia = assignProjectIDToMedia(projectMedia, payload.ID)
+	if err := i.service.ReplaceMedia(payload.ID, projectMedia); err != nil {
+		return uuid.Nil, fmt.Errorf("replace project media %s: %w", payload.ID, err)
 	}
 	return payload.ID, nil
 }

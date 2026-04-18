@@ -95,7 +95,7 @@ describe('StoreLayout', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio' })).toBeInTheDocument();
     expect(screen.getByText('Strategy, execution, and technical judgment.')).toBeInTheDocument();
-    expect(screen.getByText('Curated public archive')).toBeInTheDocument();
+    expect(screen.getByText('Marlon Ly Bellido · Engineer')).toBeInTheDocument();
     expect(screen.getByText('search content')).toBeInTheDocument();
     expect(mockedFetchPublicSiteSettings).not.toHaveBeenCalled();
   });
@@ -119,7 +119,7 @@ describe('StoreLayout', () => {
     expect(await screen.findByText('landing content')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio' })).toBeInTheDocument();
     expect(screen.getByText('Strategy, execution, and technical judgment.')).toBeInTheDocument();
-    expect(screen.getByText('Curated public archive')).toBeInTheDocument();
+    expect(screen.getByText('Marlon Ly Bellido · Engineer')).toBeInTheDocument();
   });
 
   it('renders compact contextual detail headers without summary copy', async () => {

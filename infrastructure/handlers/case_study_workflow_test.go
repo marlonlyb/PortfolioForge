@@ -16,13 +16,21 @@ import (
 )
 
 type stubCaseStudyWorkflowService struct {
-	startRunFn    func(context.Context, model.StartCaseStudyWorkflowRunRequest) (model.CaseStudyWorkflowRun, error)
-	getRunFn      func(context.Context, uuid.UUID) (model.CaseStudyWorkflowRun, error)
-	listLogsFn    func(context.Context, uuid.UUID) ([]model.CaseStudyWorkflowLogEntry, error)
-	confirmStepFn func(context.Context, uuid.UUID, string) (model.CaseStudyWorkflowRun, error)
-	startStepFn   func(context.Context, uuid.UUID, string) (model.CaseStudyWorkflowRun, error)
-	retryStepFn   func(context.Context, uuid.UUID, string) (model.CaseStudyWorkflowRun, error)
-	resumeFn      func(context.Context, uuid.UUID) (model.CaseStudyWorkflowRun, error)
+	availabilityFn func(context.Context) (model.CaseStudyWorkflowAvailability, error)
+	startRunFn     func(context.Context, model.StartCaseStudyWorkflowRunRequest) (model.CaseStudyWorkflowRun, error)
+	getRunFn       func(context.Context, uuid.UUID) (model.CaseStudyWorkflowRun, error)
+	listLogsFn     func(context.Context, uuid.UUID) ([]model.CaseStudyWorkflowLogEntry, error)
+	confirmStepFn  func(context.Context, uuid.UUID, string) (model.CaseStudyWorkflowRun, error)
+	startStepFn    func(context.Context, uuid.UUID, string) (model.CaseStudyWorkflowRun, error)
+	retryStepFn    func(context.Context, uuid.UUID, string) (model.CaseStudyWorkflowRun, error)
+	resumeFn       func(context.Context, uuid.UUID) (model.CaseStudyWorkflowRun, error)
+}
+
+func (s stubCaseStudyWorkflowService) GetAvailability(ctx context.Context) (model.CaseStudyWorkflowAvailability, error) {
+	if s.availabilityFn != nil {
+		return s.availabilityFn(ctx)
+	}
+	return model.CaseStudyWorkflowAvailability{Configured: true}, nil
 }
 
 func (s stubCaseStudyWorkflowService) StartRun(ctx context.Context, req model.StartCaseStudyWorkflowRunRequest) (model.CaseStudyWorkflowRun, error) {
@@ -30,6 +38,37 @@ func (s stubCaseStudyWorkflowService) StartRun(ctx context.Context, req model.St
 		return s.startRunFn(ctx, req)
 	}
 	return model.CaseStudyWorkflowRun{}, nil
+}
+
+func TestCaseStudyWorkflowHandler_GetAvailability(t *testing.T) {
+	handler := NewCaseStudyWorkflowHandler(stubCaseStudyWorkflowService{
+		availabilityFn: func(context.Context) (model.CaseStudyWorkflowAvailability, error) {
+			return model.CaseStudyWorkflowAvailability{Configured: false, Reason: "Case-study workflow is not configured in this environment."}, nil
+		},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/settings/case-study-workflow", nil)
+	rec := httptest.NewRecorder()
+	c := echo.New().NewContext(req, rec)
+
+	if err := handler.GetAvailability(c); err != nil {
+		t.Fatalf("GetAvailability() error = %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var payload struct {
+		Data model.CaseStudyWorkflowAvailability `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.Configured {
+		t.Fatal("expected configured=false")
+	}
+	if payload.Data.Reason == "" {
+		t.Fatal("expected unavailable reason")
+	}
 }
 func (s stubCaseStudyWorkflowService) GetRun(ctx context.Context, runID uuid.UUID) (model.CaseStudyWorkflowRun, error) {
 	if s.getRunFn != nil {
@@ -182,5 +221,169 @@ func TestCaseStudyWorkflowHandler_ResumeMapsValidationErrors(t *testing.T) {
 	}
 	if !strings.Contains(contractErr.Response.Error.Message, "todavía no está listo") {
 		t.Fatalf("message = %v", contractErr.Response.Error.Message)
+	}
+}
+
+func TestCaseStudyWorkflowHandler_StartRunMapsWorkflowUnavailable(t *testing.T) {
+	handler := NewCaseStudyWorkflowHandler(stubCaseStudyWorkflowService{
+		startRunFn: func(context.Context, model.StartCaseStudyWorkflowRunRequest) (model.CaseStudyWorkflowRun, error) {
+			return model.CaseStudyWorkflowRun{}, &model.CaseStudyWorkflowUnavailableError{Reason: "Case-study workflow is not configured in this environment."}
+		},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/settings/case-study-runs", strings.NewReader(`{"source_path":"/safe/root/demo"}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := echo.New().NewContext(req, rec)
+
+	err := handler.StartRun(c)
+	if err == nil {
+		t.Fatal("expected workflow_unavailable error")
+	}
+	contractErr := err.(*model.ContractError)
+	if contractErr.StatusHTTP != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", contractErr.StatusHTTP, http.StatusServiceUnavailable)
+	}
+	if contractErr.Response.Error.Code != "workflow_unavailable" {
+		t.Fatalf("code = %s", contractErr.Response.Error.Code)
+	}
+}
+
+func TestCaseStudyWorkflowHandler_DisabledReadAndMutationPathsMapWorkflowUnavailable(t *testing.T) {
+	runID := uuid.New()
+	reason := "Case-study workflow is not configured in this environment."
+
+	tests := []struct {
+		name       string
+		service    stubCaseStudyWorkflowService
+		build      func(*CaseStudyWorkflowHandler) error
+	}{
+		{
+			name: "get run",
+			service: stubCaseStudyWorkflowService{
+				getRunFn: func(context.Context, uuid.UUID) (model.CaseStudyWorkflowRun, error) {
+					return model.CaseStudyWorkflowRun{}, &model.CaseStudyWorkflowUnavailableError{Reason: reason}
+				},
+			},
+			build: func(handler *CaseStudyWorkflowHandler) error {
+				req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/settings/case-study-runs/"+runID.String(), nil)
+				rec := httptest.NewRecorder()
+				e := echo.New()
+				c := e.NewContext(req, rec)
+				c.SetPath("/api/v1/admin/settings/case-study-runs/:id")
+				c.SetParamNames("id")
+				c.SetParamValues(runID.String())
+				return handler.GetRun(c)
+			},
+		},
+		{
+			name: "get logs",
+			service: stubCaseStudyWorkflowService{
+				listLogsFn: func(context.Context, uuid.UUID) ([]model.CaseStudyWorkflowLogEntry, error) {
+					return nil, &model.CaseStudyWorkflowUnavailableError{Reason: reason}
+				},
+			},
+			build: func(handler *CaseStudyWorkflowHandler) error {
+				req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/settings/case-study-runs/"+runID.String()+"/logs", nil)
+				rec := httptest.NewRecorder()
+				e := echo.New()
+				c := e.NewContext(req, rec)
+				c.SetPath("/api/v1/admin/settings/case-study-runs/:id/logs")
+				c.SetParamNames("id")
+				c.SetParamValues(runID.String())
+				return handler.GetLogs(c)
+			},
+		},
+		{
+			name: "resume",
+			service: stubCaseStudyWorkflowService{
+				resumeFn: func(context.Context, uuid.UUID) (model.CaseStudyWorkflowRun, error) {
+					return model.CaseStudyWorkflowRun{}, &model.CaseStudyWorkflowUnavailableError{Reason: reason}
+				},
+			},
+			build: func(handler *CaseStudyWorkflowHandler) error {
+				req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/settings/case-study-runs/"+runID.String()+"/resume", nil)
+				rec := httptest.NewRecorder()
+				e := echo.New()
+				c := e.NewContext(req, rec)
+				c.SetPath("/api/v1/admin/settings/case-study-runs/:id/resume")
+				c.SetParamNames("id")
+				c.SetParamValues(runID.String())
+				return handler.Resume(c)
+			},
+		},
+		{
+			name: "confirm step",
+			service: stubCaseStudyWorkflowService{
+				confirmStepFn: func(context.Context, uuid.UUID, string) (model.CaseStudyWorkflowRun, error) {
+					return model.CaseStudyWorkflowRun{}, &model.CaseStudyWorkflowUnavailableError{Reason: reason}
+				},
+			},
+			build: func(handler *CaseStudyWorkflowHandler) error {
+				req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/settings/case-study-runs/"+runID.String()+"/steps/"+model.CaseStudyWorkflowStepPublishCanonical+"/confirm", nil)
+				rec := httptest.NewRecorder()
+				e := echo.New()
+				c := e.NewContext(req, rec)
+				c.SetPath("/api/v1/admin/settings/case-study-runs/:id/steps/:step/confirm")
+				c.SetParamNames("id", "step")
+				c.SetParamValues(runID.String(), model.CaseStudyWorkflowStepPublishCanonical)
+				return handler.ConfirmStep(c)
+			},
+		},
+		{
+			name: "start step",
+			service: stubCaseStudyWorkflowService{
+				startStepFn: func(context.Context, uuid.UUID, string) (model.CaseStudyWorkflowRun, error) {
+					return model.CaseStudyWorkflowRun{}, &model.CaseStudyWorkflowUnavailableError{Reason: reason}
+				},
+			},
+			build: func(handler *CaseStudyWorkflowHandler) error {
+				req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/settings/case-study-runs/"+runID.String()+"/steps/"+model.CaseStudyWorkflowStepPublishCanonical+"/start", nil)
+				rec := httptest.NewRecorder()
+				e := echo.New()
+				c := e.NewContext(req, rec)
+				c.SetPath("/api/v1/admin/settings/case-study-runs/:id/steps/:step/start")
+				c.SetParamNames("id", "step")
+				c.SetParamValues(runID.String(), model.CaseStudyWorkflowStepPublishCanonical)
+				return handler.StartStep(c)
+			},
+		},
+		{
+			name: "retry step",
+			service: stubCaseStudyWorkflowService{
+				retryStepFn: func(context.Context, uuid.UUID, string) (model.CaseStudyWorkflowRun, error) {
+					return model.CaseStudyWorkflowRun{}, &model.CaseStudyWorkflowUnavailableError{Reason: reason}
+				},
+			},
+			build: func(handler *CaseStudyWorkflowHandler) error {
+				req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/settings/case-study-runs/"+runID.String()+"/steps/"+model.CaseStudyWorkflowStepPublishCanonical+"/retry", nil)
+				rec := httptest.NewRecorder()
+				e := echo.New()
+				c := e.NewContext(req, rec)
+				c.SetPath("/api/v1/admin/settings/case-study-runs/:id/steps/:step/retry")
+				c.SetParamNames("id", "step")
+				c.SetParamValues(runID.String(), model.CaseStudyWorkflowStepPublishCanonical)
+				return handler.RetryStep(c)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler := NewCaseStudyWorkflowHandler(tt.service)
+			err := tt.build(handler)
+			if err == nil {
+				t.Fatal("expected workflow_unavailable error")
+			}
+			contractErr := err.(*model.ContractError)
+			if contractErr.StatusHTTP != http.StatusServiceUnavailable {
+				t.Fatalf("status = %d, want %d", contractErr.StatusHTTP, http.StatusServiceUnavailable)
+			}
+			if contractErr.Response.Error.Code != "workflow_unavailable" {
+				t.Fatalf("code = %s", contractErr.Response.Error.Code)
+			}
+			if contractErr.Response.Error.Message != reason {
+				t.Fatalf("message = %q, want %q", contractErr.Response.Error.Message, reason)
+			}
+		})
 	}
 }

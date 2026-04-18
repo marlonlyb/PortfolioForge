@@ -49,6 +49,7 @@ export const API_ERROR_CODES = {
   ASSISTANT_INELIGIBLE: 'assistant_ineligible',
   FORBIDDEN: 'forbidden',
   NOT_FOUND: 'not_found',
+  WORKFLOW_UNAVAILABLE: 'workflow_unavailable',
   PRODUCT_INACTIVE: 'product_inactive',
   STOCK_INSUFFICIENT: 'stock_insufficient',
   UNEXPECTED_ERROR: 'unexpected_error',

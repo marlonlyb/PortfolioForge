@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { AppError } from '../../shared/api/errors';
 import {
   confirmCaseStudyWorkflowStep,
+  fetchCaseStudyWorkflowAvailability,
   fetchCaseStudyWorkflowLogs,
   fetchCaseStudyWorkflowRun,
+  isWorkflowUnavailableError,
   resumeCaseStudyWorkflowRun,
   retryCaseStudyWorkflowStep,
   startCaseStudyWorkflowRun,
   startCaseStudyWorkflowStep,
+  type CaseStudyWorkflowAvailability,
   type CaseStudyWorkflowLogEntry,
   type CaseStudyWorkflowRun,
   type CaseStudyWorkflowStatus,
@@ -49,10 +52,43 @@ export function AdminCaseStudyWorkflowPage() {
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState<CaseStudyWorkflowRun | null>(null);
   const [logs, setLogs] = useState<CaseStudyWorkflowLogEntry[]>([]);
+  const [availability, setAvailability] = useState<CaseStudyWorkflowAvailability | null>(null);
+  const [availabilityLoading, setAvailabilityLoading] = useState(true);
 
   const runId = searchParams.get('run') ?? sessionStorage.getItem(STORAGE_KEY) ?? '';
 
   useEffect(() => {
+    let cancelled = false;
+
+    fetchCaseStudyWorkflowAvailability()
+      .then((status) => {
+        if (cancelled) return;
+        setAvailability(status);
+        if (!status.configured) {
+          sessionStorage.removeItem(STORAGE_KEY);
+          setRun(null);
+          setLogs([]);
+          if (searchParams.get('run')) {
+            setSearchParams({}, { replace: true });
+          }
+        }
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setAvailability({ configured: true });
+        setError(err instanceof AppError ? err.message : 'Failed to load workflow availability.');
+      })
+      .finally(() => {
+        if (!cancelled) setAvailabilityLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (availabilityLoading || availability?.configured === false) return;
     if (!runId) return;
 
     let cancelled = false;
@@ -75,15 +111,13 @@ export function AdminCaseStudyWorkflowPage() {
     return () => {
       cancelled = true;
     };
-  }, [runId]);
+  }, [availability?.configured, availabilityLoading, runId]);
 
-  const nextActionableStep = useMemo(
-    () => run?.steps.find((step) => step.status === 'pending' || step.status === 'awaiting_confirmation' || step.status === 'failed') ?? null,
-    [run],
-  );
+  const nextActionableStep = run?.steps.find((step) => step.status === 'pending' || step.status === 'awaiting_confirmation' || step.status === 'failed') ?? null;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (availability?.configured === false) return;
     setLoading(true);
     setError(null);
 
@@ -101,13 +135,23 @@ export function AdminCaseStudyWorkflowPage() {
       const logPayload = await fetchCaseStudyWorkflowLogs(created.id);
       setLogs(logPayload.items);
     } catch (err: unknown) {
-      setError(err instanceof AppError ? err.message : 'Failed to start workflow run.');
+      if (isWorkflowUnavailableError(err)) {
+        sessionStorage.removeItem(STORAGE_KEY);
+        setAvailability({ configured: false, reason: err.message });
+        setRun(null);
+        setLogs([]);
+        setSearchParams({}, { replace: true });
+        setError(null);
+      } else {
+        setError(err instanceof AppError ? err.message : 'Failed to start workflow run.');
+      }
     } finally {
       setLoading(false);
     }
   }
 
   async function refreshRun(updatedRun?: CaseStudyWorkflowRun) {
+    if (availability?.configured === false) return;
     const targetRunId = updatedRun?.id ?? run?.id;
     if (!targetRunId) return;
 
@@ -121,7 +165,16 @@ export function AdminCaseStudyWorkflowPage() {
       setRun(currentRun);
       setLogs(currentLogs.items);
     } catch (err: unknown) {
-      setError(err instanceof AppError ? err.message : 'Failed to refresh workflow state.');
+      if (isWorkflowUnavailableError(err)) {
+        sessionStorage.removeItem(STORAGE_KEY);
+        setAvailability({ configured: false, reason: err.message });
+        setRun(null);
+        setLogs([]);
+        setSearchParams({}, { replace: true });
+        setError(null);
+      } else {
+        setError(err instanceof AppError ? err.message : 'Failed to refresh workflow state.');
+      }
     } finally {
       setRefreshing(false);
     }
@@ -149,6 +202,36 @@ export function AdminCaseStudyWorkflowPage() {
     if (!run) return;
     const updated = await resumeCaseStudyWorkflowRun(run.id);
     await refreshRun(updated);
+  }
+
+  if (availabilityLoading) {
+    return (
+      <section className="card-stack">
+        <p className="admin__loading">Loading workflow availability…</p>
+      </section>
+    );
+  }
+
+  if (availability?.configured === false) {
+    return (
+      <section className="card-stack">
+        <article className="card">
+          <p className="eyebrow">Settings</p>
+          <h2>Case-study workflow</h2>
+          <p className="admin__helper-copy">
+            Workflow unavailable. {availability.reason ?? 'Case-study workflow is not configured in this environment.'}
+          </p>
+          <p className="admin__helper-copy">
+            Configure the workflow environment before running publish/import actions.
+          </p>
+          <div className="admin__form-actions">
+            <Link className="btn btn--secondary" to="/admin/settings">
+              Back to settings
+            </Link>
+          </div>
+        </article>
+      </section>
+    );
   }
 
   return (

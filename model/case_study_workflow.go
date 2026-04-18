@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
@@ -96,6 +97,28 @@ type CaseStudyWorkflowLogEntry struct {
 	Level     string    `json:"level"`
 	Message   string    `json:"message"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type CaseStudyWorkflowAvailability struct {
+	Configured bool   `json:"configured"`
+	Reason     string `json:"reason,omitempty"`
+}
+
+var ErrCaseStudyWorkflowUnavailable = errors.New("case-study workflow unavailable")
+
+type CaseStudyWorkflowUnavailableError struct {
+	Reason string
+}
+
+func (e *CaseStudyWorkflowUnavailableError) Error() string {
+	if strings.TrimSpace(e.Reason) == "" {
+		return ErrCaseStudyWorkflowUnavailable.Error()
+	}
+	return e.Reason
+}
+
+func (e *CaseStudyWorkflowUnavailableError) Unwrap() error {
+	return ErrCaseStudyWorkflowUnavailable
 }
 
 type StartCaseStudyWorkflowRunRequest struct {

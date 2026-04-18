@@ -314,6 +314,8 @@ Uso real en frontend:
 Reglas:
 
 - si el markdown define media estructurada, se sincroniza;
+- cuando el proyecto se crea o actualiza automáticamente desde el canonical y todavía no tiene media persistida suficiente, el sistema debe sembrar por defecto **7 imágenes** usando la convención `https://mlbautomation.com/dev/portfolioforge/<slug>/imagenNN_{low|medium|high}.webp` y el fallback global `https://mlbautomation.com/dev/portfolioforge/imagen_fallback/Logo_500_500.png`;
+- ese sembrado automático debe respetar media manual existente y solo completar faltantes hasta llegar al mínimo esperado;
 - si el markdown **no** define media estructurada de forma suficiente, **no se borra media existente por defecto**;
 - limpiar o reemplazar media debe ser una decisión explícita, no un efecto colateral de una sincronización de texto.
 

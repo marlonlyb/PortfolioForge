@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
@@ -28,6 +28,7 @@ import {
   serializeProfileMetrics,
 } from './profileFormSerializers';
 import { buildCanonicalMarkdownURLFromName, buildCanonicalMarkdownURLFromSlug } from '../../shared/lib/sourceMarkdownUrl';
+import { applyDefaultProjectMediaUrls, buildDefaultProjectMediaUrls } from '../../shared/lib/projectMediaUrlDefaults';
 import {
   PUBLIC_CONTENT_FIELDS,
   PUBLIC_LOCALE,
@@ -40,15 +41,17 @@ const TRANSLATABLE_LOCALES = [PUBLIC_LOCALE.CA, PUBLIC_LOCALE.EN, PUBLIC_LOCALE.
 
 type MediaFormItem = ProjectMedia;
 
-function createEmptyMediaItem(sortOrder = 0): MediaFormItem {
+function createEmptyMediaItem(sortOrder = 0, slugOrName = ''): MediaFormItem {
+  const defaults = buildDefaultProjectMediaUrls(slugOrName, sortOrder + 1);
+
   return {
     id: `new-${sortOrder}-${Date.now()}`,
     project_id: '',
     media_type: 'image',
-    low_url: '',
-    medium_url: '',
-    high_url: '',
-    fallback_url: '',
+    low_url: defaults.low_url,
+    medium_url: defaults.medium_url,
+    high_url: defaults.high_url,
+    fallback_url: defaults.fallback_url,
     caption: '',
     alt_text: '',
     sort_order: sortOrder,
@@ -268,6 +271,7 @@ export function AdminProductFormPage() {
   const [sourceMarkdownURL, setSourceMarkdownURL] = useState('');
   const [sourceMarkdownURLManuallyEdited, setSourceMarkdownURLManuallyEdited] = useState(false);
   const [mediaItems, setMediaItems] = useState<MediaFormItem[]>([createEmptyMediaItem(0)]);
+  const previousGeneratedSlugRef = useRef('');
   const [active, setActive] = useState(true);
 
   // Enrichment
@@ -329,8 +333,10 @@ export function AdminProductFormPage() {
     fetchAdminProjectById(id)
       .then((project) => {
         if (!cancelled) {
-          const inferredMarkdownURL = buildCanonicalMarkdownURLFromSlug(project.slug || project.name);
+          const inferredSlug = project.slug || project.name;
+          const inferredMarkdownURL = buildCanonicalMarkdownURLFromSlug(inferredSlug);
           const explicitMarkdownURL = project.source_markdown_url?.trim() ?? '';
+          previousGeneratedSlugRef.current = inferredSlug;
 
           setName(project.name);
           setDescription(project.description);
@@ -410,11 +416,15 @@ export function AdminProductFormPage() {
   }, [id]);
 
   useEffect(() => {
-    if (sourceMarkdownURLManuallyEdited) {
-      return;
+    if (!sourceMarkdownURLManuallyEdited) {
+      setSourceMarkdownURL(buildCanonicalMarkdownURLFromName(name));
     }
 
-    setSourceMarkdownURL(buildCanonicalMarkdownURLFromName(name));
+    setMediaItems((prev) =>
+      prev.map((item, index) => applyDefaultProjectMediaUrls(item, name, index + 1, previousGeneratedSlugRef.current)),
+    );
+
+    previousGeneratedSlugRef.current = name;
   }, [name, sourceMarkdownURLManuallyEdited]);
 
   // Refresh readiness after save
@@ -634,15 +644,15 @@ export function AdminProductFormPage() {
                 <button
                   className="btn btn--ghost"
                   type="button"
-                  onClick={() => setMediaItems((prev) => [...prev, createEmptyMediaItem(prev.length)])}
+                  onClick={() => setMediaItems((prev) => [...prev, createEmptyMediaItem(prev.length, name)])}
                 >
                   Add image
                 </button>
               </div>
 
-              <span className="admin__field-hint">
-                Usa tres variantes por imagen: _low para catálogo, _medium para galería y _high para vista ampliada. Marca una imagen como principal.
-              </span>
+                <span className="admin__field-hint">
+                  Usa tres variantes por imagen: _low para catálogo, _medium para galería y _high para vista ampliada. Por defecto se precargan como `imagen01/02/..._low|medium|high.webp` y el fallback global del portfolio.
+                </span>
 
               <div className="admin__media-stack">
                 {mediaItems.map((item, index) => (
@@ -656,7 +666,7 @@ export function AdminProductFormPage() {
                         onClick={() =>
                           setMediaItems((prev) => {
                             const next = prev.filter((_, currentIndex) => currentIndex !== index);
-                            return next.length > 0 ? next : [createEmptyMediaItem(0)];
+                            return next.length > 0 ? next : [createEmptyMediaItem(0, name)];
                           })
                         }
                       >

@@ -7,6 +7,8 @@ import (
 )
 
 func CaseStudyWorkflowAdmin(e *echo.Echo, h *handlers.CaseStudyWorkflowHandler, middlewares ...echo.MiddlewareFunc) {
+	e.GET("/api/v1/admin/settings/case-study-workflow", h.GetAvailability, middlewares...)
+
 	g := e.Group("/api/v1/admin/settings/case-study-runs", middlewares...)
 
 	g.POST("", h.StartRun)

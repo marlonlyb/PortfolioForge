@@ -408,7 +408,7 @@ describe('ProductDetailPage', () => {
 
 	  expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio' })).toBeInTheDocument();
 	  expect(screen.getByText('Strategy, execution, and technical judgment.')).toBeInTheDocument();
-	  expect(screen.getByText('Curated public archive')).toBeInTheDocument();
+	  expect(screen.getByText('Marlon Ly Bellido · Engineer')).toBeInTheDocument();
 	  expect(screen.getByText('Loading project…')).toBeInTheDocument();
 	  await waitFor(() => {
 	    expect(mockedFetchProjectBySlug).toHaveBeenCalled();
@@ -437,7 +437,7 @@ describe('ProductDetailPage', () => {
 
 	  expect(await screen.findByText('Project not found')).toBeInTheDocument();
 	  expect(screen.getByRole('heading', { level: 1, name: 'Project portfolio' })).toBeInTheDocument();
-	  expect(screen.getByText('Curated public archive')).toBeInTheDocument();
+	  expect(screen.getByText('Marlon Ly Bellido · Engineer')).toBeInTheDocument();
 	});
 
 	it('moves the descriptive summary into the hero and keeps technologies there as the authoritative surface', async () => {

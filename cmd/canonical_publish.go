@@ -56,12 +56,12 @@ func runCanonicalPublish(args []string) error {
 		return errors.New("case-dir es obligatorio")
 	}
 
-	config, err := casestudy.LoadPublishConfigFromEnv(os.Getenv)
+	workflowConfig, err := LoadRequiredCaseStudyWorkflowEnvConfig()
 	if err != nil {
 		return err
 	}
 
-	target, err := casestudy.ResolvePublishTarget(*caseDir, *slug, casestudy.PublishConfig(config))
+	target, err := casestudy.ResolvePublishTarget(*caseDir, *slug, workflowConfig.Publish)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func runCanonicalPublish(args []string) error {
 		return nil
 	}
 
-	if err := casestudy.PublishFiles(target, files, casestudy.PublishConfig(config)); err != nil {
+	if err := casestudy.PublishFiles(target, files, workflowConfig.Publish); err != nil {
 		return err
 	}
 

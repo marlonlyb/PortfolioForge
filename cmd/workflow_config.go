@@ -10,19 +10,58 @@ import (
 )
 
 type CaseStudyWorkflowEnvConfig struct {
+	Configured         bool
 	AllowedSourceRoots []string
 	Publish            casestudy.PublishConfig
+	Reason             string
+	Diagnostic         string
 }
 
-func LoadCaseStudyWorkflowEnvConfig() (CaseStudyWorkflowEnvConfig, error) {
-	publishConfig, err := casestudy.LoadPublishConfigFromEnv(os.Getenv)
+const caseStudyWorkflowUnavailableReason = "Case-study workflow is not configured in this environment."
+
+func LoadCaseStudyWorkflowEnvConfig() CaseStudyWorkflowEnvConfig {
+	config, _ := loadCaseStudyWorkflowEnvConfigFrom(os.Getenv, false)
+	return config
+}
+
+func LoadRequiredCaseStudyWorkflowEnvConfig() (CaseStudyWorkflowEnvConfig, error) {
+	return loadCaseStudyWorkflowEnvConfigFrom(os.Getenv, true)
+}
+
+func loadCaseStudyWorkflowEnvConfigFrom(getenv func(string) string, strict bool) (CaseStudyWorkflowEnvConfig, error) {
+	publishConfig, err := casestudy.LoadPublishConfigFromEnv(getenv)
 	if err != nil {
+		return unavailableCaseStudyWorkflowEnvConfig(err, strict)
+	}
+
+	roots, err := loadCaseStudyWorkflowAllowedRoots(getenv("PF_CASE_STUDY_ALLOWED_SOURCE_ROOTS"))
+	if err != nil {
+		return unavailableCaseStudyWorkflowEnvConfig(err, strict)
+	}
+
+	return CaseStudyWorkflowEnvConfig{
+		Configured:         true,
+		AllowedSourceRoots: roots,
+		Publish:            publishConfig,
+	}, nil
+}
+
+func unavailableCaseStudyWorkflowEnvConfig(err error, strict bool) (CaseStudyWorkflowEnvConfig, error) {
+	if strict {
 		return CaseStudyWorkflowEnvConfig{}, err
 	}
 
-	rootsRaw := strings.TrimSpace(os.Getenv("PF_CASE_STUDY_ALLOWED_SOURCE_ROOTS"))
+	return CaseStudyWorkflowEnvConfig{
+		Configured: false,
+		Reason:     caseStudyWorkflowUnavailableReason,
+		Diagnostic: err.Error(),
+	}, nil
+}
+
+func loadCaseStudyWorkflowAllowedRoots(raw string) ([]string, error) {
+	rootsRaw := strings.TrimSpace(raw)
 	if rootsRaw == "" {
-		return CaseStudyWorkflowEnvConfig{}, fmt.Errorf("PF_CASE_STUDY_ALLOWED_SOURCE_ROOTS es obligatoria para el workflow de case studies")
+		return nil, fmt.Errorf("PF_CASE_STUDY_ALLOWED_SOURCE_ROOTS es obligatoria para el workflow de case studies")
 	}
 
 	parts := strings.Split(rootsRaw, ",")
@@ -34,13 +73,13 @@ func LoadCaseStudyWorkflowEnvConfig() (CaseStudyWorkflowEnvConfig, error) {
 		}
 		abs, err := filepath.Abs(filepath.Clean(trimmed))
 		if err != nil {
-			return CaseStudyWorkflowEnvConfig{}, fmt.Errorf("invalid allowed source root %q: %w", trimmed, err)
+			return nil, fmt.Errorf("invalid allowed source root %q: %w", trimmed, err)
 		}
 		roots = append(roots, abs)
 	}
 	if len(roots) == 0 {
-		return CaseStudyWorkflowEnvConfig{}, fmt.Errorf("PF_CASE_STUDY_ALLOWED_SOURCE_ROOTS no contiene rutas válidas")
+		return nil, fmt.Errorf("PF_CASE_STUDY_ALLOWED_SOURCE_ROOTS no contiene rutas válidas")
 	}
 
-	return CaseStudyWorkflowEnvConfig{AllowedSourceRoots: roots, Publish: publishConfig}, nil
+	return roots, nil
 }
