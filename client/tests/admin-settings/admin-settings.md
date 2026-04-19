@@ -1,7 +1,7 @@
 ### E2E Tests: Admin Settings Case-Study Workflow
 
 **Suite ID:** `ADMIN-SETTINGS-E2E`
-**Feature:** Settings hub navigation and admin case-study workflow orchestration.
+**Feature:** Consolidated admin settings page with branding and case-study workflow orchestration.
 
 ---
 
@@ -13,16 +13,16 @@
 - type → @e2e
 - feature → @admin-settings
 
-**Description/Objective:** Verify Settings stays the entry point, the workflow runs on a dedicated subpage, and admins can confirm/start publish and import in the MVP canonical-first flow.
+**Description/Objective:** Verify Settings lands directly on the useful page, branding and workflow coexist there, and admins can confirm/start publish and import in the MVP canonical-first flow.
 
 ### Flow Steps:
-1. Open `/admin/settings` as an authenticated admin.
-2. Navigate to the case-study workflow subpage.
+1. Open `/admin/settings/case-studies` as an authenticated admin.
+2. Verify branding and workflow sections are visible on the same page.
 3. Start a run from an existing canonical source.
 4. Confirm and execute publish, then confirm and execute import.
 
 ### Expected Result:
-- Branding settings remain on `/admin/settings` only.
+- Branding settings remain available on `/admin/settings/case-studies`.
 - The workflow page shows the MVP generation-unavailable message.
 - Published canonical URL and imported project ID are visible with operator logs.
 

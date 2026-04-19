@@ -6,7 +6,7 @@ const adminLinks = [
   { to: '/admin/projects', label: 'Projects' },
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/technologies', label: 'Technologies' },
-  { to: '/admin/settings', label: 'Settings' },
+  { to: '/admin/settings/case-studies', label: 'Settings' },
 ] as const;
 
 export function AdminLayout() {

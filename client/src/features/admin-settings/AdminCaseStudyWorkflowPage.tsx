@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 import { AppError } from '../../shared/api/errors';
+import { fetchAdminSiteSettings, updateAdminSiteSettings } from '../../shared/api/siteSettings';
 import {
   confirmCaseStudyWorkflowStep,
   fetchCaseStudyWorkflowAvailability,
@@ -42,6 +43,12 @@ const STATUS_LABELS: Record<CaseStudyWorkflowStatus, string> = {
 
 export function AdminCaseStudyWorkflowPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [publicHeroLogoUrl, setPublicHeroLogoUrl] = useState('');
+  const [publicHeroLogoAlt, setPublicHeroLogoAlt] = useState('');
+  const [brandingLoading, setBrandingLoading] = useState(true);
+  const [brandingSubmitting, setBrandingSubmitting] = useState(false);
+  const [brandingError, setBrandingError] = useState<string | null>(null);
+  const [brandingMessage, setBrandingMessage] = useState<string | null>(null);
   const [sourcePath, setSourcePath] = useState('');
   const [slug, setSlug] = useState('');
   const [runLocalizationBackfill, setRunLocalizationBackfill] = useState(true);
@@ -49,13 +56,35 @@ export function AdminCaseStudyWorkflowPage() {
   const [localesRaw, setLocalesRaw] = useState('ca,en,de');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [workflowError, setWorkflowError] = useState<string | null>(null);
   const [run, setRun] = useState<CaseStudyWorkflowRun | null>(null);
   const [logs, setLogs] = useState<CaseStudyWorkflowLogEntry[]>([]);
   const [availability, setAvailability] = useState<CaseStudyWorkflowAvailability | null>(null);
   const [availabilityLoading, setAvailabilityLoading] = useState(true);
 
   const runId = searchParams.get('run') ?? sessionStorage.getItem(STORAGE_KEY) ?? '';
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchAdminSiteSettings()
+      .then((settings) => {
+        if (cancelled) return;
+        setPublicHeroLogoUrl(settings.public_hero_logo_url ?? '');
+        setPublicHeroLogoAlt(settings.public_hero_logo_alt ?? '');
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setBrandingError(err instanceof AppError ? err.message : 'Failed to load site settings.');
+      })
+      .finally(() => {
+        if (!cancelled) setBrandingLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,7 +105,7 @@ export function AdminCaseStudyWorkflowPage() {
       .catch((err: unknown) => {
         if (cancelled) return;
         setAvailability({ configured: true });
-        setError(err instanceof AppError ? err.message : 'Failed to load workflow availability.');
+        setWorkflowError(err instanceof AppError ? err.message : 'Failed to load workflow availability.');
       })
       .finally(() => {
         if (!cancelled) setAvailabilityLoading(false);
@@ -102,7 +131,7 @@ export function AdminCaseStudyWorkflowPage() {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof AppError ? err.message : 'Failed to load workflow run.');
+        setWorkflowError(err instanceof AppError ? err.message : 'Failed to load workflow run.');
       })
       .finally(() => {
         if (!cancelled) setRefreshing(false);
@@ -119,7 +148,7 @@ export function AdminCaseStudyWorkflowPage() {
     event.preventDefault();
     if (availability?.configured === false) return;
     setLoading(true);
-    setError(null);
+    setWorkflowError(null);
 
     try {
       const created = await startCaseStudyWorkflowRun({
@@ -141,9 +170,9 @@ export function AdminCaseStudyWorkflowPage() {
         setRun(null);
         setLogs([]);
         setSearchParams({}, { replace: true });
-        setError(null);
+        setWorkflowError(null);
       } else {
-        setError(err instanceof AppError ? err.message : 'Failed to start workflow run.');
+        setWorkflowError(err instanceof AppError ? err.message : 'Failed to start workflow run.');
       }
     } finally {
       setLoading(false);
@@ -156,7 +185,7 @@ export function AdminCaseStudyWorkflowPage() {
     if (!targetRunId) return;
 
     setRefreshing(true);
-    setError(null);
+    setWorkflowError(null);
     try {
       const [currentRun, currentLogs] = await Promise.all([
         updatedRun ? Promise.resolve(updatedRun) : fetchCaseStudyWorkflowRun(targetRunId),
@@ -171,9 +200,9 @@ export function AdminCaseStudyWorkflowPage() {
         setRun(null);
         setLogs([]);
         setSearchParams({}, { replace: true });
-        setError(null);
+        setWorkflowError(null);
       } else {
-        setError(err instanceof AppError ? err.message : 'Failed to refresh workflow state.');
+        setWorkflowError(err instanceof AppError ? err.message : 'Failed to refresh workflow state.');
       }
     } finally {
       setRefreshing(false);
@@ -204,32 +233,32 @@ export function AdminCaseStudyWorkflowPage() {
     await refreshRun(updated);
   }
 
-  if (availabilityLoading) {
-    return (
-      <section className="card-stack">
-        <p className="admin__loading">Loading workflow availability…</p>
-      </section>
-    );
+  async function handleBrandingSubmit(event: FormEvent) {
+    event.preventDefault();
+    setBrandingSubmitting(true);
+    setBrandingError(null);
+    setBrandingMessage(null);
+
+    try {
+      const settings = await updateAdminSiteSettings({
+        public_hero_logo_url: publicHeroLogoUrl,
+        public_hero_logo_alt: publicHeroLogoAlt,
+      });
+
+      setPublicHeroLogoUrl(settings.public_hero_logo_url ?? '');
+      setPublicHeroLogoAlt(settings.public_hero_logo_alt ?? '');
+      setBrandingMessage('Public hero logo updated.');
+    } catch (err: unknown) {
+      setBrandingError(err instanceof AppError ? err.message : 'Failed to save site settings.');
+    } finally {
+      setBrandingSubmitting(false);
+    }
   }
 
-  if (availability?.configured === false) {
+  if (brandingLoading || availabilityLoading) {
     return (
       <section className="card-stack">
-        <article className="card">
-          <p className="eyebrow">Settings</p>
-          <h2>Case-study workflow</h2>
-          <p className="admin__helper-copy">
-            Workflow unavailable. {availability.reason ?? 'Case-study workflow is not configured in this environment.'}
-          </p>
-          <p className="admin__helper-copy">
-            Configure the workflow environment before running publish/import actions.
-          </p>
-          <div className="admin__form-actions">
-            <Link className="btn btn--secondary" to="/admin/settings">
-              Back to settings
-            </Link>
-          </div>
-        </article>
+        <p className="admin__loading">Loading settings…</p>
       </section>
     );
   }
@@ -238,80 +267,126 @@ export function AdminCaseStudyWorkflowPage() {
     <section className="card-stack">
       <article className="card">
         <p className="eyebrow">Settings</p>
-        <h2>Case-study workflow</h2>
+        <h2>Public branding</h2>
         <p className="admin__helper-copy">
-          Start from an already canonical source under <code>90. dev_portfolioforge/&lt;slug&gt;/</code>,
-          then guide publish, import, localization, and re-embed step by step.
-        </p>
-        <p className="admin__helper-copy">
-          Raw folder → canonical generation is intentionally out of scope for this MVP.
+          Configure the image displayed in the logo slot of the public landing hero.
         </p>
 
-        {error ? <div className="admin__error" role="alert">{error}</div> : null}
+        {brandingError ? <div className="admin__error" role="alert">{brandingError}</div> : null}
+        {brandingMessage ? <p className="admin__success" role="status">{brandingMessage}</p> : null}
 
-        <form className="admin__form" onSubmit={handleSubmit}>
-          <label className="admin__label">
-            Canonical source path
-            <input
-              className="admin__input"
-              placeholder="/allowed/root/90. dev_portfolioforge/my-case-study"
-              value={sourcePath}
-              onChange={(event) => setSourcePath(event.target.value)}
-            />
-          </label>
-
-          <label className="admin__label">
-            Slug override (optional)
-            <input
-              className="admin__input"
-              placeholder="my-case-study"
-              value={slug}
-              onChange={(event) => setSlug(event.target.value)}
-            />
-          </label>
-
-          <label className="admin__label">
-            Localization locales (optional comma-separated subset)
-            <input
-              className="admin__input"
-              placeholder="ca,en,de"
-              value={localesRaw}
-              onChange={(event) => setLocalesRaw(event.target.value)}
-            />
-          </label>
-
+        <form className="admin__form" onSubmit={handleBrandingSubmit}>
           <div className="admin__form-section">
-            <label className="admin__checkbox">
+            <h3>Hero logo</h3>
+
+            <label className="admin__label">
+              Public logo URL
               <input
-                checked={runLocalizationBackfill}
-                onChange={(event) => setRunLocalizationBackfill(event.target.checked)}
-                type="checkbox"
+                className="admin__input"
+                type="url"
+                placeholder="https://cdn.example.com/brand/logo.svg"
+                value={publicHeroLogoUrl}
+                onChange={(event) => setPublicHeroLogoUrl(event.target.value)}
               />
-              Run localization backfill after import
             </label>
 
-            <label className="admin__checkbox">
+            <label className="admin__label">
+              Alt text
               <input
-                checked={runReembed}
-                onChange={(event) => setRunReembed(event.target.checked)}
-                type="checkbox"
+                className="admin__input"
+                type="text"
+                placeholder="Portfolio logo"
+                value={publicHeroLogoAlt}
+                onChange={(event) => setPublicHeroLogoAlt(event.target.value)}
               />
-              Refresh search document after import/localization
             </label>
           </div>
 
           <div className="admin__form-actions">
-            <button className="btn btn--primary" disabled={loading} type="submit">
-              {loading ? 'Starting…' : 'Start workflow run'}
+            <button className="btn btn--primary" type="submit" disabled={brandingSubmitting}>
+              {brandingSubmitting ? 'Saving…' : 'Save settings'}
             </button>
-            <Link className="btn btn--secondary" to="/admin/settings">
-              Back to settings
-            </Link>
           </div>
         </form>
       </article>
 
-      {run ? (
+      {availability?.configured !== false ? (
+        <article className="card">
+          <p className="eyebrow">Settings</p>
+          <h2>Case-study workflow</h2>
+          <>
+            <p className="admin__helper-copy">
+              Start from an already canonical source under <code>90. dev_portfolioforge/&lt;slug&gt;/</code>,
+              then guide publish, import, localization, and re-embed step by step.
+            </p>
+            <p className="admin__helper-copy">
+              Raw folder → canonical generation is intentionally out of scope for this MVP.
+            </p>
+
+            {workflowError ? <div className="admin__error" role="alert">{workflowError}</div> : null}
+
+            <form className="admin__form" onSubmit={handleSubmit}>
+              <label className="admin__label">
+                Canonical source path
+                <input
+                  className="admin__input"
+                  placeholder="/allowed/root/90. dev_portfolioforge/my-case-study"
+                  value={sourcePath}
+                  onChange={(event) => setSourcePath(event.target.value)}
+                />
+              </label>
+
+              <label className="admin__label">
+                Slug override (optional)
+                <input
+                  className="admin__input"
+                  placeholder="my-case-study"
+                  value={slug}
+                  onChange={(event) => setSlug(event.target.value)}
+                />
+              </label>
+
+              <label className="admin__label">
+                Localization locales (optional comma-separated subset)
+                <input
+                  className="admin__input"
+                  placeholder="ca,en,de"
+                  value={localesRaw}
+                  onChange={(event) => setLocalesRaw(event.target.value)}
+                />
+              </label>
+
+              <div className="admin__form-section">
+                <label className="admin__checkbox">
+                  <input
+                    checked={runLocalizationBackfill}
+                    onChange={(event) => setRunLocalizationBackfill(event.target.checked)}
+                    type="checkbox"
+                  />
+                  Run localization backfill after import
+                </label>
+
+                <label className="admin__checkbox">
+                  <input
+                    checked={runReembed}
+                    onChange={(event) => setRunReembed(event.target.checked)}
+                    type="checkbox"
+                  />
+                  Refresh search document after import/localization
+                </label>
+              </div>
+
+              <div className="admin__form-actions">
+                <button className="btn btn--primary" disabled={loading} type="submit">
+                  {loading ? 'Starting…' : 'Start workflow run'}
+                </button>
+              </div>
+            </form>
+          </>
+        </article>
+      ) : null}
+
+      {availability?.configured !== false && run ? (
         <article className="card">
           <div className="admin__form-actions" style={{ justifyContent: 'space-between' }}>
             <div>
@@ -369,7 +444,7 @@ export function AdminCaseStudyWorkflowPage() {
         </article>
       ) : null}
 
-      {run ? (
+      {availability?.configured !== false && run ? (
         <article className="card">
           <p className="eyebrow">Operator log</p>
           <h3>Run timeline</h3>

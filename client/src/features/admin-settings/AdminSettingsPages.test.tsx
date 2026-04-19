@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 import { AdminCaseStudyWorkflowPage } from './AdminCaseStudyWorkflowPage';
-import { AdminSiteSettingsPage } from './AdminSiteSettingsPage';
 import {
   fetchAdminSiteSettings,
   updateAdminSiteSettings,
@@ -163,21 +162,24 @@ describe('Admin settings workflow pages', () => {
     cleanup();
   });
 
-  it('shows the case-study workflow entry on the settings hub', async () => {
+  it('renders branding and workflow sections together on the settings page', async () => {
     mockedFetchAdminSiteSettings.mockResolvedValue({ public_hero_logo_url: '', public_hero_logo_alt: '' });
     mockedFetchCaseStudyWorkflowAvailability.mockResolvedValue(configuredWorkflowAvailability);
 
     render(
-      <MemoryRouter>
-        <AdminSiteSettingsPage />
+      <MemoryRouter initialEntries={['/admin/settings/case-studies']}>
+        <AdminCaseStudyWorkflowPage />
       </MemoryRouter>,
     );
 
+    expect(await screen.findByRole('heading', { name: 'Public branding' })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Case-study workflow' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Open workflow' })).toHaveAttribute('href', '/admin/settings/case-studies');
+    expect(screen.getByRole('button', { name: 'Save settings' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start workflow run' })).toBeInTheDocument();
   });
 
-	it('starts a workflow run from the dedicated settings subpage', async () => {
+	it('starts a workflow run from the consolidated settings page', async () => {
+		mockedFetchAdminSiteSettings.mockResolvedValue({ public_hero_logo_url: '', public_hero_logo_alt: '' });
 		mockedFetchCaseStudyWorkflowAvailability.mockResolvedValue(configuredWorkflowAvailability);
 		mockedStartCaseStudyWorkflowRun.mockResolvedValue(awaitingConfirmationRun);
 		mockedFetchCaseStudyWorkflowLogs.mockResolvedValue({ items: [] });
@@ -185,7 +187,6 @@ describe('Admin settings workflow pages', () => {
     render(
       <MemoryRouter initialEntries={['/admin/settings/case-studies']}>
         <Routes>
-          <Route path="/admin/settings" element={<p>settings</p>} />
           <Route path="/admin/settings/case-studies" element={<AdminCaseStudyWorkflowPage />} />
         </Routes>
       </MemoryRouter>,
@@ -212,10 +213,10 @@ describe('Admin settings workflow pages', () => {
 		});
 		expect(screen.getByText('MVP starts from an existing canonical source.')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: 'Save settings' })).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Save settings' })).toBeInTheDocument();
 	});
 
-	it('keeps branding save isolated from workflow actions on the settings hub', async () => {
+	it('keeps branding save isolated from workflow actions on the consolidated settings page', async () => {
 		mockedFetchCaseStudyWorkflowAvailability.mockResolvedValue(configuredWorkflowAvailability);
 		mockedFetchAdminSiteSettings.mockResolvedValue({
 			public_hero_logo_url: 'https://cdn.example.com/logo.svg',
@@ -227,8 +228,8 @@ describe('Admin settings workflow pages', () => {
 		});
 
 		render(
-			<MemoryRouter>
-				<AdminSiteSettingsPage />
+			<MemoryRouter initialEntries={['/admin/settings/case-studies']}>
+				<AdminCaseStudyWorkflowPage />
 			</MemoryRouter>,
 		);
 
@@ -251,6 +252,7 @@ describe('Admin settings workflow pages', () => {
 	});
 
 	it('supports confirm, start, retry, and resume semantics on the workflow page', async () => {
+		mockedFetchAdminSiteSettings.mockResolvedValue({ public_hero_logo_url: '', public_hero_logo_alt: '' });
 		mockedFetchCaseStudyWorkflowAvailability.mockResolvedValue(configuredWorkflowAvailability);
 		mockedFetchCaseStudyWorkflowRun.mockResolvedValue(failedImportRun);
 		mockedFetchCaseStudyWorkflowLogs.mockResolvedValue({
@@ -305,7 +307,6 @@ describe('Admin settings workflow pages', () => {
 		render(
 			<MemoryRouter initialEntries={['/admin/settings/case-studies?run=run-failed']}>
 				<Routes>
-					<Route path="/admin/settings" element={<p>settings</p>} />
 					<Route path="/admin/settings/case-studies" element={<AdminCaseStudyWorkflowPage />} />
 				</Routes>
 			</MemoryRouter>,
@@ -338,7 +339,6 @@ describe('Admin settings workflow pages', () => {
 		render(
 			<MemoryRouter initialEntries={['/admin/settings/case-studies?run=run-failed']}>
 				<Routes>
-					<Route path="/admin/settings" element={<p>settings</p>} />
 					<Route path="/admin/settings/case-studies" element={<AdminCaseStudyWorkflowPage />} />
 				</Routes>
 			</MemoryRouter>,
@@ -357,7 +357,6 @@ describe('Admin settings workflow pages', () => {
 		render(
 			<MemoryRouter initialEntries={['/admin/settings/case-studies?run=run-1']}>
 				<Routes>
-					<Route path="/admin/settings" element={<p>settings</p>} />
 					<Route path="/admin/settings/case-studies" element={<AdminCaseStudyWorkflowPage />} />
 				</Routes>
 			</MemoryRouter>,
@@ -373,36 +372,39 @@ describe('Admin settings workflow pages', () => {
 		});
   });
 
-	it('shows disabled workflow copy on the settings hub without breaking branding settings', async () => {
+	it('hides the workflow section entirely without breaking branding settings when unavailable', async () => {
 		mockedFetchAdminSiteSettings.mockResolvedValue({ public_hero_logo_url: '', public_hero_logo_alt: '' });
 		mockedFetchCaseStudyWorkflowAvailability.mockResolvedValue(unavailableWorkflowAvailability);
 
 		render(
-			<MemoryRouter>
-				<AdminSiteSettingsPage />
+			<MemoryRouter initialEntries={['/admin/settings/case-studies']}>
+				<AdminCaseStudyWorkflowPage />
 			</MemoryRouter>,
 		);
 
-		expect(await screen.findByText(/Workflow unavailable\./)).toBeInTheDocument();
-		expect(screen.getByRole('link', { name: 'View workflow status' })).toHaveAttribute('href', '/admin/settings/case-studies');
+		expect(await screen.findByRole('heading', { name: 'Public branding' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Save settings' })).toBeInTheDocument();
+		expect(screen.queryByRole('heading', { name: 'Case-study workflow' })).not.toBeInTheDocument();
+		expect(screen.queryByText(/Workflow unavailable\./)).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Start workflow run' })).not.toBeInTheDocument();
 	});
 
-	it('shows unavailable workflow page state and clears stale run storage when disabled', async () => {
+	it('clears stale run storage when the workflow is unavailable', async () => {
+		mockedFetchAdminSiteSettings.mockResolvedValue({ public_hero_logo_url: '', public_hero_logo_alt: '' });
 		mockedFetchCaseStudyWorkflowAvailability.mockResolvedValue(unavailableWorkflowAvailability);
 		sessionStorage.setItem('admin.case-study-workflow.last-run-id', 'run-stale');
 
 		render(
 			<MemoryRouter initialEntries={['/admin/settings/case-studies?run=run-stale']}>
 				<Routes>
-					<Route path="/admin/settings" element={<p>settings</p>} />
 					<Route path="/admin/settings/case-studies" element={<AdminCaseStudyWorkflowPage />} />
 				</Routes>
 			</MemoryRouter>,
 		);
 
-		expect(await screen.findByText(/Workflow unavailable\./)).toBeInTheDocument();
-		expect(screen.getByRole('link', { name: 'Back to settings' })).toHaveAttribute('href', '/admin/settings');
+		expect(await screen.findByRole('heading', { name: 'Public branding' })).toBeInTheDocument();
+		expect(screen.queryByRole('heading', { name: 'Case-study workflow' })).not.toBeInTheDocument();
+		expect(screen.queryByText(/Workflow unavailable\./)).not.toBeInTheDocument();
 		expect(mockedFetchCaseStudyWorkflowRun).not.toHaveBeenCalled();
 		expect(mockedFetchCaseStudyWorkflowLogs).not.toHaveBeenCalled();
 		expect(mockedStartCaseStudyWorkflowRun).not.toHaveBeenCalled();

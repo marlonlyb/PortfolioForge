@@ -14,16 +14,12 @@ export class AdminSettingsPage extends BasePage {
 	}
 
 	async gotoSettings(): Promise<void> {
-		await this.goto('/admin/settings');
+		await this.goto('/admin/settings/case-studies');
 	}
 
 	async gotoWorkflow(runId?: string): Promise<void> {
 		const suffix = runId ? `?run=${runId}` : '';
 		await this.goto(`/admin/settings/case-studies${suffix}`);
-	}
-
-	async openWorkflowFromSettings(): Promise<void> {
-		await this.page.getByRole('link', { name: 'Open workflow' }).click();
 	}
 
 	async startWorkflow(sourcePath: string): Promise<void> {
@@ -53,7 +49,7 @@ export class AdminSettingsPage extends BasePage {
 	async expectWorkflowIsolation(): Promise<void> {
 		await expect(this.page).toHaveURL(/\/admin\/settings\/case-studies/);
 		await expect(this.page.getByRole('heading', { name: 'Case-study workflow' })).toBeVisible();
-		await expect(this.page.getByRole('button', { name: 'Save settings' })).toHaveCount(0);
+		await expect(this.page.getByRole('button', { name: 'Save settings' })).toBeVisible();
 	}
 
 	async expectGenerationMessage(): Promise<void> {

@@ -68,8 +68,8 @@ Capacidades:
 
 ### Ajustes
 
-- `/admin/settings`
 - `/admin/settings/case-studies`
+- `/admin/settings` → redirección a `/admin/settings/case-studies`
 
 ## Módulos de UI recomendados
 

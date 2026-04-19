@@ -56,6 +56,21 @@ Si esa URL todavía no existe, **el flujo debe detenerse**.
 
 ## Happy path operativo recomendado
 
+### Tooling operador opcional
+
+Si operas este flujo con OpenCode desde el repo PortfolioForge, puedes usar estos comandos globales como atajos del mismo proceso documentado aquí:
+
+- `/pf-canonical-create <directory>`
+- `/pf-ui-create <source_markdown_url>`
+- `/pf-ui-update <source_markdown_url>`
+
+Reglas para interpretarlos bien:
+
+- no cambian el workflow ni sustituyen estos runbooks;
+- `/pf-canonical-create` solo resuelve el Paso 1;
+- `/pf-ui-create` y `/pf-ui-update` solo aplican después del Paso 3, cuando `source_markdown_url` ya existe y fue verificada;
+- ninguno convierte FTPS / `publish_canonical` en el camino principal.
+
 ## Paso 1 — Crear o corregir el canonical local
 
 Objetivo:
@@ -216,7 +231,7 @@ El producto actual sigue teniendo un workflow admin persistido para steps como p
 
 Eso significa que siguen existiendo:
 
-- UI: `/admin/settings` y `/admin/settings/case-studies`
+- UI: `/admin/settings/case-studies` (y `/admin/settings` redirige ahí)
 - API: `GET /api/v1/admin/settings/case-study-workflow`
 
 Payload de creación de run:

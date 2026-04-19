@@ -228,14 +228,13 @@ async function mockAdminApi(page: Page, scenario: 'happy' | 'retry'): Promise<vo
 }
 
 test.describe('Admin settings workflow', () => {
-	test('navigates from settings to workflow and completes the canonical-first happy path', async ({ page }) => {
+	test('loads the consolidated settings page and completes the canonical-first happy path', async ({ page }) => {
 		const adminSettingsPage = new AdminSettingsPage(page);
 		await mockAdminApi(page, 'happy');
 		await adminSettingsPage.bootstrapSession();
 
 		await adminSettingsPage.gotoSettings();
 		await adminSettingsPage.expectBrandingFormVisible();
-		await adminSettingsPage.openWorkflowFromSettings();
 		await adminSettingsPage.expectWorkflowIsolation();
 		await adminSettingsPage.expectGenerationMessage();
 
