@@ -12,9 +12,10 @@ El agente **no debe modificar PortfolioForge** ni poblar la UI. Su único entreg
 
 Para las funciones relacionadas con markdown canónico y carga runtime del proyecto, los documentos vigentes dentro del repo son:
 
-- `docs/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md` — genera el markdown canónico;
-- `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md` — usa ese markdown para poblar o actualizar la UI/DB runtime;
+- `docs/operacion/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md` — genera el markdown canónico;
+- `docs/operacion/PROJECT-RUNTIME-INGESTION-GUIDE.md` — usa ese markdown para poblar o actualizar la UI/DB runtime;
 - `docs/PRD.md` — define el marco del producto y la relación entre markdown, UI/DB, búsqueda y assistant.
+- `docs/README.md` — explica cómo se organiza la documentación y cuándo usar cada documento.
 
 Regla explícita:
 
@@ -26,6 +27,15 @@ Regla explícita:
 
 Usa el repositorio fuente **solo** para generar el markdown canónico del proyecto.
 
+Ese markdown debe escribirse o actualizarse en la propia carpeta estudiada, no en una ubicación arbitraria dentro de `PortfolioForge`.
+
+Ubicación obligatoria:
+
+- en la raíz del repositorio/carpeta fuente debe existir `90. dev_portfolioforge/`;
+- dentro de esa carpeta debe existir `/<slug>/`;
+- el entregable canónico debe quedar en `90. dev_portfolioforge/<slug>/<slug>.md`;
+- `90. dev_portfolioforge/Imagenes_Originales/` puede coexistir como material base de media y no debe confundirse con el archivo `.md` canónico.
+
 No hagas ninguno de estos pasos como parte de esta tarea:
 
 - no crear registros en la UI admin;
@@ -36,18 +46,22 @@ No hagas ninguno de estos pasos como parte de esta tarea:
 
 El resultado final debe ser exactamente:
 
-- **un solo `.md` canónico**.
+- **un solo `.md` canónico** ubicado en `90. dev_portfolioforge/<slug>/<slug>.md` dentro del repositorio/carpeta estudiada.
 
-La carga posterior de la UI **no pertenece** a esta guía y debe seguir exclusivamente `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`.
+La carga posterior de la UI **no pertenece** a esta guía y debe seguir exclusivamente `docs/operacion/PROJECT-RUNTIME-INGESTION-GUIDE.md`.
 
 ---
 
 ## 3. Para qué se usará ese `.md`
 
-Ese markdown tendrá dos usos posteriores:
+### Resumen operativo corto
 
-1. **publicarse en una URL** para el chatbot / assistant mediante `source_markdown_url`;
-2. **servir como fuente resumida** para poblar los campos del proyecto en la UI de PortfolioForge, siguiendo `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`.
+Ese markdown tendrá esta secuencia de uso posterior:
+
+1. **publicarse en una URL estable** mediante `source_markdown_url`;
+2. **convertirse en la fuente editorial publicada y alineada** del proyecto;
+3. **alimentar al assistant** desde esa copia remota completa;
+4. **servir como base para poblar la UI/DB** con una proyección resumida y estructurada del mismo contenido, siguiendo `docs/operacion/PROJECT-RUNTIME-INGESTION-GUIDE.md`.
 
 Por eso el documento debe ser:
 
@@ -61,6 +75,12 @@ Regla adicional obligatoria:
 - si ese markdown se publica luego en `source_markdown_url`, la **copia remota publicada también debe seguir en castellano** y mantenerse alineada con el archivo canónico local;
 - no debe existir una situación donde el archivo canónico local esté en castellano pero la URL publicada siga en otro idioma.
 - la convención de publicación remota debe ser: `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`.
+
+Secuencia editorial correcta:
+
+- primero se crea o corrige `90. dev_portfolioforge/<slug>/<slug>.md`;
+- luego se publica en `source_markdown_url`;
+- después se usa esa fuente publicada y alineada como referencia común para assistant y para la proyección resumida que termina en UI/DB.
 
 Y además debe ser **seguro para publicación**:
 
@@ -82,6 +102,7 @@ Y además debe ser **seguro para publicación**:
 8. **Identificadores técnicos o de producto pueden mantenerse en su idioma original** cuando traducirlos reduzca corrección (`PLC`, `HMI`, `CAN Bus`, `Ethernet/IP`, nombres de plataforma, etc.).
 9. **La publicación remota debe respetar el mismo idioma canónico**: no publicar en `source_markdown_url` una versión en inglés u otro idioma si la base editorial oficial es castellano.
 10. **La URL publicada debe seguir una convención estable por slug**: `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`.
+11. **La fuente de verdad local es la carpeta estudiada original**: una copia de conveniencia dentro de `PortfolioForge` no sustituye al archivo `90. dev_portfolioforge/<slug>/<slug>.md` del repositorio/carpeta fuente.
 
 ---
 
@@ -132,7 +153,13 @@ Convierte la evidencia en narrativa canónica:
 
 Entrega un solo archivo:
 
-- `<nombre_del_proyecto>.md`
+- `90. dev_portfolioforge/<slug>/<slug>.md`
+
+Reglas de salida:
+
+- si el archivo ya existe, se actualiza ese mismo archivo;
+- si no existe, se crea respetando esa estructura exacta;
+- no se debe considerar completo el trabajo si el contenido quedó escrito solo en una copia temporal dentro de `PortfolioForge` y no en la carpeta estudiada original.
 
 No entregues un resumen alternativo fuera del propio markdown.
 
@@ -545,12 +572,12 @@ Genera **solo** el archivo canónico `<nombre_del_proyecto>.md`.
 Ese archivo debe quedar listo para:
 
 1. publicarse luego en una URL para `source_markdown_url`;
-2. servir como base editorial para poblar el proyecto en PortfolioForge mediante `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`.
+2. servir como base editorial para poblar el proyecto en PortfolioForge mediante `docs/operacion/PROJECT-RUNTIME-INGESTION-GUIDE.md`.
 
 Regla de cierre:
 
 - para generar este `.md`, esta guía y `docs/PRD.md` son la referencia vigente;
-- para poblar la UI desde este `.md`, la referencia vigente es `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`;
+- para poblar la UI desde este `.md`, la referencia vigente es `docs/operacion/PROJECT-RUNTIME-INGESTION-GUIDE.md`;
 - no deben usarse como especificación operativa principal documentos legacy ubicados fuera de `docs/`.
 
 Si la evidencia no alcanza para producir un markdown canónico confiable, debes declararlo explícitamente en `Validation Notes` en lugar de inventar contenido.

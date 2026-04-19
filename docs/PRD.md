@@ -13,13 +13,30 @@ Su objetivo no es solo “mostrar trabajos”, sino operar un sistema editorial 
 
 El producto actual ya funciona como portfolio público, consola admin de curación y runtime de búsqueda/assistant. La dirección vigente consolida al `.md` canónico como fuente editorial principal para altas y actualizaciones.
 
-## 1.1 Documentos normativos vigentes
+## 1.1 Estructura documental vigente
 
-Para el flujo editorial y operativo de proyectos, los únicos documentos normativos vigentes dentro del repo son:
+La documentación del proyecto se organiza en tres niveles complementarios:
 
-- `docs/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md` — cómo generar el markdown canónico;
-- `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md` — cómo poblar o actualizar la UI/DB runtime desde ese markdown;
-- `docs/PRD.md` — marco de producto, arquitectura y reglas de relación entre markdown, UI/DB, búsqueda y assistant.
+### Documento rector
+
+- `docs/PRD.md` — define el producto, sus principios, sus capacidades y sus límites.
+
+### Guías operativas del sistema actual
+
+- `docs/operacion/README.md` — índice operativo autoritativo y punto de entrada para instalación/operación del repo actual;
+- `docs/operacion/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md` — cómo generar o actualizar el markdown canónico;
+- `docs/operacion/PROJECT-RUNTIME-INGESTION-GUIDE.md` — cómo poblar o actualizar la UI/DB runtime desde ese markdown.
+
+### Blueprint de reconstrucción desde cero
+
+- `docs/reconstruccion-desde-cero/README.md` — índice del pack técnico para recrear PortfolioForge desde cero;
+- `docs/reconstruccion-desde-cero/` — arquitectura, dominio, backend, frontend, flujo canónico y roadmap de implementación.
+
+Regla de lectura:
+
+- para entender el producto, se empieza por `docs/PRD.md`;
+- para operar el flujo vigente, se entra por `docs/operacion/README.md` y luego por el runbook específico de `docs/operacion/`;
+- para reconstrucción greenfield, se usa el pack `docs/reconstruccion-desde-cero/` después del PRD.
 
 Regla explícita:
 
@@ -38,6 +55,9 @@ Regla explícita:
 
 Regla asociada:
 
+- el `.md` canónico local de verdad vive en la carpeta estudiada original bajo `90. dev_portfolioforge/<slug>/<slug>.md`;
+- `90. dev_portfolioforge/Imagenes_Originales/` forma parte del espacio editorial de entrada cuando existe media original asociada al caso;
+- una copia del canonical dentro del repo de `PortfolioForge` no sustituye a la fuente de verdad si no se verificó que ambas coinciden;
 - si el markdown canónico se publica en `source_markdown_url`, esa copia remota también debe mantenerse en castellano y alineada con el archivo canónico local.
 - la convención de URL para esa publicación remota debe ser `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`.
 
@@ -71,7 +91,7 @@ Quiere:
 
 Stack actual:
 
-- Go 1.20
+- Go 1.25.x
 - Echo v4
 - PostgreSQL 16
 - pgvector + FTS + pg_trgm
@@ -111,16 +131,19 @@ Features reales:
 PortfolioForge ya opera con cuatro capas distintas:
 
 1. **Repositorio fuente / evidencia bruta**
-2. **Markdown canónico del proyecto**
+2. **Markdown canónico del proyecto en `90. dev_portfolioforge/<slug>/<slug>.md`**
 3. **UI + DB runtime resumida y estructurada**
 4. **Assistant grounded en markdown remoto**
 
 Relación entre capas:
 
 - el repo fuente sirve para generar el `.md` canónico;
-- el `.md` canónico sirve para poblar el proyecto en UI/DB;
-- la UI/DB alimenta catálogo, detalle, búsqueda y localización;
-- `source_markdown_url` publica ese mismo `.md` para el assistant.
+- ese `.md` se crea o corrige dentro de la carpeta estudiada original, no dentro de `PortfolioForge` por defecto;
+- ese `.md` se publica luego en una URL estable y esa publicación se guarda en `source_markdown_url`;
+- desde esa fuente publicada y alineada se derivan dos consumos distintos:
+  - assistant -> usa el markdown remoto completo;
+  - UI/DB -> usa una representación resumida y estructurada del mismo contenido;
+- la UI/DB resultante alimenta catálogo, detalle, búsqueda y localización.
 
 No es válido dejar desalineadas estas capas así:
 
@@ -281,7 +304,7 @@ Debe cumplir estos roles:
 
 ### Regla operativa
 
-La generación del markdown canónico debe seguir `docs/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`.
+La generación del markdown canónico debe seguir `docs/operacion/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`.
 
 Si ya existe un markdown canónico confiable para un proyecto, ese archivo debe leerse primero y tratarse como fuente de verdad editorial. Re-analizar el repositorio completo solo se justifica cuando:
 
@@ -293,7 +316,14 @@ Si ya existe un markdown canónico confiable para un proyecto, ese archivo debe 
 
 ## 8. Rol de `source_markdown_url`
 
-`source_markdown_url` es la URL HTTPS pública del markdown canónico usado por el assistant.
+`source_markdown_url` es la URL HTTPS pública del markdown canónico ya publicado y alineado.
+
+Ese campo cumple dos funciones relacionadas pero distintas:
+
+- fija la referencia remota estable del proyecto;
+- sirve como fuente completa para el assistant.
+
+La UI/DB no debe copiar literalmente lo que vive allí; debe derivar desde esa misma fuente una versión resumida y estructurada.
 
 Convención vigente:
 
@@ -311,16 +341,18 @@ Reglas reales del sistema:
 
 En resumen:
 
-- **markdown canónico** = fuente editorial principal;
-- **`source_markdown_url`** = publicación remota de esa fuente para el assistant.
+- **markdown canónico local** = edición fuente;
+- **`source_markdown_url`** = publicación remota estable de esa fuente;
+- **assistant** = consumidor completo de esa fuente remota;
+- **UI/DB** = proyección resumida y estructurada del mismo contenido.
 
 ---
 
 ## 9. Relación entre markdown, UI/DB y assistant
 
-### 9.1 Markdown → UI/DB
+### 9.1 Fuente publicada → UI/DB
 
-La UI/DB persiste una versión resumida y estructurada del proyecto:
+La UI/DB persiste una versión resumida y estructurada del proyecto a partir de la misma fuente editorial ya publicada y alineada:
 
 - campos base del proyecto;
 - `project_profiles`;
@@ -329,7 +361,7 @@ La UI/DB persiste una versión resumida y estructurada del proyecto:
 - localizaciones;
 - readiness y search document.
 
-La compresión editorial y el mapping campo por campo deben seguir `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`.
+La compresión editorial y el mapping campo por campo deben seguir `docs/operacion/PROJECT-RUNTIME-INGESTION-GUIDE.md`.
 
 ### 9.2 UI/DB → Búsqueda
 
@@ -353,7 +385,7 @@ El texto de embedding también usa principalmente:
 - `ai_usage`
 - tecnologías
 
-### 9.3 Markdown remoto → Assistant
+### 9.3 Fuente publicada → Assistant
 
 El assistant:
 
@@ -434,8 +466,8 @@ Regla editorial: cualquier nuevo markdown canónico debe redactarse de manera qu
 ## 11.3 Flujo de markdown canónico
 
 1. analizar repo/carpeta fuente;
-2. producir un único `.md` canónico del proyecto siguiendo `docs/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`;
-3. usar ese `.md` para poblar el proyecto en PortfolioForge siguiendo `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`;
+2. producir un único `.md` canónico del proyecto siguiendo `docs/operacion/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`;
+3. usar ese `.md` para poblar el proyecto en PortfolioForge siguiendo `docs/operacion/PROJECT-RUNTIME-INGESTION-GUIDE.md`;
 4. si se quiere assistant, publicar ese `.md` en una URL HTTPS;
 5. guardar esa URL en `source_markdown_url`.
 
@@ -578,8 +610,8 @@ El markdown canónico debe:
 
 Para crear proyectos equivalentes en PortfolioForge, la referencia correcta es:
 
-1. generar o actualizar un **único markdown canónico** por proyecto, usando `docs/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`;
-2. usar ese markdown para poblar el runtime estructurado, usando `docs/PROJECT-RUNTIME-INGESTION-GUIDE.md`;
+1. generar o actualizar un **único markdown canónico** por proyecto, usando `docs/operacion/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`;
+2. usar ese markdown para poblar el runtime estructurado, usando `docs/operacion/PROJECT-RUNTIME-INGESTION-GUIDE.md`;
 3. mantener el detalle editorial organizado por **Estrategia / Ejecución / Técnica**;
 4. publicar el markdown en una URL HTTPS si el proyecto usará assistant;
 5. verificar siempre coherencia entre markdown, UI/DB, búsqueda y assistant.
@@ -589,3 +621,20 @@ Ese es el contrato real del producto hoy.
 Regla final de gobierno documental:
 
 - para estas funciones, no deben usarse como referencia operativa principal documentos legacy fuera de `docs/`, aunque se conserven por contexto histórico.
+
+## 16. Relación entre PRD y resto de documentos
+
+Este archivo no intenta contener toda la reconstrucción técnica del sistema.
+
+Su papel es:
+
+- fijar el producto y sus límites;
+- definir las capas conceptuales del sistema;
+- establecer el contrato entre markdown canónico, runtime, búsqueda y assistant;
+- indicar qué documento baja cada parte al nivel operativo o de reconstrucción.
+
+Relación correcta:
+
+- `docs/PRD.md` → qué es el sistema y cómo debe comportarse a nivel producto;
+- `docs/operacion/*.md` → cómo se opera el flujo editorial/runtime actual;
+- `docs/reconstruccion-desde-cero/*.md` → cómo se reconstruye el sistema completo desde cero.

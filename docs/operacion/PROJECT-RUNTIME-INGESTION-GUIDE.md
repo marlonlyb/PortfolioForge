@@ -32,8 +32,9 @@ Esta guía **no** cubre:
 
 Para eso ya existen:
 
-- `docs/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`
+- `docs/operacion/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`
 - `docs/PRD.md`
+- `docs/README.md`
 
 Para trabajo operativo dentro de este repo, esta guía debe tratarse como la **referencia única** del flujo:
 
@@ -52,11 +53,25 @@ Si un proyecto ya tiene markdown canónico confiable, ese archivo se usa primero
 - fuente de `source_markdown_url` para el assistant;
 - referencia principal para poblar o corregir la UI.
 
+Ubicación correcta de esa fuente:
+
+- el archivo canónico editable real no vive por defecto dentro del repo de `PortfolioForge`;
+- la fuente de verdad local vive en la raíz del repositorio o carpeta estudiada, dentro de `90. dev_portfolioforge/`;
+- la convención obligatoria es `90. dev_portfolioforge/<slug>/<slug>.md`;
+- dentro de `90. dev_portfolioforge/` también puede existir `Imagenes_Originales/` como material editorial/base para media del caso;
+- cualquier copia del canonical dentro de `PortfolioForge` debe tratarse solo como copia de trabajo o referencia temporal, nunca como fuente de verdad editorial si existe el canonical en la carpeta estudiada original.
+
 Regla de coherencia obligatoria:
 
+- el archivo que debe corregirse primero es `90. dev_portfolioforge/<slug>/<slug>.md` dentro del repositorio/carpeta estudiada original;
 - el archivo canónico local y la copia publicada en `source_markdown_url` deben estar ambos en castellano y representar la misma versión editorial del proyecto;
 - si el archivo local ya fue corregido a castellano pero la URL publicada sigue en inglés u otro idioma, la fuente todavía está desalineada y no debe darse por cerrada.
 - la convención de publicación remota debe ser estable y basada en slug: `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`.
+
+Diferencia importante:
+
+- el assistant consume la copia remota completa publicada en `source_markdown_url`;
+- la UI/DB no debe copiar ese markdown literal, sino derivar una representación resumida, estructurada y operativa del mismo contenido.
 
 No corresponde re-analizar el repositorio completo salvo que:
 
@@ -138,17 +153,20 @@ La UI debe mostrar:
 
 ## 5. Flujo correcto hoy
 
+### Resumen operativo corto
+
 1. leer el markdown canónico completo;
-2. confirmar que el markdown canónico local y la URL publicada en `source_markdown_url` estén alineados y en castellano;
-3. confirmar si ese markdown sigue siendo la fuente correcta;
-4. resolver tecnologías antes de guardar el proyecto;
-5. poblar campos base del proyecto;
-6. poblar `project_profiles` con versión resumida y estructurada;
-7. cargar o revisar media solo si el markdown la define con claridad suficiente;
-8. guardar `source_markdown_url` si el proyecto debe exponer assistant;
-9. si cambió la base en castellano, regenerar localizaciones derivadas (`ca`, `en`, `de`) desde esa base;
-10. verificar el resultado real en admin/público o DB;
-11. refrescar búsqueda y re-embed cuando cambie contenido indexable.
+2. publicar o confirmar la copia remota en `source_markdown_url`;
+3. confirmar que el markdown canónico local y la URL publicada en `source_markdown_url` estén alineados y en castellano;
+4. confirmar si ese markdown sigue siendo la fuente correcta;
+5. resolver tecnologías antes de guardar el proyecto;
+6. poblar campos base del proyecto usando una proyección resumida y estructurada de esa fuente;
+7. poblar `project_profiles` con versión resumida y estructurada;
+8. cargar o revisar media solo si el markdown la define con claridad suficiente;
+9. guardar o mantener `source_markdown_url` si el proyecto debe exponer assistant;
+10. si cambió la base en castellano, regenerar localizaciones derivadas (`ca`, `en`, `de`) desde esa base;
+11. verificar el resultado real en admin/público o DB;
+12. refrescar búsqueda y re-embed cuando cambie contenido indexable.
 
 ---
 
@@ -655,10 +673,12 @@ Cuando exista markdown canónico confiable:
 3. **no se reescribe libremente**;
 4. **no se copia entero**;
 5. **se verifica el resultado real**;
-6. **el assistant sigue usando el markdown remoto completo**.
+6. **el assistant sigue usando el markdown remoto completo**;
+7. **la fuente local de verdad sigue siendo `90. dev_portfolioforge/<slug>/<slug>.md` en la carpeta estudiada, no una copia auxiliar dentro de `PortfolioForge`**.
 
 En una frase:
 
-- **markdown canónico = profundidad**
-- **UI runtime = claridad resumida**
-- **assistant = grounding sobre la fuente remota**
+- **canonical local = edición fuente**
+- **`source_markdown_url` = fuente publicada estable**
+- **UI runtime = claridad resumida derivada de esa fuente**
+- **assistant = grounding sobre esa fuente remota completa**

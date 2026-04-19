@@ -13,10 +13,12 @@ Frontend actual de PortfolioForge usando React 19 + Vite + TypeScript.
 Copia `.env.example` a `.env` y define:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:8080/api/v1
+VITE_API_BASE_URL=http://localhost:8080
 ```
 
-- `VITE_API_BASE_URL`: base path del backend actual.
+- `VITE_API_BASE_URL`: base URL del backend actual.
+- En local, el valor correcto es `http://localhost:8080`.
+- El cliente ya construye sus requests con rutas `/api/v1/...`, así que no debes duplicar ese prefijo en esta variable.
 
 ## Scripts
 
