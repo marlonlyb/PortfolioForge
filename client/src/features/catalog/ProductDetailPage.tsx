@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useLocation, useOutletContext, useParams } from 'react-router-dom';
 import useEmblaCarousel from 'embla-carousel-react';
 
@@ -113,6 +113,17 @@ function splitClientContext(value?: string | null): string[] {
 
 function formatClientContext(value?: string | null): string {
   return splitClientContext(value).join(' · ');
+}
+
+function buildTechnologyChipStyle(color?: string): CSSProperties | undefined {
+  const accent = color?.trim();
+  if (!accent) return undefined;
+
+  return {
+    borderColor: accent,
+    backgroundColor: accent.startsWith('#') ? `${accent}1f` : undefined,
+    ['--detail-chip-accent' as string]: accent,
+  };
 }
 
 function buildProjectHeaderContent(
@@ -551,7 +562,6 @@ export function ProductDetailPage() {
             <div className="detail__hero-intro">
               <div className="detail__hero-heading">
                 {project.category ? <p className="eyebrow detail__hero-eyebrow">{project.category}</p> : null}
-                {hasText(project.client_name) ? <p className="detail__context detail__context--hero">{t.detailClientContext}</p> : null}
               </div>
 
               {hasText(project.description) ? (
@@ -581,7 +591,12 @@ export function ProductDetailPage() {
                 <p className="detail__hero-tech-label">{t.detailTechnologies}</p>
                 <div className="detail__chips detail__chips--hero" aria-label={t.detailTechnologiesUsedAria}>
                   {technologies.map((technology) => (
-                    <span key={technology.id} className="detail__chip">
+                    <span
+                      key={technology.id}
+                      className="detail__chip"
+                      style={buildTechnologyChipStyle(technology.color)}
+                    >
+                      <span className="detail__chip-dot" aria-hidden="true" />
                       {technology.name}
                     </span>
                   ))}

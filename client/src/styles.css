@@ -508,25 +508,6 @@ p {
   margin-bottom: 0;
 }
 
-.detail__context {
-  margin: 0;
-  color: #c8c0d1;
-  font-size: 0.98rem;
-}
-
-.detail__context--hero {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.38rem 0.72rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .detail__hero-facts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8.5rem, max-content));
@@ -612,8 +593,10 @@ p {
 }
 
 .detail__chip {
+  --detail-chip-accent: #ff8d3a;
   display: inline-flex;
   align-items: center;
+  gap: 0.42rem;
   padding: 0.34rem 0.62rem;
   border: 1px solid #3a2d3f;
   border-radius: 999px;
@@ -621,6 +604,15 @@ p {
   color: #f5f2f7;
   font-size: 0.8rem;
   line-height: 1.2;
+}
+
+.detail__chip-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: 0 0 0.5rem;
+  border-radius: 999px;
+  background: var(--detail-chip-accent);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .detail__chip--muted {
@@ -2730,6 +2722,12 @@ small {
   font-size: 0.9rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+.app-header__caption--detail {
+  justify-self: start;
+  text-align: left;
+  max-width: 52rem;
 }
 
 .app-header--detail-compact {

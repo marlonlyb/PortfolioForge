@@ -37,6 +37,7 @@ export function StoreLayout() {
   const hasContextualDetailHeader = isProjectDetailRoute && contextualHeader !== null;
   const activeHeader = hasContextualDetailHeader ? contextualHeader : defaultHeader;
   const showHeaderSummary = activeHeader.summary.trim().length > 0;
+  const showHeaderCaption = activeHeader.caption.trim().length > 0;
   const headerClassName = hasContextualDetailHeader
     ? 'app-header app-header--store app-header--detail-compact'
     : 'app-header app-header--store';
@@ -178,6 +179,9 @@ export function StoreLayout() {
                 <h1>{activeHeader.title}</h1>
               </NavLink>
               {showHeaderSummary ? <p className="app-header__summary">{activeHeader.summary}</p> : null}
+              {hasContextualDetailHeader && showHeaderCaption ? (
+                <p className="app-header__caption app-header__caption--detail">{activeHeader.caption}</p>
+              ) : null}
             </div>
 
             <div className="app-header__actions">
@@ -198,7 +202,9 @@ export function StoreLayout() {
                 {renderPrimaryNav()}
               </div>
 
-              <p className="app-header__caption">{activeHeader.caption}</p>
+              {!hasContextualDetailHeader && showHeaderCaption ? (
+                <p className="app-header__caption">{activeHeader.caption}</p>
+              ) : null}
             </div>
           </header>
 
