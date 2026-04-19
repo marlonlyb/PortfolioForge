@@ -21,7 +21,7 @@ Este documento concentra en un solo lugar las dependencias operativas del repo a
 - SMTP:
   - requerido para entrega real del OTP por email.
 - FTPS:
-  - requerido para `canonical-publish` y para el workflow admin persistido cuando publica canónicos.
+  - requerido solo para `canonical-publish` o para la ruta legacy del workflow admin persistido cuando todavía publica canónicos.
 
 ## Variables de entorno del backend
 
@@ -93,19 +93,23 @@ Notas operativas:
 
 Regla: si empiezas a configurar SMTP, el backend exige al menos `SMTP_HOST`, `SMTP_PORT` y `EMAIL_FROM_ADDRESS`.
 
-### Workflow de case study y publish FTPS
+### Workflow de case study y publish FTPS legacy
 
 | Variable | Requerida | Uso |
 |---|---|---|
-| `PF_CASE_STUDY_ALLOWED_SOURCE_ROOTS` | Sí para workflow | allowlist de rutas fuente aceptadas |
-| `PF_FTP_HOST` | Sí para workflow/publish | host FTPS |
+| `PF_CASE_STUDY_ALLOWED_SOURCE_ROOTS` | Sí solo para workflow legacy | allowlist de rutas fuente aceptadas |
+| `PF_FTP_HOST` | Sí solo para publish legacy | host FTPS |
 | `PF_FTP_PORT` | No | puerto FTPS, default `21` |
-| `PF_FTP_USER` | Sí para workflow/publish | usuario FTPS |
-| `PF_FTP_PASSWORD` | Sí para workflow/publish | password FTPS |
-| `PF_PUBLIC_BASE` | Sí para workflow/publish | base pública para construir la URL canónica |
+| `PF_FTP_USER` | Sí solo para publish legacy | usuario FTPS |
+| `PF_FTP_PASSWORD` | Sí solo para publish legacy | password FTPS |
+| `PF_PUBLIC_BASE` | Sí solo para publish legacy | base pública para construir la URL canónica |
 | `PF_FTP_REMOTE_BASE` | No | raíz remota; default `/` |
 
-Sin estas variables el workflow admin aparece como no configurado.
+Notas operativas:
+
+- para el flujo estándar real de case studies, PortfolioForge necesita la URL remota ya publicada; esa publicación la hace manualmente personal externo del usuario en su host;
+- FTPS no es requisito del flujo estándar de runtime/UI;
+- si se usa la ruta legacy con `publish_canonical`, entonces sí aplican las variables `PF_FTP_*` y `PF_PUBLIC_BASE`.
 
 ## Variables del frontend
 
@@ -125,8 +129,9 @@ Sin estas variables el workflow admin aparece como no configurado.
 | Login Google | Sí | No | Sí | No | No |
 | OTP real | Sí | No | No | Sí | No |
 | Localization backfill | Sí | Sí | No | No | No |
-| Canonical publish | No | No | No | No | Sí |
-| Case-study workflow completo | Sí | Sí si hay localización | No | No | Sí |
+| Canonical publish legacy | No | No | No | No | Sí |
+| Runtime/UI con URL ya publicada | Sí | Sí si hay localización | No | No | No |
+| Case-study workflow persistido legacy completo | Sí | Sí si hay localización | No | No | Sí |
 
 ## Notas de autoridad
 

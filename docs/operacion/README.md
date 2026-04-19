@@ -18,7 +18,8 @@ Nota para contribuidores nuevos:
 - bootstrap de base de datos y migraciones;
 - bootstrap del primer admin y gestión de usuarios;
 - workflow persistido de case studies;
-- publicación canónica por FTPS;
+- publicación canónica manual externa como flujo estándar;
+- tooling FTPS legacy/opcional de compatibilidad;
 - backfill de localización;
 - readiness, refresh y re-embed de búsqueda;
 - troubleshooting operativo.
@@ -34,21 +35,23 @@ Nota para contribuidores nuevos:
 4. [`04-admin-usuarios.md`](./04-admin-usuarios.md)
    - primer admin y operaciones de usuarios.
 5. [`05-case-study-workflow.md`](./05-case-study-workflow.md)
-   - workflow admin persistido para publish/import/localización/reembed.
+   - **documento principal** del happy path de case studies: canonical local → publicación manual externa → runtime/UI con `source_markdown_url` → localización → readiness/reembed → cierre.
 6. [`06-canonical-publish-ftps.md`](./06-canonical-publish-ftps.md)
-   - publicación canónica por FTPS sin pasar por la UI.
+   - tooling FTPS **legacy/opcional** sin pasar por la UI.
 7. [`07-localization-backfill.md`](./07-localization-backfill.md)
-   - regeneración de locales derivadas desde español.
+   - runbook **auxiliar** para regeneración de locales derivadas desde español.
 8. [`08-search-readiness-reembed.md`](./08-search-readiness-reembed.md)
-   - readiness, refresh documental y embeddings.
+   - runbook **auxiliar** para readiness, refresh documental y embeddings.
 9. [`09-troubleshooting.md`](./09-troubleshooting.md)
    - fallos frecuentes y diagnóstico inicial.
 
 ## Relación con otras piezas de `docs/`
 
 - [`../PRD.md`](../PRD.md): contrato de producto y límites del sistema.
-- [`./CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`](./CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md): cómo producir el markdown canónico.
-- [`./PROJECT-RUNTIME-INGESTION-GUIDE.md`](./PROJECT-RUNTIME-INGESTION-GUIDE.md): cómo convertir ese canonical en runtime UI/DB.
+- [`./05-case-study-workflow.md`](./05-case-study-workflow.md): documento principal para operar un case study de punta a punta.
+- [`./CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`](./CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md): guía auxiliar para producir o corregir el markdown canónico.
+- [`./PROJECT-RUNTIME-INGESTION-GUIDE.md`](./PROJECT-RUNTIME-INGESTION-GUIDE.md): referencia auxiliar para convertir ese canonical remoto en runtime UI/DB.
+- [`./06-canonical-publish-ftps.md`](./06-canonical-publish-ftps.md): ruta legacy/opcional de compatibilidad.
 
 ## Orden recomendado
 
@@ -61,12 +64,36 @@ Nota para contribuidores nuevos:
 
 ### Para operar ingestion/publicación
 
-1. `CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`
-2. `06-canonical-publish-ftps.md`
+1. `05-case-study-workflow.md`
+2. `CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md` para preparar el canonical local
+3. publicación manual externa al host final del usuario para obtener `source_markdown_url`
+4. `PROJECT-RUNTIME-INGESTION-GUIDE.md` para cargar/actualizar runtime desde esa URL remota
+5. `07-localization-backfill.md` solo cuando ya corresponda regenerar locales
+6. `08-search-readiness-reembed.md` solo cuando ya corresponda cerrar readiness/reembed
+7. `06-canonical-publish-ftps.md` solo si necesitas compatibilidad/diagnóstico legacy
+
+## Lectura recomendada para case studies
+
+### Principal
+
+1. `05-case-study-workflow.md`
+
+### Auxiliares
+
+2. `CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`
 3. `PROJECT-RUNTIME-INGESTION-GUIDE.md`
-4. `05-case-study-workflow.md` si usas el flujo admin persistido
-5. `07-localization-backfill.md`
-6. `08-search-readiness-reembed.md`
+4. `07-localization-backfill.md`
+5. `08-search-readiness-reembed.md`
+
+### Legacy
+
+6. `06-canonical-publish-ftps.md`
+
+## Regla de detención para este flujo
+
+- si todavía no existe la URL remota final que será `source_markdown_url`, el operador debe detenerse antes de crear o actualizar runtime/UI;
+- la UI/runtime no parte de un archivo local como fuente primaria;
+- un case study no está cerrado hasta verificar canonical local, URL remota publicada, runtime actualizado, localización (si aplica) y readiness/reembed (si aplica).
 
 ### Para resolver incidentes
 

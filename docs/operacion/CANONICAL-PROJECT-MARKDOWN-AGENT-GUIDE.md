@@ -58,7 +58,7 @@ La carga posterior de la UI **no pertenece** a esta guía y debe seguir exclusiv
 
 Ese markdown tendrá esta secuencia de uso posterior:
 
-1. **publicarse en una URL estable** mediante `source_markdown_url`;
+1. **publicarse manualmente fuera de PortfolioForge en una URL estable** que luego se guardará como `source_markdown_url`;
 2. **convertirse en la fuente editorial publicada y alineada** del proyecto;
 3. **alimentar al assistant** desde esa copia remota completa;
 4. **servir como base para poblar la UI/DB** con una proyección resumida y estructurada del mismo contenido, siguiendo `docs/operacion/PROJECT-RUNTIME-INGESTION-GUIDE.md`.
@@ -79,8 +79,13 @@ Regla adicional obligatoria:
 Secuencia editorial correcta:
 
 - primero se crea o corrige `90. dev_portfolioforge/<slug>/<slug>.md`;
-- luego se publica en `source_markdown_url`;
+- luego se publica manualmente en el host externo del usuario hasta obtener `source_markdown_url`;
 - después se usa esa fuente publicada y alineada como referencia común para assistant y para la proyección resumida que termina en UI/DB.
+
+Regla operativa asociada:
+
+- PortfolioForge no debe asumirse como el mecanismo estándar que realiza esa publicación remota;
+- si existe tooling FTPS dentro del repo, debe tratarse como compatibilidad legacy y no como paso principal de esta guía.
 
 Y además debe ser **seguro para publicación**:
 

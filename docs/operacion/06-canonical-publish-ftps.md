@@ -1,5 +1,15 @@
 # Runbook de publicación canónica por FTPS
 
+> Estado: **legacy / opcional / compatibilidad**.
+
+Este documento no describe el flujo estándar principal de PortfolioForge. El flujo estándar actual es:
+
+1. crear o actualizar el canonical en la carpeta del caso;
+2. publicar manualmente la URL final fuera de PortfolioForge;
+3. una vez exista esa URL, continuar con runtime/UI usando `source_markdown_url`.
+
+Usa `canonical-publish` solo si necesitas mantener una ruta legacy, hacer diagnóstico o aprovechar compatibilidad con entornos existentes.
+
 ## Uso
 
 Publica por FTPS toda la carpeta del slug canonical y verifica la URL pública final.
@@ -74,7 +84,8 @@ Además la URL final debe responder por HTTPS.
 ## Relación con el workflow admin
 
 - este comando es el equivalente CLI del step `publish_canonical`;
-- si ya estás usando el workflow persistido de `/admin/settings/case-studies`, no necesitas publicar aparte salvo diagnóstico o ejecución manual controlada.
+- ese step y este comando siguen existiendo, pero no forman parte del camino estándar recomendado para crear o cerrar un case study;
+- si ya tienes la URL remota publicada manualmente por el host externo del usuario, no necesitas este comando.
 
 ## Fallos esperables
 
@@ -87,4 +98,5 @@ Además la URL final debe responder por HTTPS.
 
 ## Regla editorial asociada
 
-- publicar solo cuando el canonical local en `90. dev_portfolioforge/<slug>/<slug>.md` ya es la versión correcta en castellano.
+- publicar solo cuando el canonical local en `90. dev_portfolioforge/<slug>/<slug>.md` ya es la versión correcta en castellano;
+- si se usa esta ruta legacy, la salida esperada sigue siendo la misma: obtener la URL final que luego se guardará como `source_markdown_url` para runtime/UI.

@@ -2,7 +2,7 @@
 
 ## 1. Objetivo
 
-Esta guía define **cómo llenar y actualizar la UI admin de PortfolioForge** tomando como fuente de verdad un **markdown canónico ya generado** y, cuando aplique, publicado en `source_markdown_url` para el assistant.
+Esta guía define **cómo llenar y actualizar la UI admin de PortfolioForge** tomando como punto de partida operativo la **URL canónica publicada** del proyecto (`source_markdown_url`).
 
 Su propósito no es explicar cómo analizar un repositorio ni cómo escribir el markdown canónico. Su propósito es uno solo:
 
@@ -46,26 +46,27 @@ Para trabajo operativo dentro de este repo, esta guía debe tratarse como la **r
 
 ### 3.1 Fuente de verdad
 
-Si un proyecto ya tiene markdown canónico confiable, ese archivo se usa primero y se trata como:
+Para esta tarea operativa de runtime, la fuente que se lee primero es la **URL canónica publicada** del proyecto.
+
+Ese documento remoto se trata como:
 
 - fuente editorial principal;
 - fuente base en castellano para el contenido runtime;
-- fuente de `source_markdown_url` para el assistant;
+- fuente remota completa que también consume el assistant;
 - referencia principal para poblar o corregir la UI.
 
-Ubicación correcta de esa fuente:
+Punto de partida obligatorio en este flujo:
 
-- el archivo canónico editable real no vive por defecto dentro del repo de `PortfolioForge`;
-- la fuente de verdad local vive en la raíz del repositorio o carpeta estudiada, dentro de `90. dev_portfolioforge/`;
-- la convención obligatoria es `90. dev_portfolioforge/<slug>/<slug>.md`;
-- dentro de `90. dev_portfolioforge/` también puede existir `Imagenes_Originales/` como material editorial/base para media del caso;
-- cualquier copia del canonical dentro de `PortfolioForge` debe tratarse solo como copia de trabajo o referencia temporal, nunca como fuente de verdad editorial si existe el canonical en la carpeta estudiada original.
+- si el proyecto ya existe, se parte de la `source_markdown_url` ya guardada en admin;
+- si el proyecto todavía no existe, hay que pedir primero la URL canónica publicada antes de leer o crear nada;
+- esa URL no la publica PortfolioForge como flujo estándar: la publica manualmente personal externo del usuario en su host en la nube;
+- para esta tarea no se debe buscar el canonical en la PC, discos locales ni rutas auxiliares dentro de `PortfolioForge`.
 
 Regla de coherencia obligatoria:
 
-- el archivo que debe corregirse primero es `90. dev_portfolioforge/<slug>/<slug>.md` dentro del repositorio/carpeta estudiada original;
-- el archivo canónico local y la copia publicada en `source_markdown_url` deben estar ambos en castellano y representar la misma versión editorial del proyecto;
-- si el archivo local ya fue corregido a castellano pero la URL publicada sigue en inglés u otro idioma, la fuente todavía está desalineada y no debe darse por cerrada.
+- la URL publicada en `source_markdown_url` debe estar en castellano y representar la versión editorial vigente del proyecto;
+- si la URL publicada sigue en inglés u otro idioma, la fuente todavía está desalineada y no debe darse por cerrada;
+- cualquier verificación contra una fuente local fuera de la UI/runtime pertenece al flujo editorial/publish, no al primer paso de esta tarea.
 - la convención de publicación remota debe ser estable y basada en slug: `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`.
 
 Diferencia importante:
@@ -73,7 +74,7 @@ Diferencia importante:
 - el assistant consume la copia remota completa publicada en `source_markdown_url`;
 - la UI/DB no debe copiar ese markdown literal, sino derivar una representación resumida, estructurada y operativa del mismo contenido.
 
-No corresponde re-analizar el repositorio completo salvo que:
+No corresponde re-analizar el repositorio completo ni buscar archivos canónicos locales salvo que:
 
 - el markdown no exista;
 - el markdown esté desactualizado;
@@ -155,18 +156,21 @@ La UI debe mostrar:
 
 ### Resumen operativo corto
 
-1. leer el markdown canónico completo;
-2. publicar o confirmar la copia remota en `source_markdown_url`;
-3. confirmar que el markdown canónico local y la URL publicada en `source_markdown_url` estén alineados y en castellano;
-4. confirmar si ese markdown sigue siendo la fuente correcta;
-5. resolver tecnologías antes de guardar el proyecto;
-6. poblar campos base del proyecto usando una proyección resumida y estructurada de esa fuente;
-7. poblar `project_profiles` con versión resumida y estructurada;
-8. cargar o revisar media solo si el markdown la define con claridad suficiente;
-9. guardar o mantener `source_markdown_url` si el proyecto debe exponer assistant;
-10. si cambió la base en castellano, regenerar localizaciones derivadas (`ca`, `en`, `de`) desde esa base;
-11. verificar el resultado real en admin/público o DB;
-12. refrescar búsqueda y re-embed cuando cambie contenido indexable.
+1. obtener o confirmar `source_markdown_url`;
+2. leer el markdown remoto completo desde esa URL;
+3. confirmar que la URL publicada esté accesible, en castellano y siga siendo la fuente correcta;
+4. resolver tecnologías antes de guardar el proyecto;
+5. poblar campos base del proyecto usando una proyección resumida y estructurada de esa fuente remota;
+6. poblar `project_profiles` con versión resumida y estructurada;
+7. cargar o revisar media solo si el markdown la define con claridad suficiente;
+8. guardar o mantener `source_markdown_url` si el proyecto debe exponer assistant;
+9. si cambió la base en castellano, regenerar localizaciones derivadas (`ca`, `en`, `de`) desde esa base;
+10. verificar el resultado real en admin/público o DB;
+11. refrescar búsqueda y re-embed cuando cambie contenido indexable.
+
+Precondición explícita:
+
+- si el proyecto todavía no existe y la URL final aún no fue publicada en el host externo del usuario, el flujo runtime/UI debe detenerse hasta que esa publicación manual exista.
 
 ---
 
@@ -308,6 +312,7 @@ Reglas:
 - el assistant sigue requiriendo sesión elegible.
 - la convención por defecto debe ser: `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`.
 - `<slug>` debe coincidir con el `Slug` del markdown canónico y con el `slug` runtime del proyecto.
+- si se va a crear un proyecto nuevo y todavía no existe esta URL, el flujo debe detenerse para pedirla antes de continuar.
 
 ### 7.6 `active`
 
@@ -613,6 +618,8 @@ Reglas:
 - la UI solo controla si el proyecto está preparado para declararlo disponible;
 - `source_markdown_url` nunca debe filtrarse públicamente.
 - si el assistant debe responder en coherencia con la base española, la copia remota publicada también debe estar en castellano.
+- para este flujo operativo, esa URL remota es también el punto de partida de lectura para poblar o corregir la UI.
+- FTPS o `canonical-publish` no forman parte del camino principal documentado para esta tarea; si existen, pertenecen a compatibilidad legacy.
 
 ---
 
@@ -659,6 +666,7 @@ La carga o actualización debe tratarse como fallida si ocurre cualquiera de est
 - se mezclan assets ajenos o media contaminada;
 - se borra media útil sin decisión explícita;
 - `source_markdown_url` queda mal configurado o expuesto públicamente;
+- se intenta poblar o corregir la UI sin `source_markdown_url` cuando el proyecto todavía no existe y no se pidió la URL al usuario;
 - cambia contenido indexable y no se refresca búsqueda;
 - localizaciones vacías o mal sincronizadas pisan el contenido base.
 
@@ -666,19 +674,19 @@ La carga o actualización debe tratarse como fallida si ocurre cualquiera de est
 
 ## 12. Regla final de trabajo
 
-Cuando exista markdown canónico confiable:
+Cuando exista markdown canónico confiable y publicado:
 
-1. **se lee primero**;
-2. **se resume para UI**;
-3. **no se reescribe libremente**;
-4. **no se copia entero**;
-5. **se verifica el resultado real**;
-6. **el assistant sigue usando el markdown remoto completo**;
-7. **la fuente local de verdad sigue siendo `90. dev_portfolioforge/<slug>/<slug>.md` en la carpeta estudiada, no una copia auxiliar dentro de `PortfolioForge`**.
+1. **se obtiene o confirma primero `source_markdown_url`**;
+2. **se lee primero esa fuente remota completa**;
+3. **se resume para UI**;
+4. **no se reescribe libremente**;
+5. **no se copia entero**;
+6. **se verifica el resultado real**;
+7. **el assistant sigue usando el mismo markdown remoto completo**;
+8. **no se buscan canonicals en PC, discos locales ni copias auxiliares dentro de `PortfolioForge` como primer paso de esta tarea**.
 
 En una frase:
 
-- **canonical local = edición fuente**
-- **`source_markdown_url` = fuente publicada estable**
+- **`source_markdown_url` = punto de partida operativo para esta tarea**
 - **UI runtime = claridad resumida derivada de esa fuente**
 - **assistant = grounding sobre esa fuente remota completa**

@@ -28,7 +28,7 @@ PortfolioForge no trata los proyectos como simples fichas visuales. Los trata co
 
 1. la evidencia vive en un repositorio o carpeta fuente;
 2. se consolida en un canonical en `90. dev_portfolioforge/<slug>/<slug>.md`;
-3. se publica en una URL estable guardada en `source_markdown_url`;
+3. ese canonical se publica manualmente por fuera de PortfolioForge en una URL estable guardada luego en `source_markdown_url`;
 4. desde esa fuente publicada se derivan dos consumos:
    - **assistant** -> usa el markdown remoto completo;
    - **UI/DB** -> usa una representación resumida y estructurada del mismo contenido.
@@ -63,7 +63,7 @@ La UI **no debe copiar** el markdown literal. Debe mostrar solo los puntos clave
 
 - localización pública (`es`, `ca`, `en`, `de`);
 - media optimizada por variantes y fallback;
-- canonical publish por FTPS;
+- canonical publish por FTPS como compatibilidad legacy;
 - localization backfill;
 - recomposición del documento de búsqueda y embeddings.
 
@@ -169,6 +169,7 @@ Después del arranque:
 ### Operación real del repositorio
 
 - `docs/operacion/README.md`
+- `docs/operacion/05-case-study-workflow.md` *(si vas a operar case studies)*
 
 Ese directorio es la **fuente de verdad operativa** para:
 
@@ -177,10 +178,25 @@ Ese directorio es la **fuente de verdad operativa** para:
 - migraciones;
 - bootstrap del primer admin;
 - workflow de case studies;
-- publish FTPS;
+- publicación manual externa del canonical como flujo estándar;
+- publish FTPS legacy/opcional;
 - localization backfill;
 - search readiness / refresh / reembed;
 - troubleshooting.
+
+Para case studies, la lectura recomendada es:
+
+1. `docs/operacion/05-case-study-workflow.md` *(documento principal del happy path)*
+2. `docs/operacion/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md` *(autoría/corrección del canonical local)*
+3. publicación manual externa hasta obtener `source_markdown_url`
+4. `docs/operacion/PROJECT-RUNTIME-INGESTION-GUIDE.md` *(mapping runtime/UI desde la URL remota)*
+5. `docs/operacion/07-localization-backfill.md` y `docs/operacion/08-search-readiness-reembed.md` *(auxiliares)*
+6. `docs/operacion/06-canonical-publish-ftps.md` *(solo legacy/opcional)*
+
+Regla crítica de ese flujo:
+
+- si todavía no existe `source_markdown_url`, el operador debe detenerse antes de crear o actualizar runtime/UI;
+- la UI/runtime no parte de un archivo local, sino de la URL ya publicada.
 
 ### Reconstrucción desde cero
 
