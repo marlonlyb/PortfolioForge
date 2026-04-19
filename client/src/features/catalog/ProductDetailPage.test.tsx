@@ -549,6 +549,21 @@ describe('ProductDetailPage', () => {
 	  expect(screen.queryAllByText('Technologies').length).toBe(1);
 	});
 
+	it('normalizes pipe-delimited client context and removes the redundant overview strip', async () => {
+	  mockedFetchProjectBySlug.mockResolvedValue(buildProject({
+	    client_name: 'Acme Corp | Internal operations',
+	    category: 'platform',
+	  }));
+
+	  renderDetailPage();
+
+	  expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
+	  expect(screen.getByText('Acme Corp · Internal operations')).toBeInTheDocument();
+	  expect(screen.getByText('platform · Acme Corp · Internal operations')).toBeInTheDocument();
+	  expect(screen.queryByText('Acme Corp | Internal operations')).not.toBeInTheDocument();
+	  expect(screen.queryByText('Project overview')).not.toBeInTheDocument();
+	});
+
 	it('clears stale project header content during slug and route transitions', async () => {
 	  mockedFetchProjectBySlug.mockImplementation(async (slug) => {
 	    if (slug === 'alpha') {

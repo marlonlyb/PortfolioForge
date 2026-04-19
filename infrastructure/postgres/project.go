@@ -34,7 +34,7 @@ func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (model.Pr
 	err := r.db.QueryRow(ctx, `
 		SELECT p.id, p.name,
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
-			p.description, p.category, COALESCE(p.brand, '') AS client_name,
+			p.description, p.category, COALESCE(NULLIF(p.client_name, ''), p.brand, '') AS client_name,
 			p.active, COALESCE(p.source_markdown_url, '') AS source_markdown_url, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
 			COALESCE(pp.business_goal, ''), COALESCE(pp.problem_statement, ''),
 			COALESCE(pp.solution_summary, ''), COALESCE(pp.delivery_scope, ''), COALESCE(pp.responsibility_scope, ''), COALESCE(pp.architecture, ''),
@@ -94,7 +94,7 @@ func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (model.P
 	err := r.db.QueryRow(ctx, `
 		SELECT p.id, p.name,
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
-			p.description, p.category, COALESCE(p.brand, '') AS client_name,
+			p.description, p.category, COALESCE(NULLIF(p.client_name, ''), p.brand, '') AS client_name,
 			p.active, COALESCE(p.source_markdown_url, '') AS source_markdown_url, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
 			COALESCE(pp.business_goal, ''), COALESCE(pp.problem_statement, ''),
 			COALESCE(pp.solution_summary, ''), COALESCE(pp.delivery_scope, ''), COALESCE(pp.responsibility_scope, ''), COALESCE(pp.architecture, ''),
@@ -146,7 +146,7 @@ func (r *ProjectRepository) ListPublished(ctx context.Context) ([]model.Project,
 	rows, err := r.db.Query(ctx, `
 		SELECT p.id, p.name,
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
-			p.description, p.category, COALESCE(p.brand, '') AS client_name,
+			p.description, p.category, COALESCE(NULLIF(p.client_name, ''), p.brand, '') AS client_name,
 			p.active, COALESCE(p.source_markdown_url, '') AS source_markdown_url, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at
 		FROM products p
 		WHERE p.active = TRUE

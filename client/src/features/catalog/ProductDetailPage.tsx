@@ -104,11 +104,22 @@ function formatTimestamp(timestamp: number | undefined, locale: string): string 
   }).format(new Date(timestamp * 1000));
 }
 
+function splitClientContext(value?: string | null): string[] {
+  return (value ?? '')
+    .split('|')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+function formatClientContext(value?: string | null): string {
+  return splitClientContext(value).join(' · ');
+}
+
 function buildProjectHeaderContent(
   project: Project,
   fallbackCaption: string,
 ): StoreHeaderContent {
-  const captionParts = [project.category, project.client_name]
+  const captionParts = [project.category, formatClientContext(project.client_name)]
     .map((value) => value?.trim() ?? '')
     .filter((value) => value.length > 0);
 
@@ -392,15 +403,11 @@ export function ProductDetailPage() {
   const lastUpdated = formatTimestamp(project?.updated_at, locale);
   const showAssistantChat = Boolean(project?.assistant_available && user?.can_use_project_assistant);
   const showAssistantAccessCard = Boolean(project?.assistant_available && user) && !sessionLoading && !showAssistantChat;
+  const clientContext = formatClientContext(project?.client_name);
   const heroFacts = [
-    hasText(project?.client_name) ? { label: t.detailClient, value: project.client_name.trim() } : null,
+    hasText(clientContext) ? { label: t.detailClient, value: clientContext } : null,
     lastUpdated ? { label: t.detailUpdated, value: lastUpdated } : null,
   ].filter((item): item is KeyValueEntry => Boolean(item));
-  const overviewItems = [
-    { label: t.detailCategory, value: project?.category ?? '' },
-    { label: t.detailClient, value: project?.client_name ?? t.detailIndependent },
-    { label: t.detailUpdated, value: lastUpdated ?? t.detailRecentlyCurated },
-  ].filter((item) => item.value.trim().length > 0);
   const strategySections: DetailSectionData[] = [
     hasText(businessGoal) ? { title: t.detailBusinessGoal, content: businessGoal } : null,
     hasText(problemStatement) ? { title: t.detailProblem, content: problemStatement } : null,
@@ -668,21 +675,6 @@ export function ProductDetailPage() {
               </div>
             )}
           </div>
-        </article>
-
-        <article className="detail__overview-strip card">
-          <div className="detail__overview-strip-header">
-            <p className="eyebrow">{t.detailProjectOverview}</p>
-          </div>
-
-          <dl className="detail__overview-list detail__overview-list--strip">
-            {overviewItems.map((item) => (
-              <div key={item.label} className="detail__overview-item">
-                <dt>{item.label}</dt>
-                <dd>{item.value}</dd>
-              </div>
-            ))}
-          </dl>
         </article>
 
         <div className="detail__content-layout">
