@@ -18,7 +18,7 @@ PortfolioForge se reconstruye como un sistema web full-stack con backend Go, fro
 - Go + Echo.
 - Expone rutas públicas, privadas autenticadas y admin.
 - Orquesta dominio `project`, búsqueda, assistant, auth, localización y workflow operativo.
-- Encapsula integraciones con OpenAI, SMTP, Google identity y FTP/publicación canónica.
+- Encapsula integraciones con OpenAI, SMTP, Google identity y tooling legacy de publicación/compatibilidad (`publish_canonical`, FTPS).
 
 ### 3. PostgreSQL
 
@@ -56,14 +56,14 @@ Responsable de signup/login, login Google, verificación de email, perfil comple
 
 ### Editorial Workflow
 
-Responsable de resolver fuente canónica, publicar canonical, importar/actualizar proyecto, backfill de localización y reembed.
+Responsable de alinear el runtime con la fuente canónica ya publicada, importar/actualizar proyecto, backfill de localización y reembed; conserva `publish_canonical`/FTPS solo como compatibilidad legacy.
 
 ## Flujo macro de datos
 
 1. Se genera o corrige markdown canónico fuera del runtime.
 2. Se publica en URL remota estable por `slug`.
-3. Admin importa o actualiza el proyecto en runtime.
-4. Backend persiste proyecto base, enrichment, tecnologías, media y localizaciones.
+3. Solo cuando existe `source_markdown_url`, admin importa o actualiza el proyecto en runtime.
+4. Backend persiste proyecto base, enrichment, tecnologías, media y localizaciones como proyección resumida/estructurada de la fuente remota.
 5. Search recompone documento indexable y embeddings.
 6. Público consulta catálogo, detalle o búsqueda.
 7. Assistant usa el markdown remoto del proyecto autenticado.
@@ -87,4 +87,5 @@ Responsable de resolver fuente canónica, publicar canonical, importar/actualiza
 - mezclar markdown fuente con contenido UI resumido;
 - romper la coherencia entre `client_name` público y `brand` legacy;
 - acoplar assistant al contenido runtime en vez del markdown remoto;
+- tratar FTPS o `publish_canonical` como flujo principal en vez de compatibilidad legacy;
 - tratar búsqueda semántica como opcional de producto cuando en realidad forma parte del discoverability core.

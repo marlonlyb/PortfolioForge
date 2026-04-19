@@ -8,6 +8,7 @@ PortfolioForge no se alimenta directamente del repositorio fuente. Primero exist
 
 - ruta local fuente: `90. dev_portfolioforge/<slug>/<slug>.md`
 - publicación remota esperada: `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`
+- la publicación estándar es manual y externa a PortfolioForge hasta obtener `source_markdown_url`
 
 ## Flujo de reconstrucción editorial
 
@@ -25,7 +26,7 @@ Un agente o proceso analiza el repositorio/carpeta fuente y produce un único `.
 
 ### 2. Publicación remota
 
-El canonical se publica en una URL HTTPS estable por `slug`. Esa copia remota debe seguir en castellano y coincidir con la local.
+El canonical se publica manualmente fuera de PortfolioForge en una URL HTTPS estable por `slug`. Esa copia remota debe seguir en castellano y coincidir con la local.
 
 ### 3. Ingestión a runtime
 
@@ -65,6 +66,10 @@ Es la verdad editorial primaria.
 ### Fuente remota (`source_markdown_url`)
 
 Es la fuente publicada estable del proyecto. El assistant la consume completa y el runtime debe mantenerse alineado con ella.
+
+### Tooling legacy de publicación
+
+FTPS y `publish_canonical` pueden seguir existiendo en el producto o en la operación como compatibilidad/diagnóstico, pero no redefinen el flujo estándar descrito arriba.
 
 ### Runtime DB/UI
 

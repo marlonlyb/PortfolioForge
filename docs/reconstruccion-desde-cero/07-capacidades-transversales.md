@@ -89,15 +89,29 @@ El auth no existe solo para proteger admin; también habilita el assistant por p
 
 ### Workflow operativo mínimo
 
-Pasos persistidos:
+Happy path vigente:
+
+1. canonical local correcto en la carpeta del caso;
+2. publicación manual externa hasta obtener `source_markdown_url`;
+3. importación o actualización runtime/UI desde esa URL remota;
+4. localización derivada si aplica;
+5. readiness/reembed si aplica.
+
+Workflow persistido disponible en producto (legacy / compatibilidad):
 
 1. `resolve_source`
-2. `publish_canonical`
+2. `publish_canonical` *(legacy / compatibilidad)*
 3. `import_or_update_project`
 4. `localization_backfill`
 5. `reembed`
 
 Los pasos 2 y 3 requieren confirmación explícita según la implementación actual.
+
+Reglas de interpretación:
+
+- ese workflow persistido no sustituye la publicación manual externa como camino estándar;
+- `import_or_update_project` en el flujo correcto debe ejecutarse solo cuando la URL remota publicada ya existe;
+- la UI/runtime persiste una representación resumida y estructurada, no una copia completa del markdown.
 
 ## Seguridad y sanitización
 
