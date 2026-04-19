@@ -23,7 +23,16 @@ La base esperada por defecto es `portfolioforge`.
 Ejemplo:
 
 ```bash
-createdb portfolioforge
+sudo -u postgres createuser --login --pwprompt portfolioforge
+sudo -u postgres createdb --owner=portfolioforge portfolioforge
+```
+
+Crear/extender las extensiones requeridas antes del cutover:
+
+```bash
+sudo -u postgres psql -d portfolioforge -c "CREATE EXTENSION IF NOT EXISTS unaccent;"
+sudo -u postgres psql -d portfolioforge -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+sudo -u postgres psql -d portfolioforge -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
 ## 3. Aplicar todas las migraciones en orden lexical
@@ -59,6 +68,23 @@ Orden actual del repo:
 21. `20260418_0900_case_study_workflow_runs.sql`
 22. `20260418_2200_compact_project_profile_lists.sql`
 23. `20260418_2300_search_client_name_alignment.sql`
+24. `20260419_1900_project_industry_and_final_product.sql`
+
+En el VPS de producción la ruta típica será:
+
+```bash
+cd /srv/portfolioforge/source/current
+for f in sqlmigrations/*.sql; do
+  psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U portfolioforge -d portfolioforge -f "$f"
+done
+```
+
+Antes de aplicar migraciones en un servidor con datos o antes del primer cutover público, generar backup:
+
+```bash
+sudo install -d -m 750 -o portfolioforge -g portfolioforge /srv/portfolioforge/backups
+sudo -u postgres pg_dump -Fc portfolioforge > "/srv/portfolioforge/backups/pre-migrations-$(date +%Y%m%d%H%M%S).dump"
+```
 
 ## 4. Validaciones mínimas post-migración
 

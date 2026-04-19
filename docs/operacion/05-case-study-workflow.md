@@ -67,9 +67,14 @@ Si operas este flujo con OpenCode desde el repo PortfolioForge, puedes usar esto
 Reglas para interpretarlos bien:
 
 - no cambian el workflow ni sustituyen estos runbooks;
-- `/pf-canonical-create` solo resuelve el Paso 1;
+- `/pf-canonical-create` resuelve el Paso 1 y además actualiza el inventario operador local `.atl/case-study-local-index.md` sin tocar runtime/producto;
 - `/pf-ui-create` y `/pf-ui-update` solo aplican después del Paso 3, cuando `source_markdown_url` ya existe y fue verificada;
 - ninguno convierte FTPS / `publish_canonical` en el camino principal.
+
+Nota importante sobre el inventario local `.atl`:
+
+- cuando `/pf-canonical-create` completa `source_markdown_url` en `.atl/case-study-local-index.md`, ese valor debe leerse como **URL objetivo prevista por convención**, no como URL ya publicada/verificada;
+- esa URL solo pasa a ser la `source_markdown_url` operativa real después del Paso 2 (publicación manual externa) y del Paso 3 (verificación HTTPS del markdown correcto).
 
 ## Paso 1 — Crear o corregir el canonical local
 
@@ -85,6 +90,7 @@ Debe quedar claro que:
 
 - la fuente editorial local vive en la carpeta del caso, no en una copia ad hoc dentro de PortfolioForge;
 - el canonical base debe estar en castellano;
+- `industry_type` y `final_product` deben quedar completados desde el análisis real del repositorio/caso antes de considerar terminado el canonical;
 - ese archivo es el insumo que luego se publicará fuera del sistema.
 
 Checklist mínimo al cerrar este paso:
@@ -92,6 +98,7 @@ Checklist mínimo al cerrar este paso:
 - existe `90. dev_portfolioforge/<slug>/`;
 - existe `90. dev_portfolioforge/<slug>/<slug>.md`;
 - el slug del archivo es el que se usará también en runtime;
+- `Industry Type` y `Final Product` ya están completos en frontmatter y en `## Metadata`, sustentados por la evidencia analizada;
 - el contenido ya es la versión editorial correcta para publicar.
 
 ## Paso 2 — Publicar manualmente fuera de PortfolioForge
@@ -155,7 +162,7 @@ Qué se hace aquí:
 
 1. confirmar o cargar `source_markdown_url`;
 2. leer el markdown remoto publicado;
-3. mapear nombre, descripción, categoría, client/context, perfil enriquecido, tecnologías y media según la guía runtime;
+3. mapear nombre, descripción, categoría, `industry_type`, `final_product`, client/context, perfil enriquecido, tecnologías y media según la guía runtime;
 4. guardar o actualizar el proyecto;
 5. validar que el runtime quedó coherente con la fuente remota.
 
@@ -201,7 +208,7 @@ Un case study se considera listo cuando se cumplen **todas** estas condiciones:
 2. la versión publicada manualmente ya existe en la URL final remota;
 3. esa URL remota es la `source_markdown_url` real del proyecto;
 4. el runtime en UI quedó creado o actualizado usando esa URL remota, no una fuente local;
-5. nombre, descripción, categoría, `client_name`/contexto, perfil y tecnologías quedaron coherentes con el canonical publicado;
+5. nombre, descripción, categoría, `industry_type`, `final_product`, `client_name`/contexto, perfil y tecnologías quedaron coherentes con el canonical publicado;
 6. si aplicaba, la localización derivada quedó regenerada sin romper overrides manuales;
 7. si aplicaba, readiness y reembed quedaron consistentes;
 8. el proyecto puede verificarse correctamente en admin y en su consumo público/búsqueda según corresponda.

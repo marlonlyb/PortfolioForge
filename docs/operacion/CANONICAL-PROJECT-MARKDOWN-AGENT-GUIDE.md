@@ -132,6 +132,8 @@ Analiza como mínimo:
 Identifica y separa:
 
 - propósito del proyecto;
+- tipo de industria al que pertenece el caso (`industry_type`) como texto editorial corto en castellano;
+- producto final real que se procesa, fabrica o entrega en el proyecto (`final_product`), expresado como frase corta;
 - problema que resuelve;
 - usuarios o contexto operativo;
 - alcance de entrega;
@@ -150,6 +152,7 @@ Convierte la evidencia en narrativa canónica:
 - elimina ruido o detalles accidentales;
 - consolida naming;
 - distingue hechos de interpretación;
+- completa `industry_type` y `final_product` a partir del análisis del repositorio y la evidencia documental, no desde nombres de carpetas sueltos ni placeholders vacíos;
 - sanitiza datos sensibles o confidenciales antes de escribir;
 - convierte listas dispersas en bloques reutilizables;
 - organiza el contenido según las tres capas requeridas.
@@ -181,6 +184,8 @@ El markdown debe incluir, como mínimo, estas secciones y este orden lógico.
 - Slug:
 - Published:
 - Category:
+- Industry Type:
+- Final Product:
 - Client / Context:
 - Repository Source:
 
@@ -230,6 +235,8 @@ El agente debe escribir el markdown pensando en este mapeo posterior:
 | Title | `name` |
 | Summary | `description` |
 | Category | `category` |
+| Industry Type | `industry_type` |
+| Final Product | `final_product` |
 | Client / Context | `client_name` (storage legacy: `brand`) |
 | Business Goal | `business_goal` |
 | Problem Statement | `problem_statement` |
@@ -258,6 +265,31 @@ Regla de idioma fuente para PortfolioForge:
 - `Summary`, `Client / Context` y los bloques estructurados deben quedar también en castellano como base de runtime;
 - otras locales públicas (`ca`, `en`, `de`) se derivan desde ese markdown en castellano;
 - la copia publicada en `source_markdown_url` debe coincidir con esa base en castellano;
+
+## 7.1 Convención obligatoria para `industry_type` y `final_product`
+
+Además del bloque visible `## Metadata`, el frontmatter debe declarar ambos campos para que importer, backfill y assistant compartan la misma fuente:
+
+```md
+---
+industry_type: automatización industrial
+final_product: Panel HMI para diagnóstico y monitoreo
+---
+
+## Metadata
+- Industry Type: automatización industrial
+- Final Product: Panel HMI para diagnóstico y monitoreo
+```
+
+Reglas obligatorias:
+
+- `industry_type` debe ser una frase editorial corta en castellano, de hasta 160 caracteres;
+- `final_product` es una frase corta en castellano que describe el entregable final real del proyecto;
+- ambos campos deben quedar completados desde el análisis/evidencia del caso antes de dar el canonical por cerrado;
+- si llega una key legacy (`metalworking`, `food`, etc.), conviértela a su equivalente editorial en castellano antes de cerrar el canonical;
+- si la evidencia apunta a varios productos finales, no conviertas el campo en una lista abierta: resume el output principal en una sola frase corta o usa una formulación agrupadora precisa y sustentada;
+- no dejes `Industry Type` ni `Final Product` vacíos por comodidad si el repositorio ya permite inferirlos con evidencia razonable;
+- ambos deben aparecer en frontmatter y en el bloque visible `## Metadata` para que `source_markdown_url` sea suficiente como grounding remoto.
 - la URL remota debe construirse usando el mismo slug del markdown y del proyecto: `https://mlbautomation.com/dev/portfolioforge/<slug>/<slug>.md`;
 - `Client / Context` se mapeará a `client_name` y servirá como base para las demás locales públicas;
 - nombres propios, marcas o identificadores técnicos pueden conservarse sin traducir cuando hacerlo reduzca corrección.

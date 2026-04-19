@@ -210,6 +210,8 @@ La UI runtime debe respetar las mismas restricciones del markdown canónico:
 Mapping operativo actual:
 
 - `Client / Context` → `brand` (legacy admin/storage; consumo público `client_name`)
+- `Industry Type` → `industry_type`
+- `Final Product` → `final_product`
 - `Published` → `active`
 - `Technologies` → `technology_ids`
 - `Media` → `media[]` + `images` legacy derivado
@@ -258,6 +260,27 @@ Qué evitar:
 
 - pegar todo el summary completo si es muy largo;
 - repetir detalles ya explicados mejor en otras secciones;
+
+### 7.2.1 `industry_type`
+
+Fuente: frontmatter `industry_type` + bloque visible `## Metadata`
+
+Reglas:
+
+- normalizar whitespace y persistir el valor base en castellano como texto editorial corto;
+- aceptar keys legacy solo como compatibilidad transicional y convertirlas a copy editorial ES antes de guardar;
+- límite máximo: 160 caracteres;
+- participar en localización pública/admin igual que `final_product`, con fallback a `es` cuando no exista override.
+
+### 7.2.2 `final_product`
+
+Fuente: frontmatter `final_product` + bloque visible `## Metadata`
+
+Reglas:
+
+- debe quedar como una frase corta y específica del entregable final;
+- se persiste top-level en `products.final_product`;
+- participa en localización pública derivada (`ca`, `en`, `de`) igual que el resto del copy editorial corto.
 - ruido histórico innecesario.
 
 Objetivo:

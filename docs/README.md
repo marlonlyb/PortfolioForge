@@ -112,6 +112,11 @@ Para este workflow existen comandos globales de OpenCode que pueden ejecutarse *
 
 Estos comandos no son features del producto. Son wrappers operativos del flujo ya documentado:
 
-- `/pf-canonical-create` cubre solo la etapa canonical/editorial;
+- `/pf-canonical-create` cubre la etapa canonical/editorial y actualiza el inventario operador local `.atl/case-study-local-index.md`;
 - `/pf-ui-create` y `/pf-ui-update` empiezan desde `source_markdown_url`, nunca desde un archivo local;
 - FTPS / `publish_canonical` permanece como ruta legacy/opcional, no como happy path.
+
+Nota operativa:
+
+- `.atl/case-study-local-index.md` es un inventario local ignorado por git para guardar `slug`, `project name`, `source repo local path`, `canonical local path` y `source_markdown_url` de los casos en trabajo.
+- dentro de ese inventario, `source_markdown_url` puede registrarse primero como **URL objetivo prevista por convención**; no debe asumirse publicada/verificada hasta completar la publicación manual y la verificación HTTPS del workflow.

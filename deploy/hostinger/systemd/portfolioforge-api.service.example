@@ -1,0 +1,21 @@
+[Unit]
+Description=PortfolioForge API
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=portfolioforge
+Group=portfolioforge
+WorkingDirectory=/srv/portfolioforge/api/current
+EnvironmentFile=/etc/portfolioforge/backend.env
+ExecStart=/srv/portfolioforge/api/current/portfolioforge-api
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

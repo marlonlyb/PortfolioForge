@@ -52,6 +52,17 @@ Valores de desarrollo observados en ejemplos del repo:
 - `DB_NAME=portfolioforge`
 - `DB_SSL_MODE=disable`
 
+Valores de producción acordados para el despliegue en Hostinger VPS:
+
+- `SERVER_PORT=8080`
+- `ALLOWED_ORIGINS=https://portfolioforge.mlbautomation.com`
+- `ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS`
+- `IMAGES_DIR=/var/lib/portfolioforge/images`
+- `DB_HOST=127.0.0.1`
+- `DB_PORT=5432`
+- `DB_NAME=portfolioforge`
+- `DB_SSL_MODE=disable`
+
 ### Ajustes opcionales de pool DB
 
 | Variable | Requerida | Uso real |
@@ -115,8 +126,13 @@ Notas operativas:
 
 | Variable | Requerida | Uso real |
 |---|---|---|
-| `VITE_API_BASE_URL` | No | si falta, el frontend usa `http://localhost:8080` |
+| `VITE_API_BASE_URL` | No | si falta, el frontend usa `http://localhost:8080`; en producción same-origin debe definirse como cadena vacía (`VITE_API_BASE_URL=`) |
 | `VITE_GOOGLE_CLIENT_ID` | Condicional | render del botón de login público con Google |
+
+Valores recomendados para Hostinger VPS:
+
+- `VITE_API_BASE_URL=`
+- `VITE_GOOGLE_CLIENT_ID` solo si login Google estará activo en producción
 
 ## Matriz rápida por operación
 

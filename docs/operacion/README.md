@@ -36,9 +36,14 @@ Interpretación correcta:
 
 - no son capacidades del producto ni endpoints de la aplicación;
 - son wrappers de conveniencia sobre el workflow canonical-first ya documentado;
-- `/pf-canonical-create` cubre solo la etapa canonical/editorial;
+- `/pf-canonical-create` cubre la etapa canonical/editorial y actualiza el inventario operador local `.atl/case-study-local-index.md`;
 - `/pf-ui-create` y `/pf-ui-update` arrancan siempre desde la URL remota publicada, nunca desde un archivo local;
 - `publish_canonical` / FTPS sigue siendo tooling legacy/opcional de compatibilidad.
+
+Inventario operador local:
+
+- `.atl/case-study-local-index.md` vive fuera del producto/runtime, está ignorado por git y guarda solo cinco campos por caso: `slug`, `project name`, `source repo local path`, `canonical local path`, `source_markdown_url`.
+- dentro de ese archivo, `source_markdown_url` puede aparecer primero como **URL objetivo prevista por convención**; solo se considera URL operativa real después de publicación manual externa y verificación HTTPS exitosa.
 
 ## Índice de runbooks
 
@@ -60,6 +65,8 @@ Interpretación correcta:
    - runbook **auxiliar** para readiness, refresh documental y embeddings.
 9. [`09-troubleshooting.md`](./09-troubleshooting.md)
    - fallos frecuentes y diagnóstico inicial.
+10. [`10-hostinger-vps-deployment.md`](./10-hostinger-vps-deployment.md)
+   - runbook autoritativo para despliegue productivo mínimo en Hostinger VPS.
 
 ## Relación con otras piezas de `docs/`
 
@@ -77,6 +84,13 @@ Interpretación correcta:
 2. `03-db-bootstrap-migraciones.md`
 3. `01-setup-local.md`
 4. `04-admin-usuarios.md`
+
+### Para desplegar en producción (Hostinger VPS)
+
+1. `02-entorno-servicios.md`
+2. `03-db-bootstrap-migraciones.md`
+3. `10-hostinger-vps-deployment.md`
+4. `04-admin-usuarios.md` si también necesitas bootstrap del primer admin
 
 ### Para operar ingestion/publicación
 
