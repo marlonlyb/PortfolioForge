@@ -1,0 +1,111 @@
+# Verification Report
+
+**Change**: industry-type-localized-text  
+**Version**: N/A
+
+---
+
+### Completeness
+| Metric | Value |
+|--------|-------|
+| Tasks total | 13 |
+| Tasks complete | 13 |
+| Tasks incomplete | 0 |
+
+All listed tasks are checked as completed in `sdd/industry-type-localized-text/tasks`.
+
+---
+
+### Build & Tests Execution
+
+**Build**: ✅ Passed
+
+Command:
+
+```bash
+npm run build
+```
+
+Output:
+
+```text
+vite v7.3.2 building client environment for production...
+transforming...
+✓ 92 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.40 kB │ gzip:   0.27 kB
+dist/assets/index-Cg23MDTn.css   56.49 kB │ gzip:  10.94 kB
+dist/assets/index-DuinBqka.js   472.91 kB │ gzip: 140.35 kB
+✓ built in 1.50s
+```
+
+**Tests**: ✅ Passed
+
+- Go: ✅ 214 passed / 0 failed / 0 skipped  
+  Command: `go test -json ./cmd ./model ./infrastructure/casestudy ./infrastructure/localization ./domain/services ./infrastructure/projectassistant ./infrastructure/postgres ./infrastructure/handlers`
+- Frontend: ✅ 26 passed / 0 failed / 0 skipped  
+  Command: `npm test -- --reporter=verbose --run src/features/admin-products/AdminProductFormPage.test.tsx src/features/catalog/CatalogPage.test.tsx src/features/catalog/ProductDetailPage.test.tsx src/features/search/SearchResultsPage.test.tsx src/features/landing/LandingPage.catalog-flow.test.tsx`
+
+**Coverage**: ➖ Not configured
+
+---
+
+### Spec Compliance Matrix
+
+| Requirement | Scenario | Test | Result |
+|-------------|----------|------|--------|
+| Industry Type Editorial Source | Canonical source publishes editorial industry type | `infrastructure/casestudy/project_import_test.go > TestLoadCanonicalBaseContentReadsMetadataSectionFallbacks`; `infrastructure/casestudy/project_import_test.go > TestLoadCanonicalBaseContentNormalizesLegacyIndustryKey` | ⚠️ PARTIAL |
+| Industry Type Editorial Source | Contracts expose persisted text | `infrastructure/handlers/project_public_test.go > TestProjectPublicGetBySlugFallsBackToSpanishIndustryTypeWithoutLegacyLeak`; `client/src/features/admin-products/AdminProductFormPage.test.tsx > preserves structured project profile arrays when saving an unrelated edit`; `client/src/features/catalog/CatalogPage.test.tsx > renders low_url first for catalog card images` | ✅ COMPLIANT |
+| Public Localization of Industry Type | Active locale returns localized industry type | `infrastructure/localization/service_test.go > TestLocalizeProjectAppliesClientNameFallback`; `infrastructure/localization/service_test.go > TestLocalizeSearchResultsAppliesClientName`; `client/src/features/catalog/ProductDetailPage.test.tsx > renders the public project detail without assistant UI for signed-out visitors and without admin source leak` | ✅ COMPLIANT |
+| Public Localization of Industry Type | Missing localization falls back safely | `infrastructure/localization/service_test.go > TestLocalizeProjectFallsBackToSpanishIndustryTypeWhenLocalizationMissing`; `infrastructure/handlers/project_public_test.go > TestProjectPublicGetBySlugFallsBackToSpanishIndustryTypeWithoutLegacyLeak` | ✅ COMPLIANT |
+| UI, Search, and Assistant Use Textual Value | UI removes fixed catalog dependency | `client/src/features/admin-products/AdminProductFormPage.test.tsx > preserves structured project profile arrays when saving an unrelated edit`; `client/src/features/search/SearchResultsPage.test.tsx > explains matches coming only from industry and final product fields`; `client/src/features/catalog/CatalogPage.test.tsx > renders low_url first for catalog card images` | ✅ COMPLIANT |
+| UI, Search, and Assistant Use Textual Value | Search and assistant use localized text | `infrastructure/localization/service_test.go > TestLocalizeSearchResultsAppliesClientName`; `client/src/features/search/SearchResultsPage.test.tsx > explains matches coming only from industry and final product fields`; `infrastructure/projectassistant/openai_test.go > TestBuildAssistantUserPayloadReinforcesSelectedLocaleAndIncludesSections` | ⚠️ PARTIAL |
+| Legacy Compatibility and Migration | Legacy persisted key is migrated | `cmd/project_metadata_backfill_test.go > TestProcessActiveProjectMetadataRowBackfillsLegacyIndustryValuesWhenForced`; `infrastructure/handlers/project_public_test.go > TestProjectPublicGetBySlugFallsBackToSpanishIndustryTypeWithoutLegacyLeak` | ✅ COMPLIANT |
+| Legacy Compatibility and Migration | Transitional compatibility accepts legacy input | `model/project_metadata_test.go > TestNormalizeIndustryTypeInputSupportsLegacyKeysAndEditorialText`; `infrastructure/casestudy/project_import_test.go > TestLoadCanonicalBaseContentNormalizesLegacyIndustryKey`; `model/project_metadata_test.go > TestValidateIndustryTypeRejectsEmptyAndOverLimit` | ✅ COMPLIANT |
+
+**Compliance summary**: 6/8 scenarios compliant
+
+---
+
+### Correctness (Static — Structural Evidence)
+| Requirement | Status | Notes |
+|------------|--------|-------|
+| Industry Type Editorial Source | ✅ Implemented | `model/project_metadata.go`, `infrastructure/casestudy/project_import.go`, `model/admin_project.go`, and `model/product.go` now treat `industry_type` as normalized short text with max 160 and legacy-key normalization. |
+| Public Localization of Industry Type | ✅ Implemented | `model/localization.go` includes `industry_type`; `infrastructure/localization/service.go` localizes project/detail/search fields and evidence with ES fallback. |
+| UI, Search, and Assistant Use Textual Value | ✅ Implemented | `client/src/shared/lib/projectMetadata.ts` no longer contains catalog mapping; admin uses free-text input; catalog/detail/search render contract text; SQL search composition and assistant context include `industry_type`. |
+| Legacy Compatibility and Migration | ✅ Implemented | `sqlmigrations/20260419_1900_project_industry_and_final_product.sql` drops the fixed check, widens storage to `VARCHAR(160)`, and rewrites legacy keys; backfill/import/admin normalization reuse the shared compatibility map. |
+
+---
+
+### Coherence (Design)
+| Decision | Followed? | Notes |
+|----------|-----------|-------|
+| Persist Spanish base text instead of fixed catalog | ✅ Yes | DB/runtime/admin models persist plain `industry_type` text. |
+| Keep temporary legacy map | ✅ Yes | Legacy map exists in `model/project_metadata.go`; importer/admin/backfill normalize through the shared helper. |
+| Shared short-text validation at 160 chars | ✅ Yes | Backend constant is `160`; admin input enforces `maxLength={160}`. |
+| Add `industry_type` to localization/public pipeline | ✅ Yes | Included in `TranslatableProjectFieldKeys`, `PUBLIC_CONTENT_FIELDS`, and project/search localization paths. |
+| Search indexes base + localized overlays | ✅ Yes | Migration functions `compose_project_search_doc`, `compose_project_search_trgm`, and `compose_project_embedding_text` include localized overlay text. |
+| Assistant grounding is locale-aware | ✅ Yes | `GetAssistantContextBySlug(..., locale)` overlays localized `name`, `industry_type`, and `final_product` before provider input is built. |
+
+---
+
+### Issues Found
+
+**CRITICAL** (must fix before archive):
+None.
+
+**WARNING** (should fix):
+- Canonical-source tests prove ingestion/normalization, but they still do not assert the stricter scenario that frontmatter and visible `## Metadata` carry the same editorial text when both are present and potentially divergent.
+- Search behavior is proven with localized evidence updates, but assistant locale-aware grounding is still evidenced mainly by structural code plus locale/payload tests, not by a runtime test asserting localized `industry_type` reaches assistant input as translated text.
+
+**SUGGESTION** (nice to have):
+- Add a focused repository/service regression test where `GetAssistantContextBySlug(..., "en")` returns localized `industry_type` (e.g. `industrial automation`) and the assistant service/provider receives that exact value.
+- Add a canonical mismatch regression test that explicitly fails when frontmatter `industry_type` and visible `## Metadata` disagree.
+
+---
+
+### Verdict
+PASS WITH WARNINGS
+
+El cambio ya no presenta gaps críticos in-scope: el build frontend está verde, las pruebas nuevas cubren fallback/backfill/no fuga legacy, y la implementación queda verificable para cierre con solo advertencias menores de profundidad de test.

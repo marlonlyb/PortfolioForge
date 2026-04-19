@@ -1,0 +1,26 @@
+# Tasks: Industry Type Localized Text
+
+## Phase 1: Canonical contract and storage
+
+- [x] 1.1 Update `docs/operacion/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md` and `docs/operacion/PROJECT-RUNTIME-INGESTION-GUIDE.md` so canonical/docs declare `industry_type` as ES editorial text in frontmatter + `## Metadata`, max 160, with legacy-key compatibility notes.
+- [x] 1.2 Create `sqlmigrations/*_industry_type_localized_text.sql` to drop `products_industry_type_ck`, widen `products.industry_type` to `VARCHAR(160)`, migrate legacy keys to approved ES text, and refresh search SQL objects affected by localized overlays.
+- [x] 1.3 Replace `AllowedIndustryTypes` in `model/project_metadata.go` with shared short-text normalization/validation (`max 160`) plus legacy key map; update error strings in `infrastructure/handlers/product.go`.
+
+## Phase 2: Backend contracts and compatibility
+
+- [x] 2.1 Update `infrastructure/casestudy/project_import.go` and `cmd/project_metadata_backfill.go` to normalize legacy keys to ES editorial text before persistence/backfill and reject over-limit values.
+- [x] 2.2 Update `model/project.go`, `infrastructure/postgres/product.go`, `infrastructure/postgres/project.go`, `infrastructure/handlers/product.go`, and `infrastructure/handlers/project.go` so admin/public contracts persist and expose top-level textual `industry_type` without catálogo fijo.
+- [x] 2.3 Extend `model/localization.go` and `infrastructure/localization/service.go` so `industry_type` participates in admin/public localization, translation exports, and locale fallback to `es`.
+
+## Phase 3: Search, assistant, and frontend
+
+- [x] 3.1 Update `infrastructure/postgres/search.go`, `domain/services/search.go`, `infrastructure/handlers/search.go`, and related SQL helpers so search documents/evidence use localized `industry_type` for request `lang`, with `es` fallback.
+- [x] 3.2 Update `domain/services/project_assistant.go`, `infrastructure/projectassistant/openai.go`, and `infrastructure/postgres/project.go` so assistant grounding/payload receives locale-aware `industry_type`.
+- [x] 3.3 Remove catalog helpers from `client/src/shared/lib/projectMetadata.ts`; update `client/src/shared/i18n/config.ts`, `client/src/shared/types/{product,project,search}.ts`, and `client/src/features/admin-products/AdminProductFormPage.tsx` to use free text input (`maxLength=160`) and translatable `industry_type`.
+- [x] 3.4 Update `client/src/features/catalog/CatalogPage.tsx`, `client/src/features/catalog/ProductDetailPage.tsx`, and `client/src/features/search/{SearchResultCard.tsx,matchContext.ts}` to render localized `industry_type` directly from contracts.
+
+## Phase 4: Verification
+
+- [x] 4.1 Add/update backend unit tests for `model/project_metadata.go`, `infrastructure/casestudy/project_import.go`, and `infrastructure/localization/service.go` covering trim/collapse, legacy normalization, 160-char limit, and locale fallback scenarios from spec.
+- [x] 4.2 Add/update integration tests for search/assistant (`infrastructure/postgres/search.go`, `domain/services/project_assistant.go`, `infrastructure/projectassistant/openai_test.go`) validating EN/DE/ES localized recall, evidence, and grounding.
+- [x] 4.3 Add/update frontend tests in `client/src/features/admin-products/AdminProductFormPage.test.tsx`, `client/src/features/landing/LandingPage.catalog-flow.test.tsx`, and relevant catalog/search tests to confirm no select/label mapper remains and localized text renders end-to-end.

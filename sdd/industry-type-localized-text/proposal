@@ -1,0 +1,36 @@
+# Proposal: Industry Type Localized Text
+
+## Problema actual
+`industry_type` sigue siendo una key cerrada en importer, SQL, backend y frontend. Eso impide editarlo como copy real, lo deja fuera del pipeline público de localización y obliga a search/assistant a depender de un catálogo fijo.
+
+## Objetivo funcional
+Convertir `industry_type` en texto editorial corto base en castellano, localizado según el idioma activo de la UI, y usable en catálogo, detalle, búsqueda y assistant sin mantener un catálogo estático.
+
+## Alcance
+### In Scope
+- Reemplazar validación/catálogo fijo por validación de texto corto y ajustar persistencia DB para texto editorial.
+- Incluir `industry_type` en el pipeline de localización pública/admin igual que `final_product`.
+- Actualizar APIs y frontend para renderizar el valor localizado recibido, eliminando `getIndustryTypeLabel` y selects cerrados.
+- Hacer que search y assistant consuman o incorporen el texto localizado por locale en responses, evidencia e indexación/grounding, sin depender de keys legacy.
+
+### Out of Scope
+- Taxonomías nuevas, sinónimos controlados o catálogo híbrido.
+- Traducción automática histórica perfecta de todos los registros legacy más allá de una migración/backfill razonable.
+
+## Enfoque técnico resumido
+Mantener `products.industry_type` como fuente base en castellano, ampliar longitud/constraints para texto corto y sumarlo a `TranslatableProjectFieldKeys`/`PUBLIC_CONTENT_FIELDS`. Canonical, admin y backfill pasarán a tratarlo como texto editorial. Search deberá indexar también la variante localizada que corresponda al locale consultado; assistant deberá recibir el `industry_type` ya localizado en su contexto público.
+
+## Riesgos
+| Riesgo | Mitigación |
+|---|---|
+| Pérdida de recall multilenguaje | Reindexar search con valor localizado y validar queries EN/DE/ES. |
+| Datos legacy con keys antiguas | Backfill de normalización y compatibilidad temporal en import/admin. |
+| Copy supera longitud actual | Elevar límite DB y cubrir tests de borde. |
+
+## Rollback
+Revertir migración/validaciones/UI al catálogo fijo previo y restaurar indexación/grounding basada en key si el despliegue degrada búsqueda o assistant.
+
+## Success Criteria
+- [ ] `industry_type` se crea y edita como texto libre corto en castellano.
+- [ ] Catálogo, detalle y respuestas públicas muestran la variante localizada activa.
+- [ ] Search y assistant usan el valor textual localizado sin catálogo fijo.

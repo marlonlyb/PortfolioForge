@@ -1,0 +1,76 @@
+# Design: Industry Type Localized Text
+
+## Technical Approach
+
+`industry_type` dejará de ser una key cerrada y pasará a ser copy editorial corto base en castellano (`products.industry_type`). El backend seguirá usando español como fuente canónica, la capa de localización lo tratará igual que `final_product`, y search/assistant consumirán texto ya localizado cuando el request tenga `lang != es`.
+
+## Architecture Decisions
+
+| Decision | Choice | Alternatives considered | Rationale |
+|---|---|---|---|
+| Persistencia base | Mantener `products.industry_type` como texto corto en español y eliminar catálogo/check fijo | Tabla taxonomy nueva; guardar key + label | Minimiza cambio de modelo y mantiene la regla actual del repo: DB runtime resumida + localización derivada desde `es`. |
+| Compatibilidad legacy | Introducir un mapa temporal `legacy key -> copy editorial ES` en importer/backfill/admin validation | Cortar compatibilidad de golpe; conservar keys indefinidamente | Permite migrar `metalworking`→`metalurgia`, etc., sin romper canonicals o payloads viejos, pero evita perpetuar el catálogo. |
+| Longitud/validación | Reemplazar `ValidateIndustryType` por normalización de texto corto (`trim + collapse spaces`) con límite explícito compartido en Go/SQL/UI | Texto libre sin límite; seguir con `VARCHAR(64)` | `64` ya no alcanza para copy editorial; un límite corto evita abuso y mantiene usabilidad en catálogo/search. |
+| Localización pública | Añadir `industry_type` a `model.TranslatableProjectFieldKeys`, `PUBLIC_CONTENT_FIELDS` y `applyLocalized*` | Resolver solo en frontend con diccionario | El valor debe viajar localizado desde API, igual que `final_product`, y quedar disponible para search evidence y assistant grounding. |
+| Search multilenguaje | Indexar base `es` + overlays localizados por locale en `project_search_documents` | Solo localizar display; documentos separados por locale | Hoy `lang` solo cambia render. Para recall en EN/DE/CA se necesita que FTS/trgm vean también variantes traducidas, sin duplicar entidades de proyecto. |
+| Assistant grounding | Resolver contexto público locale-aware antes de construir `ProjectAssistantAnswerInput` | Seguir pasando `industry_type` base siempre en español | El assistant ya fuerza idioma de salida; si además recibe facts localizados reduce mezcla de idiomas en grounding corto. |
+
+## Data Flow
+
+Canonical/importer (`es`) → normalización (`texto libre` o `legacy key -> copy ES`) → `products.industry_type` texto corto → localization backfill/manual overrides → API pública/admin localized projection → search/assistant locale-aware.
+
+Para search:
+
+`products/project_profiles + localizations(locale)` → compose search text/doc → `project_search_documents` → query con `lang` → resultados + evidence localizados.
+
+## File Changes
+
+| File | Action | Description |
+|---|---|---|
+| `sqlmigrations/*_industry_type_localized_text.sql` | Create | Quitar `products_industry_type_ck`, ampliar `industry_type`, y recomponer funciones de search con overlays localizados. |
+| `model/project_metadata.go` | Modify | Sustituir catálogo `AllowedIndustryTypes` por validación de texto corto reutilizable. |
+| `infrastructure/handlers/product.go` | Modify | Cambiar mensajes/errores de `industry_type` a “texto corto”. |
+| `infrastructure/casestudy/project_import.go` | Modify | Importar `industry_type` como texto editorial normalizado; aceptar keys legacy solo durante ventana de compatibilidad. |
+| `cmd/project_metadata_backfill.go` | Modify | Mantener backfill desde canonical y regenerar localizaciones/search con texto libre. |
+| `model/localization.go` + `infrastructure/localization/service.go` | Modify | Incluir `industry_type` en base/admin/public/search localization. |
+| `infrastructure/postgres/search.go` | Modify | Incorporar variante localizada en indexación/consulta. |
+| `infrastructure/postgres/project.go` + assistant stack | Modify | Resolver `industry_type` localizado para respuestas públicas y grounding del assistant. |
+| `client/src/shared/lib/projectMetadata.ts` | Modify/Delete | Eliminar catálogo y `getIndustryTypeLabel`; usar texto recibido. |
+| `client/src/shared/i18n/config.ts` + admin/catalog/search pages/tests | Modify | Añadir `industry_type` al pipeline de traducción y reemplazar `<select>` por `<input maxLength={N}>`. |
+| `docs/operacion/*.md` | Modify | Quitar referencias al catálogo cerrado y documentar texto base + localización. |
+
+## Interfaces / Contracts
+
+```go
+const IndustryTypeMaxLength = 120
+
+func NormalizeShortEditorialText(value string) string
+func NormalizeIndustryTypeInput(value string) string // aplica mapa legacy -> copy ES
+func ValidateIndustryType(value string) error // required in canonical/import, optional in admin CRUD
+```
+
+Search contract: `GET /api/v1/public/search?lang=en` debe usar `lang` tanto para localizar payload como para consultar/indexar `industry_type`/`final_product` traducidos si existen; fallback a `es` cuando no exista override.
+
+## Testing Strategy
+
+| Layer | What to Test | Approach |
+|---|---|---|
+| Unit | Validación/normalización de `industry_type` textual | Tests en `model/project_metadata.go` con trim, longitud y rechazo de vacío en importer. |
+| Unit | Localization pipeline | Extender `BuildProjectFieldMap`, `LocalizeProject`, `LocalizeSearchResults` y admin translations para `industry_type`. |
+| Unit | Importer/canonical | Acepta texto libre y deja de exigir key cerrada. |
+| Integration | Search SQL/reembed | Verificar que `industry_type` base y EN traducido aparecen en `search_document/search_trgm` tras refresh. |
+| Integration | Assistant provider | Payload incluye `industry_type` textual localizado según `lang`. |
+| Frontend | Admin/catalog/detail/search | Input libre, render directo del texto localizado, sin `getIndustryTypeLabel`. |
+
+## Migration / Rollout
+
+1. Crear migración que elimine el check y eleve `products.industry_type` a `VARCHAR(120)`.
+2. Actualizar runtime/importer/docs para producir texto editorial en `es`.
+3. Añadir `industry_type` al pipeline de localización y ejecutar smoke `localization-backfill` sobre un proyecto.
+4. Reindexar/reembed (`reembed-stale`) porque cambia la composición del search doc.
+5. Validar búsquedas ES/EN/DE y un prompt del assistant por locale.
+
+## Open Questions
+
+- [ ] Confirmar si `120` es suficiente o si conviene `160` para alinear con `final_product`.
+- [ ] Definir si la recomposición de search leerá localizaciones inline en SQL o mediante helper Go previo al refresh.

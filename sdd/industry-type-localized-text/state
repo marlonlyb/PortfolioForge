@@ -1,0 +1,17 @@
+# SDD State: industry-type-localized-text
+
+- change: `industry-type-localized-text`
+- phase: `verify`
+- status: `completed`
+- artifact: `sdd/industry-type-localized-text/verify-report`
+- summary: `Re-verify completado con PASS WITH WARNINGS: build frontend verde, tests Go y frontend relevantes en verde, y cobertura explícita para fallback locale, backfill legacy y ausencia de fuga legacy en contrato público. No quedan gaps críticos in-scope.`
+- recommended_next: `sdd-archive`
+- resolved_decisions:
+  - `industry_type` deja de ser key controlada y pasa a texto editorial corto base en castellano.
+  - `industry_type` entra al pipeline de localización pública/admin como `final_product`.
+  - `Search y assistant deben usar o incorporar el valor textual localizado sin catálogo fijo.`
+  - `Los valores legacy deben normalizarse temporalmente a copy editorial ES antes de persistir.`
+  - `industry_type` usa un máximo definitivo de `160` caracteres.`
+  - `Search debe incorporar base ES y overlays localizados para sostener recall multilenguaje.`
+- open_decisions:
+  - `Solo quedan mejoras opcionales de profundidad de tests para assistant locale-aware y consistencia estricta entre frontmatter y Metadata.`

@@ -1,0 +1,31 @@
+# Apply Progress: industry-type-localized-text
+
+- status: `completed`
+- mode: `standard`
+- completed_tasks:
+  - `1.1` canonical/docs actualizados para industry_type textual ES en frontmatter + Metadata.
+  - `1.2` migración SQL actualizada para VARCHAR(160), normalización legacy y overlays localizados en search docs.
+  - `1.3` validación compartida reemplazada por texto editorial corto con mapa legacy.
+  - `2.1` importer y backfill normalizan keys legacy a copy ES antes de persistir.
+  - `2.2` contratos admin/públicos/runtime exponen industry_type textual top-level.
+  - `2.3` industry_type entra al pipeline de localización pública/admin con fallback a `es`.
+  - `3.1` search usa industry_type/final_product textuales y evidencia localizada visible.
+  - `3.2` assistant recibe industry_type/final_product locale-aware en grounding.
+  - `3.3` admin elimina select fijo y usa input textual (`maxLength=160`).
+  - `3.4` catálogo, detalle y search renderizan industry_type localizado desde contrato.
+  - `4.1` tests backend añadidos/ajustados para normalización, límite y fallback.
+  - `4.2` tests search/assistant ajustados al nuevo contrato textual.
+  - `4.3` tests frontend actualizados para input libre y render textual end-to-end.
+- deviations_from_design: `Ninguna material; search incorpora overlays localizados directamente en SQL mediante helper agregado a las funciones compose_*.`
+- tests:
+  - `go test ./infrastructure/localization -run TestLocalizeProjectFallsBackToSpanishIndustryTypeWhenLocalizationMissing`
+  - `go test ./cmd -run TestProcessActiveProjectMetadataRow`
+  - `go test ./infrastructure/handlers -run TestProjectPublicGetBySlugFallsBackToSpanishIndustryTypeWithoutLegacyLeak`
+  - `npm --prefix client test -- src/features/catalog/CatalogPage.test.tsx`
+  - `npm --prefix client run build`
+- remaining_tasks: `none`
+- gap_closure:
+  - `CatalogPage.tsx ya no declara parámetros locale no usados; el build vuelve a pasar.`
+  - `Existe prueba explícita de fallback de industry_type a la base ES cuando falta la localización solicitada.`
+  - `Existe prueba explícita de backfill forzado que reescribe valores legacy a copy editorial ES y dispara localización + refresh search.`
+  - `Existe prueba explícita de contrato público sin fuga de legacy keys al responder industry_type.`

@@ -1,0 +1,63 @@
+# Delta for project-metadata-and-localization
+
+## MODIFIED Requirements
+
+### Requirement: Industry Type Editorial Source
+The system MUST treat `industry_type` as short editorial source text in Spanish, not as a fixed catalog key. Canonical markdown MUST declare it in frontmatter and in visible `## Metadata`, and top-level persistence/admin-public contracts SHALL keep `industry_type` as text.
+
+#### Scenario: Canonical source publishes editorial industry type
+- GIVEN a case study canonical markdown in Spanish
+- WHEN it is considered valid for ingestion
+- THEN `industry_type` appears in frontmatter and in `## Metadata`
+- AND both representations express the same short editorial Spanish text
+
+#### Scenario: Contracts expose persisted text
+- GIVEN an imported or admin-edited project
+- WHEN admin or public APIs return the project
+- THEN `industry_type` is present as top-level textual data
+- AND consumers do not need a fixed option catalog to interpret it
+
+### Requirement: Public Localization of Industry Type
+The system MUST include `industry_type` in the same public localization pipeline used for short editorial copy. For `es`, the stored Spanish base SHALL be returned; for other supported locales, public responses SHALL return the localized value for the active locale, falling back to the Spanish base when no localized variant exists.
+
+#### Scenario: Active locale returns localized industry type
+- GIVEN a project with Spanish base text and an English localization for `industry_type`
+- WHEN a public catalog, detail, search, or assistant request is made with locale `en`
+- THEN the response contains the English `industry_type`
+- AND the Spanish base remains the canonical stored source
+
+#### Scenario: Missing localization falls back safely
+- GIVEN a project without a German localization for `industry_type`
+- WHEN the public locale is `de`
+- THEN the response uses the persisted Spanish base text
+- AND the field remains non-empty if the base value exists
+
+### Requirement: UI, Search, and Assistant Use Textual Value
+Catalog, detail, search, and admin UI MUST render the textual `industry_type` received from contracts, and admin editing SHALL use free short-text input instead of a fixed select. Search and assistant MUST consider the textual value used for the active locale so evidence, recall, and grounding no longer depend on legacy keys.
+
+#### Scenario: UI removes fixed catalog dependency
+- GIVEN an admin user editing a project with `industry_type: "automatización industrial"`
+- WHEN the field is displayed in admin, catalog, or detail UI
+- THEN the UI shows that textual value directly
+- AND no fixed select or label mapper is required to render it
+
+#### Scenario: Search and assistant use localized text
+- GIVEN a project localized to `en` with `industry_type: "industrial automation"`
+- WHEN a user searches or asks the assistant in English about industrial automation work
+- THEN matching, evidence, or grounding may use that localized industry text
+- AND results do not require the legacy key `metalworking` or similar to be discoverable
+
+### Requirement: Legacy Compatibility and Migration
+The system MUST provide backward-compatible migration for legacy catalog values already persisted or still present in canonical/admin inputs. Legacy keys SHALL be normalized to their editorial Spanish equivalents during migration/backfill, and compatibility MAY remain temporarily for ingestion or admin updates until repository data is normalized.
+
+#### Scenario: Legacy persisted key is migrated
+- GIVEN an existing project stored with legacy `industry_type: "metalworking"`
+- WHEN the migration/backfill runs
+- THEN the persisted base value becomes the approved Spanish editorial text
+- AND public/admin contracts stop exposing the raw legacy key for migrated records
+
+#### Scenario: Transitional compatibility accepts legacy input
+- GIVEN a legacy canonical source or admin payload still sending a catalog key
+- WHEN the system ingests it during the compatibility window
+- THEN the value is normalized to the Spanish editorial base text before persistence
+- AND validation rejects unknown legacy-or-text values that exceed the short-text rules
