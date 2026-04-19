@@ -18,7 +18,8 @@ Este directorio separa tres niveles de documentación para no mezclar producto, 
 - `docs/operacion/README.md`
   - índice operativo oficial;
   - define el orden de uso de los runbooks vigentes;
-  - deja explícito que README fuera de `docs/` puede estar desactualizado.
+  - deja explícito que README fuera de `docs/` puede estar desactualizado;
+  - documenta también el tooling operador de OpenCode que envuelve el flujo canonical-first sin cambiarlo.
 - `docs/operacion/CANONICAL-PROJECT-MARKDOWN-AGENT-GUIDE.md`
   - guía auxiliar para generar o actualizar el markdown canónico en la carpeta estudiada original.
 - `docs/operacion/PROJECT-RUNTIME-INGESTION-GUIDE.md`
@@ -100,3 +101,17 @@ Regla explícita de ese flujo:
 
 - si todavía no existe `source_markdown_url`, el runtime/UI debe detenerse;
 - la UI no arranca desde un archivo local, sino desde la URL ya publicada.
+
+## Tooling operador de OpenCode
+
+Para este workflow existen comandos globales de OpenCode que pueden ejecutarse **desde el repo PortfolioForge** para reutilizar la documentación de `docs/` como fuente de verdad:
+
+- `/pf-canonical-create <directory>`
+- `/pf-ui-create <source_markdown_url>`
+- `/pf-ui-update <source_markdown_url>`
+
+Estos comandos no son features del producto. Son wrappers operativos del flujo ya documentado:
+
+- `/pf-canonical-create` cubre solo la etapa canonical/editorial;
+- `/pf-ui-create` y `/pf-ui-update` empiezan desde `source_markdown_url`, nunca desde un archivo local;
+- FTPS / `publish_canonical` permanece como ruta legacy/opcional, no como happy path.

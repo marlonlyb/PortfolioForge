@@ -24,6 +24,22 @@ Nota para contribuidores nuevos:
 - readiness, refresh y re-embed de búsqueda;
 - troubleshooting operativo.
 
+## Tooling operador de OpenCode
+
+Además de los runbooks, este repo puede operarse con comandos globales de OpenCode ejecutados **desde PortfolioForge** para que reutilicen `docs/` como fuente de verdad:
+
+- `/pf-canonical-create <directory>`
+- `/pf-ui-create <source_markdown_url>`
+- `/pf-ui-update <source_markdown_url>`
+
+Interpretación correcta:
+
+- no son capacidades del producto ni endpoints de la aplicación;
+- son wrappers de conveniencia sobre el workflow canonical-first ya documentado;
+- `/pf-canonical-create` cubre solo la etapa canonical/editorial;
+- `/pf-ui-create` y `/pf-ui-update` arrancan siempre desde la URL remota publicada, nunca desde un archivo local;
+- `publish_canonical` / FTPS sigue siendo tooling legacy/opcional de compatibilidad.
+
 ## Índice de runbooks
 
 1. [`01-setup-local.md`](./01-setup-local.md)

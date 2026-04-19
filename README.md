@@ -198,6 +198,13 @@ Regla crítica de ese flujo:
 - si todavía no existe `source_markdown_url`, el operador debe detenerse antes de crear o actualizar runtime/UI;
 - la UI/runtime no parte de un archivo local, sino de la URL ya publicada.
 
+Tooling opcional para operadores OpenCode:
+
+- desde este repo pueden usarse los comandos globales `/pf-canonical-create <directory>`, `/pf-ui-create <source_markdown_url>` y `/pf-ui-update <source_markdown_url>` como wrappers del flujo documentado en `docs/`;
+- `/pf-canonical-create` cubre solo el paso editorial/canonical;
+- `/pf-ui-create` y `/pf-ui-update` arrancan siempre desde `source_markdown_url`, nunca desde un archivo local;
+- `publish_canonical`/FTPS sigue siendo una ruta legacy/opcional, no el camino principal de estos comandos.
+
 ### Reconstrucción desde cero
 
 - `docs/reconstruccion-desde-cero/README.md`
