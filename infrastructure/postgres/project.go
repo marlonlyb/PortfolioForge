@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -35,6 +36,7 @@ func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (model.Pr
 		SELECT p.id, p.name,
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
 			p.description, p.category, COALESCE(NULLIF(p.client_name, ''), p.brand, '') AS client_name,
+			COALESCE(p.industry_type, '') AS industry_type, COALESCE(p.final_product, '') AS final_product,
 			p.active, COALESCE(p.source_markdown_url, '') AS source_markdown_url, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
 			COALESCE(pp.business_goal, ''), COALESCE(pp.problem_statement, ''),
 			COALESCE(pp.solution_summary, ''), COALESCE(pp.delivery_scope, ''), COALESCE(pp.responsibility_scope, ''), COALESCE(pp.architecture, ''),
@@ -45,7 +47,7 @@ func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (model.Pr
 		FROM products p
 		LEFT JOIN project_profiles pp ON pp.project_id = p.id
 		WHERE p.id = $1`, id).Scan(
-		&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName,
+		&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName, &p.IndustryType, &p.FinalProduct,
 		&p.Active, &sourceMarkdownURL, &p.Images, &p.CreatedAt, &p.UpdatedAt,
 		&profile.BusinessGoal, &profile.ProblemStatement,
 		&profile.SolutionSummary, &profile.DeliveryScope, &profile.ResponsibilityScope, &profile.Architecture,
@@ -95,6 +97,7 @@ func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (model.P
 		SELECT p.id, p.name,
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
 			p.description, p.category, COALESCE(NULLIF(p.client_name, ''), p.brand, '') AS client_name,
+			COALESCE(p.industry_type, '') AS industry_type, COALESCE(p.final_product, '') AS final_product,
 			p.active, COALESCE(p.source_markdown_url, '') AS source_markdown_url, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at,
 			COALESCE(pp.business_goal, ''), COALESCE(pp.problem_statement, ''),
 			COALESCE(pp.solution_summary, ''), COALESCE(pp.delivery_scope, ''), COALESCE(pp.responsibility_scope, ''), COALESCE(pp.architecture, ''),
@@ -105,7 +108,7 @@ func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (model.P
 		FROM products p
 		LEFT JOIN project_profiles pp ON pp.project_id = p.id
 		WHERE p.slug = $1 AND p.active = TRUE`, slug).Scan(
-		&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName,
+		&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName, &p.IndustryType, &p.FinalProduct,
 		&p.Active, &sourceMarkdownURL, &p.Images, &p.CreatedAt, &p.UpdatedAt,
 		&profile.BusinessGoal, &profile.ProblemStatement,
 		&profile.SolutionSummary, &profile.DeliveryScope, &profile.ResponsibilityScope, &profile.Architecture,
@@ -147,6 +150,7 @@ func (r *ProjectRepository) ListPublished(ctx context.Context) ([]model.Project,
 		SELECT p.id, p.name,
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
 			p.description, p.category, COALESCE(NULLIF(p.client_name, ''), p.brand, '') AS client_name,
+			COALESCE(p.industry_type, '') AS industry_type, COALESCE(p.final_product, '') AS final_product,
 			p.active, COALESCE(p.source_markdown_url, '') AS source_markdown_url, p.images, p.created_at, COALESCE(p.updated_at, 0) AS updated_at
 		FROM products p
 		WHERE p.active = TRUE
@@ -161,7 +165,7 @@ func (r *ProjectRepository) ListPublished(ctx context.Context) ([]model.Project,
 		var p model.Project
 		var sourceMarkdownURL string
 		if err := rows.Scan(
-			&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName,
+			&p.ID, &p.Name, &p.Slug, &p.Description, &p.Category, &p.ClientName, &p.IndustryType, &p.FinalProduct,
 			&p.Active, &sourceMarkdownURL, &p.Images, &p.CreatedAt, &p.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("postgres.ProjectRepository.ListPublished scan: %w", err)
@@ -197,21 +201,57 @@ func (r *ProjectRepository) GetTechnologiesByProjectID(ctx context.Context, proj
 	return r.fetchTechnologies(ctx, projectID)
 }
 
-func (r *ProjectRepository) GetAssistantContextBySlug(ctx context.Context, slug string) (model.ProjectAssistantContext, error) {
+func (r *ProjectRepository) GetAssistantContextBySlug(ctx context.Context, slug string, locale string) (model.ProjectAssistantContext, error) {
 	var project model.ProjectAssistantContext
 	err := r.db.QueryRow(ctx, `
 		SELECT p.id,
 			COALESCE(NULLIF(p.name, ''), p.product_name) AS name,
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
 			p.active,
-			COALESCE(p.source_markdown_url, '') AS source_markdown_url
+			COALESCE(p.source_markdown_url, '') AS source_markdown_url,
+			COALESCE(p.industry_type, '') AS industry_type,
+			COALESCE(p.final_product, '') AS final_product
 		FROM products p
 		WHERE COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) = $1`, slug,
-	).Scan(&project.ID, &project.Name, &project.Slug, &project.Active, &project.SourceMarkdownURL)
+	).Scan(&project.ID, &project.Name, &project.Slug, &project.Active, &project.SourceMarkdownURL, &project.IndustryType, &project.FinalProduct)
 	if err != nil {
 		return model.ProjectAssistantContext{}, fmt.Errorf("postgres.ProjectRepository.GetAssistantContextBySlug: %w", err)
 	}
 	project.SourceMarkdownURL = markdownpolicy.SanitizeSourceURL(project.SourceMarkdownURL)
+	locale = strings.ToLower(strings.TrimSpace(locale))
+	if locale != "" && locale != model.LocaleES {
+		rows, err := r.db.Query(ctx, `
+			SELECT field_key, value
+			FROM project_localizations
+			WHERE project_id = $1 AND locale = $2 AND field_key = ANY($3)
+			ORDER BY field_key`, project.ID, locale, []string{"name", "industry_type", "final_product"})
+		if err != nil {
+			return model.ProjectAssistantContext{}, fmt.Errorf("postgres.ProjectRepository.GetAssistantContextBySlug localizations: %w", err)
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var fieldKey string
+			var raw json.RawMessage
+			if err := rows.Scan(&fieldKey, &raw); err != nil {
+				return model.ProjectAssistantContext{}, fmt.Errorf("postgres.ProjectRepository.GetAssistantContextBySlug scan localization: %w", err)
+			}
+			var text string
+			if err := json.Unmarshal(raw, &text); err != nil || strings.TrimSpace(text) == "" {
+				continue
+			}
+			switch fieldKey {
+			case "name":
+				project.Name = strings.TrimSpace(text)
+			case "industry_type":
+				project.IndustryType = strings.TrimSpace(text)
+			case "final_product":
+				project.FinalProduct = strings.TrimSpace(text)
+			}
+		}
+		if err := rows.Err(); err != nil {
+			return model.ProjectAssistantContext{}, fmt.Errorf("postgres.ProjectRepository.GetAssistantContextBySlug rows localization: %w", err)
+		}
+	}
 
 	return project, nil
 }

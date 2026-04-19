@@ -58,6 +58,8 @@ func (r *SearchRepository) listAllPublished(ctx context.Context, params model.Se
 			&project.Description,
 			&project.Category,
 			&project.ClientName,
+			&project.IndustryType,
+			&project.FinalProduct,
 			&project.Images,
 			&solutionSummary,
 		); err != nil {
@@ -93,6 +95,8 @@ func (r *SearchRepository) buildListAllPublishedQuery(params model.SearchParams)
 			COALESCE(p.description, '') AS description,
 			COALESCE(p.category, '') AS category,
 			COALESCE(NULLIF(p.client_name, ''), p.brand, '') AS client_name,
+			COALESCE(p.industry_type, '') AS industry_type,
+			COALESCE(p.final_product, '') AS final_product,
 			COALESCE(p.images, '[]'::jsonb) AS images,
 			COALESCE(pp.solution_summary, '') AS solution_summary
 		FROM products p
@@ -120,6 +124,8 @@ func (r *SearchRepository) searchWithQuery(ctx context.Context, params model.Sea
 			description     string
 			category        string
 			clientName      string
+			industryType    string
+			finalProduct    string
 			images          json.RawMessage
 			solutionSummary string
 			lexicalScore    float64
@@ -134,6 +140,8 @@ func (r *SearchRepository) searchWithQuery(ctx context.Context, params model.Sea
 			&description,
 			&category,
 			&clientName,
+			&industryType,
+			&finalProduct,
 			&images,
 			&solutionSummary,
 			&lexicalScore,
@@ -145,16 +153,18 @@ func (r *SearchRepository) searchWithQuery(ctx context.Context, params model.Sea
 
 		results = append(results, model.SearchResult{
 			Project: model.Project{
-				ID:          projectID,
-				Name:        name,
-				Slug:        slug,
-				Description: description,
-				Category:    category,
-				ClientName:  clientName,
-				Images:      images,
-				Active:      true,
-				Status:      "published",
-				Profile:     buildSearchProfile(projectID, solutionSummary),
+				ID:           projectID,
+				Name:         name,
+				Slug:         slug,
+				Description:  description,
+				Category:     category,
+				ClientName:   clientName,
+				IndustryType: industryType,
+				FinalProduct: finalProduct,
+				Images:       images,
+				Active:       true,
+				Status:       "published",
+				Profile:      buildSearchProfile(projectID, solutionSummary),
 			},
 			LexicalScore:  lexicalScore,
 			FuzzyScore:    fuzzyScore,
@@ -224,6 +234,8 @@ SELECT p.id,
     COALESCE(p.description, '') AS description,
     COALESCE(p.category, '') AS category,
     COALESCE(NULLIF(p.client_name, ''), p.brand, '') AS client_name,
+    COALESCE(p.industry_type, '') AS industry_type,
+    COALESCE(p.final_product, '') AS final_product,
     COALESCE(p.images, '[]'::jsonb) AS images,
     COALESCE(pp.solution_summary, '') AS solution_summary,
     COALESCE(l.lexical_score, 0) AS lexical_score,

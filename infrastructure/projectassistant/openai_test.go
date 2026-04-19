@@ -102,9 +102,11 @@ func TestBuildAssistantUserPayloadReinforcesSelectedLocaleAndIncludesSections(t 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			payload := buildAssistantUserPayload(services.ProjectAssistantAnswerInput{
-				ProjectName: "PortfolioForge",
-				Language:    tt.language,
-				Question:    tt.question,
+				ProjectName:  "PortfolioForge",
+				IndustryType: "metalworking",
+				FinalProduct: "Operator HMI panel",
+				Language:     tt.language,
+				Question:     tt.question,
 				Sections: []services.MarkdownChunkAlias{
 					{Heading: "Deployment", Body: "Uses CI jobs and release gates."},
 					{Heading: "Observability", Body: "Alerts and dashboards are configured."},
@@ -114,6 +116,7 @@ func TestBuildAssistantUserPayloadReinforcesSelectedLocaleAndIncludesSections(t 
 			for _, fragment := range []string{
 				tt.wantInstruction,
 				"Project: PortfolioForge",
+				"Known project facts:\n- Industry type: metalworking\n- Final product: Operator HMI panel",
 				"Question: " + tt.question,
 				"Relevant markdown sections:",
 				"## Deployment\nUses CI jobs and release gates.",
@@ -151,9 +154,11 @@ func TestGenerateAnswerBuildsBoundedChatRequestForEachLocale(t *testing.T) {
 			provider := &OpenAIProvider{client: client}
 
 			input := services.ProjectAssistantAnswerInput{
-				ProjectName: "PortfolioForge",
-				Language:    tt.language,
-				Question:    tt.question,
+				ProjectName:  "PortfolioForge",
+				IndustryType: "metalworking",
+				FinalProduct: "Operator HMI panel",
+				Language:     tt.language,
+				Question:     tt.question,
 				History: []model.ProjectAssistantMessage{
 					{Role: "user", Content: "Previous question"},
 					{Role: "assistant", Content: "Previous answer"},
@@ -205,6 +210,7 @@ func TestGenerateAnswerBuildsBoundedChatRequestForEachLocale(t *testing.T) {
 			for _, fragment := range []string{
 				tt.wantPayloadInstruction,
 				"Project: PortfolioForge",
+				"Known project facts:\n- Industry type: metalworking\n- Final product: Operator HMI panel",
 				"Question: " + tt.question,
 				"## Deployment\nUses CI jobs and release gates.",
 				"## Observability\nAlerts and dashboards are configured.",

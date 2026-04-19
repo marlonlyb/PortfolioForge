@@ -15,6 +15,8 @@ type AdminProjectWrite struct {
 	Description       string                     `json:"description"`
 	Category          string                     `json:"category"`
 	ClientName        string                     `json:"client_name,omitempty"`
+	IndustryType      string                     `json:"industry_type,omitempty"`
+	FinalProduct      string                     `json:"final_product,omitempty"`
 	SourceMarkdownURL string                     `json:"source_markdown_url,omitempty"`
 	Active            *bool                      `json:"active"`
 	Images            json.RawMessage            `json:"images"`
@@ -98,6 +100,8 @@ type AdminProject struct {
 	Description       string                `json:"description"`
 	Category          string                `json:"category"`
 	ClientName        string                `json:"client_name,omitempty"`
+	IndustryType      string                `json:"industry_type,omitempty"`
+	FinalProduct      string                `json:"final_product,omitempty"`
 	Brand             string                `json:"brand,omitempty"`
 	SourceMarkdownURL string                `json:"source_markdown_url,omitempty"`
 	Images            []string              `json:"images"`
@@ -134,6 +138,8 @@ func (p *AdminProjectWrite) Normalize() {
 	p.Name = strings.TrimSpace(p.Name)
 	p.Category = strings.TrimSpace(p.Category)
 	p.ClientName = strings.TrimSpace(p.ClientName)
+	p.IndustryType = NormalizeIndustryTypeKey(p.IndustryType)
+	p.FinalProduct = NormalizeFinalProduct(p.FinalProduct)
 	p.SourceMarkdownURL = strings.TrimSpace(p.SourceMarkdownURL)
 }
 
@@ -155,7 +161,7 @@ func (p AdminProjectWrite) ToLegacyProduct(defaultActive bool) *Product {
 		CreatedAt:         p.CreatedAt,
 		UpdatedAt:         p.UpdatedAt,
 	}
-	legacy.SetStoreFields(p.Name, p.Category, p.ClientName, p.ResolveActive(defaultActive))
+	legacy.SetStoreFields(p.Name, p.Category, p.IndustryType, p.FinalProduct, p.ClientName, p.ResolveActive(defaultActive))
 	return legacy
 }
 
@@ -196,6 +202,8 @@ func AdminProjectFromStoreProduct(store StoreProduct) AdminProject {
 		Description:       store.Description,
 		Category:          store.Category,
 		ClientName:        store.Brand,
+		IndustryType:      store.IndustryType,
+		FinalProduct:      store.FinalProduct,
 		Brand:             store.Brand,
 		SourceMarkdownURL: store.SourceMarkdownURL,
 		Images:            store.Images,
@@ -230,6 +238,8 @@ func (p AdminProject) ToProject() Project {
 		Description:  p.Description,
 		Category:     p.Category,
 		ClientName:   p.ClientName,
+		IndustryType: p.IndustryType,
+		FinalProduct: p.FinalProduct,
 		Active:       p.Active,
 		Images:       images,
 		Profile:      p.Profile,

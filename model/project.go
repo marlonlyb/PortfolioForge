@@ -13,6 +13,8 @@ type Project struct {
 	Description        string          `json:"description"`
 	Category           string          `json:"category"`
 	ClientName         string          `json:"client_name,omitempty"`
+	IndustryType       string          `json:"industry_type,omitempty"`
+	FinalProduct       string          `json:"final_product,omitempty"`
 	Status             string          `json:"status"` // draft|published|archived
 	Featured           bool            `json:"featured"`
 	Active             bool            `json:"active"`

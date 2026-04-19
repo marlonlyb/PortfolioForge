@@ -59,7 +59,7 @@ func (s *stubPublicProjectRepo) ListPublished(context.Context) ([]model.Project,
 func (s *stubPublicProjectRepo) GetTechnologiesByProjectID(context.Context, uuid.UUID) ([]model.Technology, error) {
 	return nil, nil
 }
-func (s *stubPublicProjectRepo) GetAssistantContextBySlug(context.Context, string) (model.ProjectAssistantContext, error) {
+func (s *stubPublicProjectRepo) GetAssistantContextBySlug(context.Context, string, string) (model.ProjectAssistantContext, error) {
 	return model.ProjectAssistantContext{}, nil
 }
 
@@ -308,5 +308,50 @@ func TestProjectPublicListPublishedFallsBackToSpanishClientName(t *testing.T) {
 	}
 	if body.Data.Items[0]["client_name"] != "Cliente base" {
 		t.Fatalf("client_name fallback = %#v", body.Data.Items[0]["client_name"])
+	}
+}
+
+func TestProjectPublicGetBySlugFallsBackToSpanishIndustryTypeWithoutLegacyLeak(t *testing.T) {
+	projectID := uuid.New()
+	handler := NewProjectPublic(
+		services.NewProject(&stubPublicProjectRepo{project: model.Project{
+			ID:           projectID,
+			Name:         "PortfolioForge",
+			Slug:         "portfolioforge",
+			Description:  "Proyecto original",
+			Category:     "platform",
+			IndustryType: "metalurgia",
+			Status:       "published",
+			Active:       true,
+		}}),
+		localization.NewService(&stubProjectLocalizationRepo{rowsByProject: map[uuid.UUID][]model.ProjectLocalization{
+			projectID: {
+				{ProjectID: projectID, Locale: model.LocaleEN, FieldKey: "industry_type", Value: json.RawMessage(`"industrial automation"`)},
+			},
+		}}, nil),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/public/projects/portfolioforge?lang=de", nil)
+	rec := httptest.NewRecorder()
+	e := echo.New()
+	c := e.NewContext(req, rec)
+	c.SetPath("/api/v1/public/projects/:slug")
+	c.SetParamNames("slug")
+	c.SetParamValues("portfolioforge")
+
+	if err := handler.GetBySlug(c); err != nil {
+		t.Fatalf("GetBySlug() error = %v", err)
+	}
+
+	var body map[string]map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	data := body["data"]
+	if data["industry_type"] != "metalurgia" {
+		t.Fatalf("industry_type fallback = %#v", data["industry_type"])
+	}
+	if data["industry_type"] == "metalworking" {
+		t.Fatal("legacy industry_type leaked in public response")
 	}
 }

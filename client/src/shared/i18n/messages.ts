@@ -3,6 +3,7 @@ import type { PublicLocale } from './config';
 export interface LandingQuickPrompt {
   label: string;
   query: string;
+  color?: string;
 }
 
 interface Messages {
@@ -58,6 +59,8 @@ interface Messages {
   detailProjectOverview: string;
   detailCategory: string;
   detailClient: string;
+  detailIndustryType: string;
+  detailFinalProduct: string;
   detailUpdated: string;
   detailTechnologies: string;
   detailIndependent: string;
@@ -124,6 +127,8 @@ interface Messages {
   searchEvidenceFieldDescription: string;
   searchEvidenceFieldClient: string;
   searchEvidenceFieldCategory: string;
+  searchEvidenceFieldIndustry: string;
+  searchEvidenceFieldFinalProduct: string;
   searchEvidenceFieldTechnology: string;
   searchEvidenceFieldTechnologies: string;
   searchEvidenceFieldSolution: string;
@@ -159,6 +164,16 @@ interface Messages {
   detailAssistantCompleteProfilePrompt: string;
   detailAssistantCompleteProfileCta: string;
   detailAssistantGoogleRestriction: string;
+  detailAssistantDiscoveryAria: string;
+  detailAssistantDiscoveryEyebrow: string;
+  detailAssistantDiscoveryValue: string;
+  detailAssistantDiscoveryAnonymousPrompt: string;
+  detailAssistantDiscoveryAnonymousCta: string;
+  detailAssistantDiscoveryVerifyPrompt: string;
+  detailAssistantDiscoveryVerifyCta: string;
+  detailAssistantDiscoveryCompleteProfilePrompt: string;
+  detailAssistantDiscoveryCompleteProfileCta: string;
+  detailAssistantDiscoveryRestrictedPrompt: string;
   detailLightboxAria: string;
   detailLightboxClose: string;
   detailAssistantToggleOpen: string;
@@ -603,10 +618,10 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     landingSearchPlaceholder: 'Busca un proyecto, tecnología o tema...',
     landingSearchContextHint: '',
     landingQuickPrompts: [
-      { label: 'Muéstrame la migración PLC de Printer 05', query: 'Printer 05' },
-      { label: 'Quiero casos con Allen-Bradley y CompactLogix', query: 'CompactLogix' },
-      { label: 'Enséñame automatización industrial con Ethernet/IP', query: 'Ethernet/IP' },
-      { label: 'Busca motion control con SEW Eurodrive', query: 'SEW Eurodrive' },
+      { label: 'CompactLogix', query: 'CompactLogix', color: '#14b8a6' },
+      { label: 'Allen-Bradley', query: 'Allen-Bradley', color: '#3b82f6' },
+      { label: 'Ethernet/IP', query: 'Ethernet/IP', color: '#4356ff' },
+      { label: 'SEW Eurodrive', query: 'SEW Eurodrive', color: '#7c4dff' },
     ],
     landingEyebrow: 'Trabajo digital seleccionado',
     landingTitle: 'Una portada más editorial para presentar producto, arquitectura y ejecución.',
@@ -652,6 +667,8 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailProjectOverview: 'Resumen del proyecto',
     detailCategory: 'Categoría',
     detailClient: 'Contexto',
+    detailIndustryType: 'Industria',
+    detailFinalProduct: 'Producto final',
     detailUpdated: 'Actualizado',
     detailTechnologies: 'Tecnologías',
     detailIndependent: 'Independiente / Interno',
@@ -706,6 +723,8 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     searchEvidenceFieldDescription: 'Descripción',
     searchEvidenceFieldClient: 'Cliente',
     searchEvidenceFieldCategory: 'Categoría',
+    searchEvidenceFieldIndustry: 'Industria',
+    searchEvidenceFieldFinalProduct: 'Producto final',
     searchEvidenceFieldTechnology: 'Tecnología',
     searchEvidenceFieldTechnologies: 'Tecnologías',
     searchEvidenceFieldSolution: 'Solución implementada',
@@ -741,6 +760,16 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailAssistantCompleteProfilePrompt: 'Completa tu perfil con tu nombre completo y empresa para habilitar el asistente.',
     detailAssistantCompleteProfileCta: 'Completar perfil',
     detailAssistantGoogleRestriction: 'El acceso con Google requiere un email verificado antes de habilitar el asistente.',
+    detailAssistantDiscoveryAria: 'Desbloquear asistente del proyecto',
+    detailAssistantDiscoveryEyebrow: 'Asistente del proyecto',
+    detailAssistantDiscoveryValue: 'Desbloquea guía específica para este caso de estudio.',
+    detailAssistantDiscoveryAnonymousPrompt: 'Inicia sesión para desbloquear guía específica para este caso de estudio.',
+    detailAssistantDiscoveryAnonymousCta: 'Iniciar sesión',
+    detailAssistantDiscoveryVerifyPrompt: 'Verifica tu email para mantener habilitado el acceso al asistente en tu cuenta local.',
+    detailAssistantDiscoveryVerifyCta: 'Verificar email',
+    detailAssistantDiscoveryCompleteProfilePrompt: 'Completa tu perfil con tu nombre completo y empresa para habilitar el asistente del proyecto.',
+    detailAssistantDiscoveryCompleteProfileCta: 'Completar perfil',
+    detailAssistantDiscoveryRestrictedPrompt: 'El acceso al asistente todavía está restringido para el estado actual de esta cuenta.',
     detailLightboxAria: 'Vista previa de imagen',
     detailLightboxClose: 'Cerrar vista previa de imagen',
     detailAssistantToggleOpen: 'Preguntar al asistente del proyecto',
@@ -776,10 +805,10 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     landingSearchPlaceholder: 'Cerca un projecte, tecnologia o tema...',
     landingSearchContextHint: '',
     landingQuickPrompts: [
-      { label: 'Mostra’m la migració PLC de Printer 05', query: 'Printer 05' },
-      { label: 'Vull casos amb Allen-Bradley i CompactLogix', query: 'CompactLogix' },
-      { label: 'Ensenya’m automatització industrial amb Ethernet/IP', query: 'Ethernet/IP' },
-      { label: 'Busca motion control amb SEW Eurodrive', query: 'SEW Eurodrive' },
+      { label: 'CompactLogix', query: 'CompactLogix', color: '#14b8a6' },
+      { label: 'Allen-Bradley', query: 'Allen-Bradley', color: '#3b82f6' },
+      { label: 'Ethernet/IP', query: 'Ethernet/IP', color: '#4356ff' },
+      { label: 'SEW Eurodrive', query: 'SEW Eurodrive', color: '#7c4dff' },
     ],
     landingEyebrow: 'Treball digital seleccionat',
     landingTitle: 'Una portada més editorial per presentar producte, arquitectura i execució.',
@@ -825,6 +854,8 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailProjectOverview: 'Resum del projecte',
     detailCategory: 'Categoria',
     detailClient: 'Context',
+    detailIndustryType: 'Indústria',
+    detailFinalProduct: 'Producte final',
     detailUpdated: 'Actualitzat',
     detailTechnologies: 'Tecnologies',
     detailIndependent: 'Independent / Intern',
@@ -879,6 +910,8 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     searchEvidenceFieldDescription: 'Descripció',
     searchEvidenceFieldClient: 'Client',
     searchEvidenceFieldCategory: 'Categoria',
+    searchEvidenceFieldIndustry: 'Indústria',
+    searchEvidenceFieldFinalProduct: 'Producte final',
     searchEvidenceFieldTechnology: 'Tecnologia',
     searchEvidenceFieldTechnologies: 'Tecnologies',
     searchEvidenceFieldSolution: 'Solució implementada',
@@ -914,6 +947,16 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailAssistantCompleteProfilePrompt: 'Completa el teu perfil amb el teu nom complet i empresa per habilitar l’assistent.',
     detailAssistantCompleteProfileCta: 'Completar perfil',
     detailAssistantGoogleRestriction: 'L’accés amb Google requereix un correu verificat abans d’habilitar l’assistent.',
+    detailAssistantDiscoveryAria: 'Desbloquejar assistent del projecte',
+    detailAssistantDiscoveryEyebrow: 'Assistent del projecte',
+    detailAssistantDiscoveryValue: 'Desbloqueja guia específica per a aquest cas d’estudi.',
+    detailAssistantDiscoveryAnonymousPrompt: 'Inicia sessió per desbloquejar guia específica per a aquest cas d’estudi.',
+    detailAssistantDiscoveryAnonymousCta: 'Iniciar sessió',
+    detailAssistantDiscoveryVerifyPrompt: 'Verifica el teu correu per mantenir habilitat l’accés a l’assistent al teu compte local.',
+    detailAssistantDiscoveryVerifyCta: 'Verificar correu',
+    detailAssistantDiscoveryCompleteProfilePrompt: 'Completa el teu perfil amb el teu nom complet i empresa per habilitar l’assistent del projecte.',
+    detailAssistantDiscoveryCompleteProfileCta: 'Completar perfil',
+    detailAssistantDiscoveryRestrictedPrompt: 'L’accés a l’assistent encara està restringit per a l’estat actual d’aquest compte.',
     detailLightboxAria: 'Vista prèvia de la imatge',
     detailLightboxClose: 'Tancar la vista prèvia de la imatge',
     detailAssistantToggleOpen: 'Preguntar a l’assistent del projecte',
@@ -949,10 +992,10 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     landingSearchPlaceholder: 'Search a project, technology, or topic...',
     landingSearchContextHint: '',
     landingQuickPrompts: [
-      { label: 'Show me the Printer 05 PLC migration', query: 'Printer 05' },
-      { label: 'I want Allen-Bradley and CompactLogix work', query: 'CompactLogix' },
-      { label: 'Find industrial automation projects with Ethernet/IP', query: 'Ethernet/IP' },
-      { label: 'Search motion-control work with SEW Eurodrive', query: 'SEW Eurodrive' },
+      { label: 'CompactLogix', query: 'CompactLogix', color: '#14b8a6' },
+      { label: 'Allen-Bradley', query: 'Allen-Bradley', color: '#3b82f6' },
+      { label: 'Ethernet/IP', query: 'Ethernet/IP', color: '#4356ff' },
+      { label: 'SEW Eurodrive', query: 'SEW Eurodrive', color: '#7c4dff' },
     ],
     landingEyebrow: 'Selected digital work',
     landingTitle: 'A more editorial cover to present product, architecture, and execution.',
@@ -998,6 +1041,8 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailProjectOverview: 'Project overview',
     detailCategory: 'Category',
     detailClient: 'Context',
+    detailIndustryType: 'Industry',
+    detailFinalProduct: 'Final product',
     detailUpdated: 'Updated',
     detailTechnologies: 'Technologies',
     detailIndependent: 'Independent / Internal',
@@ -1052,6 +1097,8 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     searchEvidenceFieldDescription: 'Description',
     searchEvidenceFieldClient: 'Client',
     searchEvidenceFieldCategory: 'Category',
+    searchEvidenceFieldIndustry: 'Industry',
+    searchEvidenceFieldFinalProduct: 'Final product',
     searchEvidenceFieldTechnology: 'Technology',
     searchEvidenceFieldTechnologies: 'Technologies',
     searchEvidenceFieldSolution: 'Implemented solution',
@@ -1087,6 +1134,16 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailAssistantCompleteProfilePrompt: 'Complete your profile with your full name and company to enable the assistant.',
     detailAssistantCompleteProfileCta: 'Complete profile',
     detailAssistantGoogleRestriction: 'Google sign-in requires a verified email before the assistant can be enabled.',
+    detailAssistantDiscoveryAria: 'Unlock project assistant',
+    detailAssistantDiscoveryEyebrow: 'Project assistant',
+    detailAssistantDiscoveryValue: 'Unlock project-specific guidance for this case study.',
+    detailAssistantDiscoveryAnonymousPrompt: 'Log in to unlock project-specific guidance for this case study.',
+    detailAssistantDiscoveryAnonymousCta: 'Log in',
+    detailAssistantDiscoveryVerifyPrompt: 'Verify your email to keep assistant access enabled for your local account.',
+    detailAssistantDiscoveryVerifyCta: 'Verify email',
+    detailAssistantDiscoveryCompleteProfilePrompt: 'Complete your profile with your full name and company to unlock the project assistant.',
+    detailAssistantDiscoveryCompleteProfileCta: 'Complete profile',
+    detailAssistantDiscoveryRestrictedPrompt: 'Assistant access is still restricted for this account state.',
     detailLightboxAria: 'Image preview',
     detailLightboxClose: 'Close image preview',
     detailAssistantToggleOpen: 'Ask project assistant',
@@ -1122,10 +1179,10 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     landingSearchPlaceholder: 'Suche ein Projekt, eine Technologie oder ein Thema...',
     landingSearchContextHint: '',
     landingQuickPrompts: [
-      { label: 'Zeig mir die PLC-Migration von Printer 05', query: 'Printer 05' },
-      { label: 'Ich suche Arbeiten mit Allen-Bradley und CompactLogix', query: 'CompactLogix' },
-      { label: 'Finde Industrial-Automation-Projekte mit Ethernet/IP', query: 'Ethernet/IP' },
-      { label: 'Suche Motion-Control mit SEW Eurodrive', query: 'SEW Eurodrive' },
+      { label: 'CompactLogix', query: 'CompactLogix', color: '#14b8a6' },
+      { label: 'Allen-Bradley', query: 'Allen-Bradley', color: '#3b82f6' },
+      { label: 'Ethernet/IP', query: 'Ethernet/IP', color: '#4356ff' },
+      { label: 'SEW Eurodrive', query: 'SEW Eurodrive', color: '#7c4dff' },
     ],
     landingEyebrow: 'Ausgewählte digitale Arbeit',
     landingTitle: 'Eine editorischere Startseite für Produkt, Architektur und Umsetzung.',
@@ -1171,6 +1228,8 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailProjectOverview: 'Projektüberblick',
     detailCategory: 'Kategorie',
     detailClient: 'Kontext',
+    detailIndustryType: 'Branche',
+    detailFinalProduct: 'Endprodukt',
     detailUpdated: 'Aktualisiert',
     detailTechnologies: 'Technologien',
     detailIndependent: 'Unabhängig / Intern',
@@ -1225,6 +1284,8 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     searchEvidenceFieldDescription: 'Beschreibung',
     searchEvidenceFieldClient: 'Kunde',
     searchEvidenceFieldCategory: 'Kategorie',
+    searchEvidenceFieldIndustry: 'Branche',
+    searchEvidenceFieldFinalProduct: 'Endprodukt',
     searchEvidenceFieldTechnology: 'Technologie',
     searchEvidenceFieldTechnologies: 'Technologien',
     searchEvidenceFieldSolution: 'Umgesetzte Lösung',
@@ -1260,6 +1321,16 @@ const baseMessages: Record<PublicLocale, CoreMessages> = {
     detailAssistantCompleteProfilePrompt: 'Vervollständige dein Profil mit deinem vollständigen Namen und Unternehmen, um den Assistenten zu aktivieren.',
     detailAssistantCompleteProfileCta: 'Profil vervollständigen',
     detailAssistantGoogleRestriction: 'Google-Anmeldung erfordert eine verifizierte E-Mail, bevor der Assistent aktiviert werden kann.',
+    detailAssistantDiscoveryAria: 'Projektassistent freischalten',
+    detailAssistantDiscoveryEyebrow: 'Projektassistent',
+    detailAssistantDiscoveryValue: 'Schalte projektspezifische Orientierung für diese Fallstudie frei.',
+    detailAssistantDiscoveryAnonymousPrompt: 'Melde dich an, um projektspezifische Orientierung für diese Fallstudie freizuschalten.',
+    detailAssistantDiscoveryAnonymousCta: 'Anmelden',
+    detailAssistantDiscoveryVerifyPrompt: 'Verifiziere deine E-Mail, damit der Assistentenzugriff für dein lokales Konto aktiv bleibt.',
+    detailAssistantDiscoveryVerifyCta: 'E-Mail verifizieren',
+    detailAssistantDiscoveryCompleteProfilePrompt: 'Vervollständige dein Profil mit deinem vollständigen Namen und Unternehmen, um den Projektassistenten freizuschalten.',
+    detailAssistantDiscoveryCompleteProfileCta: 'Profil vervollständigen',
+    detailAssistantDiscoveryRestrictedPrompt: 'Der Assistentenzugriff ist für diesen Kontostatus weiterhin eingeschränkt.',
     detailLightboxAria: 'Bildvorschau',
     detailLightboxClose: 'Bildvorschau schließen',
     detailAssistantToggleOpen: 'Projektassistent fragen',

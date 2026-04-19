@@ -62,7 +62,7 @@ func (s *stubAdminCatalogService) GetAdminAll() ([]model.AdminProject, error) {
 func TestImportFromCanonicalCreatesSevenDefaultMediaItems(t *testing.T) {
 	service := &stubAdminCatalogService{}
 	importer := NewProjectImporter(service)
-	canonicalPath := writeCanonicalMarkdown(t, "printer-05-controls-migration", "# Printer 05 Controls Migration\n\nResumen del caso.")
+	canonicalPath := writeCanonicalMarkdown(t, "printer-05-controls-migration", canonicalWithProjectMetadata("Printer 05 Controls Migration"))
 
 	projectID, err := importer.ImportFromCanonical(context.Background(), PublishTarget{
 		Slug:      "printer-05-controls-migration",
@@ -121,7 +121,7 @@ func TestImportFromCanonicalBackfillsExistingProjectMediaToSeven(t *testing.T) {
 		}},
 	}
 	importer := NewProjectImporter(service)
-	canonicalPath := writeCanonicalMarkdown(t, "printer-05-controls-migration", "# Printer 05 Controls Migration\n\nResumen del caso.")
+	canonicalPath := writeCanonicalMarkdown(t, "printer-05-controls-migration", canonicalWithProjectMetadata("Printer 05 Controls Migration"))
 
 	_, err := importer.ImportFromCanonical(context.Background(), PublishTarget{
 		Slug:      "printer-05-controls-migration",
@@ -151,6 +151,82 @@ func TestImportFromCanonicalBackfillsExistingProjectMediaToSeven(t *testing.T) {
 	if len(service.updated.Images) == 0 {
 		t.Fatalf("expected legacy images to be generated")
 	}
+}
+
+func TestLoadCanonicalBaseContentReadsMetadataSectionFallbacks(t *testing.T) {
+	content, err := ParseCanonicalProjectMetadata(`# Printer 05 Controls Migration
+
+## Metadata
+- Industry Type: metalworking
+- Final Product: Panel HMI para diagnóstico y monitoreo
+
+Resumen del caso.`, "printer-05-controls-migration")
+	if err != nil {
+		t.Fatalf("parseCanonicalBaseContent() error = %v", err)
+	}
+	if content.IndustryType != "metalurgia" {
+		t.Fatalf("industry_type = %q", content.IndustryType)
+	}
+	if content.FinalProduct != "Panel HMI para diagnóstico y monitoreo" {
+		t.Fatalf("final_product = %q", content.FinalProduct)
+	}
+}
+
+func TestLoadCanonicalBaseContentRejectsMissingCanonicalMetadata(t *testing.T) {
+	_, err := ParseCanonicalProjectMetadata(`---
+title: Printer 05 Controls Migration
+---
+
+# Printer 05 Controls Migration
+
+## Metadata
+- Client / Context: Printer 05
+
+Resumen del caso.`, "printer-05-controls-migration")
+	if err == nil {
+		t.Fatal("expected error when canonical metadata is missing")
+	}
+	if got := err.Error(); got != "canonical markdown printer-05-controls-migration: industry_type is required" {
+		t.Fatalf("error = %q", got)
+	}
+}
+
+func TestLoadCanonicalBaseContentNormalizesLegacyIndustryKey(t *testing.T) {
+	content, err := ParseCanonicalProjectMetadata(`---
+title: Printer 05 Controls Migration
+industry_type: metalworking
+final_product: Panel HMI para diagnóstico y monitoreo
+---
+
+# Printer 05 Controls Migration
+
+## Metadata
+- Industry Type: metalworking
+- Final Product: Panel HMI para diagnóstico y monitoreo
+`, "printer-05-controls-migration")
+	if err != nil {
+		t.Fatalf("parseCanonicalBaseContent() error = %v", err)
+	}
+	if content.IndustryType != "metalurgia" {
+		t.Fatalf("industry_type = %q", content.IndustryType)
+	}
+}
+
+func canonicalWithProjectMetadata(title string) string {
+	return `---
+title: ` + title + `
+industry_type: metalworking
+final_product: Panel HMI para diagnóstico y monitoreo
+client_name: MLB Automation
+---
+
+# ` + title + `
+
+## Metadata
+- Industry Type: metalworking
+- Final Product: Panel HMI para diagnóstico y monitoreo
+
+Resumen del caso.`
 }
 
 func writeCanonicalMarkdown(t *testing.T, slug, content string) string {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +15,8 @@ import (
 	projectPorts "github.com/marlonlyb/portfolioforge/domain/ports/project"
 	"github.com/marlonlyb/portfolioforge/model"
 )
+
+const canonicalMetadataHeading = "metadata"
 
 type ProjectImporter struct {
 	service projectPorts.AdminCatalogService
@@ -49,6 +52,8 @@ func (i *ProjectImporter) ImportFromCanonical(ctx context.Context, source Publis
 			Description:       base.Description,
 			Category:          base.Category,
 			ClientName:        base.ClientName,
+			IndustryType:      base.IndustryType,
+			FinalProduct:      base.FinalProduct,
 			SourceMarkdownURL: canonicalURL,
 			Media:             adminMediaFromProject(projectMedia),
 			Variants:          adminVariantsFromProject(existing.Variants),
@@ -72,6 +77,8 @@ func (i *ProjectImporter) ImportFromCanonical(ctx context.Context, source Publis
 		Description:       base.Description,
 		Category:          base.Category,
 		ClientName:        base.ClientName,
+		IndustryType:      base.IndustryType,
+		FinalProduct:      base.FinalProduct,
 		SourceMarkdownURL: canonicalURL,
 		Media:             adminMediaFromProject(projectMedia),
 		Images:            mustMarshalRaw(legacyImages),
@@ -104,30 +111,45 @@ func (i *ProjectImporter) findBySlug(slug string) (*model.AdminProject, error) {
 	return nil, nil
 }
 
-type canonicalBaseContent struct {
-	Name        string
-	Description string
-	Category    string
-	ClientName  string
+type CanonicalProjectMetadata struct {
+	Name         string
+	Description  string
+	Category     string
+	ClientName   string
+	IndustryType string
+	FinalProduct string
 }
 
-func loadCanonicalBaseContent(markdownPath, fallbackSlug string) (canonicalBaseContent, error) {
-	handle, err := os.Open(markdownPath)
+func loadCanonicalBaseContent(markdownPath, fallbackSlug string) (CanonicalProjectMetadata, error) {
+	body, err := os.ReadFile(markdownPath)
 	if err != nil {
-		return canonicalBaseContent{}, fmt.Errorf("open canonical markdown %s: %w", markdownPath, err)
+		return CanonicalProjectMetadata{}, fmt.Errorf("open canonical markdown %s: %w", markdownPath, err)
 	}
-	defer handle.Close()
+	return ParseCanonicalProjectMetadataReader(bytesReader(body), fallbackSlug)
+}
 
-	base := canonicalBaseContent{Category: "case-study"}
+func ParseCanonicalProjectMetadata(markdown string, fallbackSlug string) (CanonicalProjectMetadata, error) {
+	return ParseCanonicalProjectMetadataReader(strings.NewReader(markdown), fallbackSlug)
+}
+
+func ParseCanonicalProjectMetadataReader(reader io.Reader, fallbackSlug string) (CanonicalProjectMetadata, error) {
+	base := CanonicalProjectMetadata{Category: "case-study"}
 	frontmatter := map[string]string{}
 	collectFrontmatter := false
 	frontmatterDone := false
+	collectMetadata := false
+	metadata := map[string]string{}
 	paragraphs := make([]string, 0, 2)
 
-	scanner := bufio.NewScanner(handle)
+	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+		rawLine := scanner.Text()
+		line := strings.TrimSpace(rawLine)
 		if line == "" {
+			if collectMetadata {
+				collectMetadata = false
+			}
 			continue
 		}
 
@@ -147,6 +169,20 @@ func loadCanonicalBaseContent(markdownPath, fallbackSlug string) (canonicalBaseC
 			continue
 		}
 
+		if strings.HasPrefix(line, "## ") {
+			collectMetadata = strings.EqualFold(strings.TrimSpace(strings.TrimPrefix(line, "## ")), canonicalMetadataHeading)
+			continue
+		}
+
+		if collectMetadata {
+			trimmedBullet := strings.TrimSpace(strings.TrimLeft(line, "-*)) "))
+			key, value, ok := strings.Cut(trimmedBullet, ":")
+			if ok {
+				metadata[normalizeCanonicalMetadataKey(key)] = strings.Trim(strings.TrimSpace(value), `"'`)
+				continue
+			}
+		}
+
 		if strings.HasPrefix(line, "# ") && base.Name == "" {
 			base.Name = strings.TrimSpace(strings.TrimPrefix(line, "# "))
 			continue
@@ -160,7 +196,7 @@ func loadCanonicalBaseContent(markdownPath, fallbackSlug string) (canonicalBaseC
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return canonicalBaseContent{}, fmt.Errorf("read canonical markdown %s: %w", markdownPath, err)
+		return CanonicalProjectMetadata{}, fmt.Errorf("read canonical markdown %s: %w", fallbackSlug, err)
 	}
 
 	if title := firstNonEmpty(frontmatter["title"], frontmatter["name"]); title != "" {
@@ -172,7 +208,9 @@ func loadCanonicalBaseContent(markdownPath, fallbackSlug string) (canonicalBaseC
 	if category := firstNonEmpty(frontmatter["category"], frontmatter["type"]); category != "" {
 		base.Category = category
 	}
-	base.ClientName = firstNonEmpty(frontmatter["client_name"], frontmatter["client"], frontmatter["brand"])
+	base.ClientName = firstNonEmpty(frontmatter["client_name"], frontmatter["client"], frontmatter["brand"], metadata["client_context"])
+	base.IndustryType = model.NormalizeIndustryTypeInput(firstNonEmpty(frontmatter["industry_type"], metadata["industry_type"]))
+	base.FinalProduct = model.NormalizeFinalProduct(firstNonEmpty(frontmatter["final_product"], metadata["final_product"]))
 
 	if strings.TrimSpace(base.Name) == "" {
 		base.Name = humanizeSlug(filepath.Base(fallbackSlug))
@@ -180,8 +218,26 @@ func loadCanonicalBaseContent(markdownPath, fallbackSlug string) (canonicalBaseC
 	if strings.TrimSpace(base.Description) == "" {
 		base.Description = fmt.Sprintf("Imported from canonical case-study source %s.", fallbackSlug)
 	}
+	if err := model.ValidateIndustryType(base.IndustryType); err != nil {
+		return CanonicalProjectMetadata{}, fmt.Errorf("canonical markdown %s: %w", fallbackSlug, err)
+	}
+	if err := model.ValidateFinalProduct(base.FinalProduct); err != nil {
+		return CanonicalProjectMetadata{}, fmt.Errorf("canonical markdown %s: %w", fallbackSlug, err)
+	}
 
 	return base, nil
+}
+
+func bytesReader(body []byte) io.Reader {
+	return strings.NewReader(string(body))
+}
+
+func normalizeCanonicalMetadataKey(key string) string {
+	normalized := strings.ToLower(strings.TrimSpace(key))
+	normalized = strings.ReplaceAll(normalized, "/", " ")
+	normalized = strings.ReplaceAll(normalized, "-", " ")
+	normalized = strings.Join(strings.Fields(normalized), "_")
+	return normalized
 }
 
 func adminMediaFromProject(items []model.ProjectMedia) []model.AdminProjectMediaInput {

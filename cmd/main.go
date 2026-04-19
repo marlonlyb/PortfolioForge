@@ -44,6 +44,13 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 && os.Args[1] == "project-metadata-backfill" {
+		if err := runProjectMetadataBackfill(os.Args[2:]); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
 	err = validateEnvironments()
 	if err != nil {
 		log.Fatal(err)

@@ -77,7 +77,7 @@ func (s *stubProjectAdminReader) GetTechnologiesByProjectID(context.Context, uui
 	return nil, nil
 }
 
-func (s *stubProjectAdminReader) GetAssistantContextBySlug(context.Context, string) (model.ProjectAssistantContext, error) {
+func (s *stubProjectAdminReader) GetAssistantContextBySlug(context.Context, string, string) (model.ProjectAssistantContext, error) {
 	return model.ProjectAssistantContext{}, nil
 }
 
@@ -249,12 +249,12 @@ func assertExecContains(t *testing.T, execs []string, fragments []string) {
 
 func TestNormalizeEnrichmentProfilePreservesStructuredProjectProfiles(t *testing.T) {
 	profile := &EnrichmentProfileReq{
-		Integrations: json.RawMessage(`[{"name":"CAN Bus","type":"fieldbus","note":"backbone"}]`),
+		Integrations:       json.RawMessage(`[{"name":"CAN Bus","type":"fieldbus","note":"backbone"}]`),
 		TechnicalDecisions: json.RawMessage(`[{"decision":"Expose Ethernet/UDP","why":"future integration"}]`),
-		Challenges: json.RawMessage(`[]`),
-		Results: json.RawMessage(`[{"result":"Installed two operator displays","impact":"clearer monitoring"}]`),
-		Metrics: json.RawMessage(`{"users_impacted":1200,"verified":true}`),
-		Timeline: json.RawMessage(`[{"phase":"Installation","outcome":"Delivered"}]`),
+		Challenges:         json.RawMessage(`[]`),
+		Results:            json.RawMessage(`[{"result":"Installed two operator displays","impact":"clearer monitoring"}]`),
+		Metrics:            json.RawMessage(`{"users_impacted":1200,"verified":true}`),
+		Timeline:           json.RawMessage(`[{"phase":"Installation","outcome":"Delivered"}]`),
 	}
 
 	if err := normalizeEnrichmentProfile(profile); err != nil {
@@ -270,12 +270,12 @@ func TestNormalizeEnrichmentProfilePreservesStructuredProjectProfiles(t *testing
 
 func TestNormalizeEnrichmentProfileRejectsNestedStructuredListItems(t *testing.T) {
 	profile := &EnrichmentProfileReq{
-		Integrations: json.RawMessage(`[{"name":"CAN Bus","meta":{"type":"fieldbus"}}]`),
+		Integrations:       json.RawMessage(`[{"name":"CAN Bus","meta":{"type":"fieldbus"}}]`),
 		TechnicalDecisions: json.RawMessage(`[]`),
-		Challenges: json.RawMessage(`[]`),
-		Results: json.RawMessage(`[]`),
-		Metrics: json.RawMessage(`{}`),
-		Timeline: json.RawMessage(`[]`),
+		Challenges:         json.RawMessage(`[]`),
+		Results:            json.RawMessage(`[]`),
+		Metrics:            json.RawMessage(`{}`),
+		Timeline:           json.RawMessage(`[]`),
 	}
 
 	err := normalizeEnrichmentProfile(profile)

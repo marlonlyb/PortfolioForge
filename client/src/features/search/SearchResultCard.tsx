@@ -10,6 +10,7 @@ import {
   hasMatchedText,
   truncateEvidenceText,
 } from './matchContext';
+import { normalizeEditorialMetadataText } from '../../shared/lib/projectMetadata';
 
 const MAX_TECHS_VISIBLE = 5;
 const MAX_SUMMARY_LENGTH = 120;
@@ -32,6 +33,7 @@ export function SearchResultCard({ result, index, detailState }: SearchResultCar
   const overflowCount = result.technologies.length - MAX_TECHS_VISIBLE;
   const delay = Math.min(index * 50, 500);
   const searchMatchContext = buildSearchMatchContext(result);
+  const industryLabel = normalizeEditorialMetadataText(result.industry_type);
   const evidence = searchMatchContext?.evidence ?? [];
   const hasExplanation = Boolean(searchMatchContext?.explanation?.trim());
   const hasEvidence = evidence.length > 0;
@@ -64,6 +66,8 @@ export function SearchResultCard({ result, index, detailState }: SearchResultCar
         <div className="search-results__card-meta">
           <p className="eyebrow">{result.category}</p>
           {result.client_name && <p className="search-results__card-client">{result.client_name}</p>}
+          {industryLabel && <p className="search-results__card-client">{industryLabel}</p>}
+          {result.final_product && <p className="search-results__card-client">{result.final_product}</p>}
         </div>
         <h3>{result.title}</h3>
         {result.summary && (

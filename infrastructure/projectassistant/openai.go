@@ -58,7 +58,19 @@ func buildAssistantUserPayload(input services.ProjectAssistantAnswerInput) strin
 		sections = append(sections, fmt.Sprintf("## %s\n%s", section.Heading, section.Body))
 	}
 
-	return fmt.Sprintf("%s\nProject: %s\nQuestion: %s\nRelevant markdown sections:\n%s", assistantLocaleContractFor(input.Language).userReminder, input.ProjectName, input.Question, strings.Join(sections, "\n\n"))
+	groundingFacts := make([]string, 0, 2)
+	if strings.TrimSpace(input.IndustryType) != "" {
+		groundingFacts = append(groundingFacts, fmt.Sprintf("- Industry type: %s", input.IndustryType))
+	}
+	if strings.TrimSpace(input.FinalProduct) != "" {
+		groundingFacts = append(groundingFacts, fmt.Sprintf("- Final product: %s", input.FinalProduct))
+	}
+	groundingBlock := ""
+	if len(groundingFacts) > 0 {
+		groundingBlock = fmt.Sprintf("\nKnown project facts:\n%s", strings.Join(groundingFacts, "\n"))
+	}
+
+	return fmt.Sprintf("%s\nProject: %s%s\nQuestion: %s\nRelevant markdown sections:\n%s", assistantLocaleContractFor(input.Language).userReminder, input.ProjectName, groundingBlock, input.Question, strings.Join(sections, "\n\n"))
 }
 
 func buildAssistantChatRequest(input services.ProjectAssistantAnswerInput) openai.ChatCompletionRequest {

@@ -19,6 +19,8 @@ func TestBuildSearchQueryIncludesPayloadAndFilters(t *testing.T) {
 
 	checks := []string{
 		"solution_summary",
+		"COALESCE(p.industry_type, '') AS industry_type",
+		"COALESCE(p.final_product, '') AS final_product",
 		"COALESCE(p.images, '[]'::jsonb) AS images",
 		"LOWER(COALESCE(p.category, '')) = LOWER($2)",
 		"LOWER(COALESCE(NULLIF(p.client_name, ''), p.brand, '')) = LOWER($3)",

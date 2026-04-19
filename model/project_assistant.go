@@ -8,6 +8,8 @@ type ProjectAssistantContext struct {
 	Slug              string
 	Active            bool
 	SourceMarkdownURL string
+	IndustryType      string
+	FinalProduct      string
 }
 
 type ProjectAssistantMessage struct {

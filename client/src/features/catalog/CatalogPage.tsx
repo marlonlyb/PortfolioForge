@@ -13,6 +13,7 @@ import type { Project } from '../../shared/types/project';
 import type { SearchResult } from '../../shared/types/search';
 import { AppError } from '../../shared/api/errors';
 import { getProjectCardImage } from '../../shared/lib/projectMedia';
+import { normalizeEditorialMetadataText } from '../../shared/lib/projectMetadata';
 
 interface CatalogPageProps {
   searchQuery?: string;
@@ -85,6 +86,8 @@ function getProjectSearchCorpus(project: Project): string[] {
     project.slug,
     project.category,
     project.client_name,
+    project.industry_type,
+    project.final_product,
     project.description,
     project.profile?.business_goal,
     project.profile?.problem_statement,
@@ -111,11 +114,13 @@ function buildSuggestions(projects: Project[], category: string, query: string):
   projects.forEach((project) => {
     if (category && project.category !== category) return;
 
-    const keywords = [
-      project.name,
-      project.category,
-      project.client_name,
-      ...(project.technologies?.map((technology) => technology.name) ?? []),
+      const keywords = [
+        project.name,
+        project.category,
+        project.client_name,
+        project.industry_type,
+        project.final_product,
+        ...(project.technologies?.map((technology) => technology.name) ?? []),
       ...splitKeywords(project.description),
       ...splitKeywords(project.profile?.business_goal),
       ...splitKeywords(project.profile?.problem_statement),
@@ -157,6 +162,7 @@ function buildSuggestions(projects: Project[], category: string, query: string):
 
 function renderProductCard(project: Project, emptySummary: string, linkLabel: string, noImageLabel: string, state?: ProjectDetailLocationState) {
   const image = getProjectCardImage(project);
+  const industryLabel = normalizeEditorialMetadataText(project.industry_type);
 
   return (
     <Link key={project.id} className="catalog__card" to={`/projects/${project.slug}`} state={state}>
@@ -168,11 +174,13 @@ function renderProductCard(project: Project, emptySummary: string, linkLabel: st
         )}
       </div>
 
-      <div className="catalog__card-body">
-        <div className="catalog__card-meta">
-          {project.category ? <p className="eyebrow">{project.category}</p> : null}
-          {project.client_name ? <p className="catalog__card-client">{project.client_name}</p> : null}
-        </div>
+        <div className="catalog__card-body">
+          <div className="catalog__card-meta">
+            {project.category ? <p className="eyebrow">{project.category}</p> : null}
+            {project.client_name ? <p className="catalog__card-client">{project.client_name}</p> : null}
+            {industryLabel ? <p className="catalog__card-client">{industryLabel}</p> : null}
+            {project.final_product ? <p className="catalog__card-client">{project.final_product}</p> : null}
+          </div>
         <h3>{project.name}</h3>
         <p>{summarize(project.description) || emptySummary}</p>
         <span className="catalog__card-link">{linkLabel}</span>
@@ -201,6 +209,7 @@ function buildProjectDetailLocationState(
 
 function renderSearchCard(result: SearchResult, emptySummary: string, linkLabel: string, noImageLabel: string, state?: ProjectDetailLocationState) {
   const searchMatchContext = buildSearchMatchContext(result);
+  const industryLabel = normalizeEditorialMetadataText(result.industry_type);
 
   return (
     <Link
@@ -216,11 +225,13 @@ function renderSearchCard(result: SearchResult, emptySummary: string, linkLabel:
           <div className="catalog__card-img catalog__card-img--placeholder">{noImageLabel}</div>
         )}
       </div>
-      <div className="catalog__card-body">
-        <div className="catalog__card-meta">
-          {result.category ? <p className="eyebrow">{result.category}</p> : null}
-          {result.client_name ? <p className="catalog__card-client">{result.client_name}</p> : null}
-        </div>
+        <div className="catalog__card-body">
+          <div className="catalog__card-meta">
+            {result.category ? <p className="eyebrow">{result.category}</p> : null}
+            {result.client_name ? <p className="catalog__card-client">{result.client_name}</p> : null}
+            {industryLabel ? <p className="catalog__card-client">{industryLabel}</p> : null}
+            {result.final_product ? <p className="catalog__card-client">{result.final_product}</p> : null}
+          </div>
         <h3>{result.title}</h3>
         <p>{summarize(result.summary ?? undefined) || emptySummary}</p>
         <span className="catalog__card-link">{linkLabel}</span>
@@ -457,14 +468,14 @@ export function CatalogPage({
             <div className="catalog__grid">
               {shouldUseRemoteResults
                 ? searchResults.map((result) =>
-                    renderSearchCard(
-                      result,
-                      t.catalogNoSummary,
-                      t.catalogOpenProject,
-                      t.catalogNoImage,
-                      buildProjectDetailLocationState(trimmedSearchDraft, filters.category, buildSearchMatchContext(result)),
-                    ),
-                  )
+                      renderSearchCard(
+                        result,
+                        t.catalogNoSummary,
+                       t.catalogOpenProject,
+                       t.catalogNoImage,
+                       buildProjectDetailLocationState(trimmedSearchDraft, filters.category, buildSearchMatchContext(result)),
+                     ),
+                   )
                 : localMatches.map((project) =>
                     renderProductCard(project, t.catalogNoSummary, t.catalogViewCaseStudy, t.catalogNoImage, buildProjectDetailLocationState(trimmedSearchDraft, filters.category)),
                   )}

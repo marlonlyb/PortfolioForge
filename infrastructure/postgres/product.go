@@ -26,6 +26,8 @@ var pFields = []string{
 	"name",
 	"slug",
 	"category",
+	"industry_type",
+	"final_product",
 	"brand",
 	"active",
 	"source_markdown_url",
@@ -63,6 +65,8 @@ func (p ProjectCatalogRepository) Create(m *model.AdminProjectWrite) error {
 		NullIfEmpty(legacy.Name),
 		NullIfEmpty(legacy.Slug),
 		NullIfEmpty(legacy.Category),
+		NullIfEmpty(legacy.IndustryType),
+		NullIfEmpty(legacy.FinalProduct),
 		NullIfEmpty(legacy.Brand),
 		legacy.Active,
 		NullIfEmpty(legacy.SourceMarkdownURL),
@@ -89,6 +93,8 @@ func (p ProjectCatalogRepository) Update(m *model.AdminProjectWrite) error {
 		NullIfEmpty(legacy.Name),
 		NullIfEmpty(legacy.Slug),
 		NullIfEmpty(legacy.Category),
+		NullIfEmpty(legacy.IndustryType),
+		NullIfEmpty(legacy.FinalProduct),
 		NullIfEmpty(legacy.Brand),
 		legacy.Active,
 		NullIfEmpty(legacy.SourceMarkdownURL),
@@ -293,6 +299,8 @@ func (p ProjectCatalogRepository) getStoreProducts(whereClause string, arg inter
 			COALESCE(NULLIF(p.slug, ''), regexp_replace(lower(COALESCE(NULLIF(p.name, ''), p.product_name)), '[^a-z0-9]+', '-', 'g')) AS slug,
 			p.description,
 			COALESCE(NULLIF(p.category, ''), 'general') AS category,
+			COALESCE(p.industry_type, '') AS industry_type,
+			COALESCE(p.final_product, '') AS final_product,
 			COALESCE(p.brand, '') AS brand,
 			COALESCE(p.source_markdown_url, '') AS source_markdown_url,
 			p.images,
@@ -332,6 +340,8 @@ func (p ProjectCatalogRepository) getStoreProducts(whereClause string, arg inter
 			slug              string
 			description       string
 			category          string
+			industryType      string
+			finalProduct      string
 			brand             string
 			sourceMarkdownURL string
 			imagesRaw         []byte
@@ -352,6 +362,8 @@ func (p ProjectCatalogRepository) getStoreProducts(whereClause string, arg inter
 			&slug,
 			&description,
 			&category,
+			&industryType,
+			&finalProduct,
 			&brand,
 			&sourceMarkdownURL,
 			&imagesRaw,
@@ -381,6 +393,8 @@ func (p ProjectCatalogRepository) getStoreProducts(whereClause string, arg inter
 				Slug:              slugify(slug),
 				Description:       description,
 				Category:          category,
+				IndustryType:      strings.TrimSpace(industryType),
+				FinalProduct:      strings.TrimSpace(finalProduct),
 				Brand:             strings.TrimSpace(brand),
 				SourceMarkdownURL: strings.TrimSpace(sourceMarkdownURL),
 				Images:            images,

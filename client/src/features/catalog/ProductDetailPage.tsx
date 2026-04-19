@@ -12,6 +12,10 @@ import { AppError } from '../../shared/api/errors';
 import { fetchAdminProjectById } from '../admin-projects/api';
 import { ProjectAssistantChat } from './ProjectAssistantChat';
 import {
+  ASSISTANT_DISCOVERY_VARIANT,
+  resolveAssistantAccess,
+} from './assistantAccess';
+import {
   buildSearchResultsPath,
   buildProjectSearchMatchContext,
   buildSearchMatchContext,
@@ -32,6 +36,7 @@ import {
   summarizeProjectProfileList,
   type ProjectProfileListKind,
 } from '../../shared/lib/projectProfileSummaries';
+import { normalizeEditorialMetadataText } from '../../shared/lib/projectMetadata';
 
 interface CaseStudySectionProps {
   title: string;
@@ -412,11 +417,12 @@ export function ProductDetailPage() {
   const hasEvidence = searchEvidence.length > 0;
   const showSearchMatchContext = hasExplanation || hasEvidence;
   const lastUpdated = formatTimestamp(project?.updated_at, locale);
-  const showAssistantChat = Boolean(project?.assistant_available && user?.can_use_project_assistant);
-  const showAssistantAccessCard = Boolean(project?.assistant_available && user) && !sessionLoading && !showAssistantChat;
-  const clientContext = formatClientContext(project?.client_name);
+  const industryLabel = normalizeEditorialMetadataText(project?.industry_type);
+  const assistantAccess = resolveAssistantAccess(project, user, sessionLoading, location.pathname);
+  const showAssistantChat = assistantAccess.showLauncher;
   const heroFacts = [
-    hasText(clientContext) ? { label: t.detailClient, value: clientContext } : null,
+    industryLabel ? { label: t.detailIndustryType, value: industryLabel } : null,
+    project?.final_product ? { label: t.detailFinalProduct, value: project.final_product } : null,
     lastUpdated ? { label: t.detailUpdated, value: lastUpdated } : null,
   ].filter((item): item is KeyValueEntry => Boolean(item));
   const strategySections: DetailSectionData[] = [
@@ -446,6 +452,27 @@ export function ProductDetailPage() {
     { title: t.detailExecutionLayer, textSections: executionTextSections, listSections: executionListSections },
     { title: t.detailTechnicalLayer, textSections: technicalTextSections, listSections: technicalListSections, metrics, metricsTitle: t.detailMetrics },
   ];
+  const assistantDiscoveryContent = assistantAccess.inlineVariant === ASSISTANT_DISCOVERY_VARIANT.ANONYMOUS
+    ? {
+      prompt: t.detailAssistantDiscoveryAnonymousPrompt,
+      ctaLabel: t.detailAssistantDiscoveryAnonymousCta,
+    }
+    : assistantAccess.inlineVariant === ASSISTANT_DISCOVERY_VARIANT.VERIFY_EMAIL
+      ? {
+        prompt: t.detailAssistantDiscoveryVerifyPrompt,
+        ctaLabel: t.detailAssistantDiscoveryVerifyCta,
+      }
+      : assistantAccess.inlineVariant === ASSISTANT_DISCOVERY_VARIANT.COMPLETE_PROFILE
+        ? {
+          prompt: t.detailAssistantDiscoveryCompleteProfilePrompt,
+          ctaLabel: t.detailAssistantDiscoveryCompleteProfileCta,
+        }
+        : assistantAccess.inlineVariant === ASSISTANT_DISCOVERY_VARIANT.RESTRICTED
+          ? {
+            prompt: t.detailAssistantDiscoveryRestrictedPrompt,
+            ctaLabel: null,
+          }
+          : null;
 
   useEffect(() => {
     setHeaderContent?.(null);
@@ -741,41 +768,29 @@ export function ProductDetailPage() {
               ) : null}
             </div>
           </div>
+
+          {assistantDiscoveryContent ? (
+            <aside className="detail__side-column">
+              <div className="detail__side-stack">
+                <section className="card detail__assistant-discovery" aria-label={t.detailAssistantDiscoveryAria} role="region">
+                  <div className="detail__column-intro detail__column-intro--side">
+                    <p className="eyebrow">{t.detailAssistantDiscoveryEyebrow}</p>
+                    <h3 className="detail__column-title">{t.detailAssistantDiscoveryValue}</h3>
+                  </div>
+
+                  <p className="detail__assistant-discovery-copy">{assistantDiscoveryContent.prompt}</p>
+
+                  {assistantDiscoveryContent.ctaLabel && assistantAccess.ctaTo && assistantAccess.ctaState ? (
+                    <Link className="btn btn--primary detail__assistant-discovery-cta" to={assistantAccess.ctaTo} state={assistantAccess.ctaState}>
+                      {assistantDiscoveryContent.ctaLabel}
+                    </Link>
+                  ) : null}
+                </section>
+              </div>
+            </aside>
+          ) : null}
         </div>
         </section>
-      {showAssistantAccessCard ? (
-        <section className="card assistant-chat__panel" aria-label={t.detailAssistantAccessRequirementsAria}>
-          <div className="assistant-chat__header">
-	            <p className="eyebrow">{t.detailAssistantEyebrow}</p>
-			{!user ? (
-				<>
-				  <p className="assistant-chat__copy">{t.detailAssistantLoginPrompt}</p>
-				  <Link className="btn btn--primary" to="/login" state={{ from: location.pathname }}>
-				    {t.detailAssistantLoginCta}
-				  </Link>
-				</>
-			) : user.auth_provider === 'local' && !user.email_verified ? (
-				<>
-				  <p className="assistant-chat__copy">{t.detailAssistantVerifyPrompt}</p>
-				  <Link className="btn btn--primary" to="/verify-email" state={{ from: location.pathname, email: user.email }}>
-				    {t.detailAssistantVerifyCta}
-				  </Link>
-				</>
-			) : !user.profile_completed ? (
-              <>
-                <p className="assistant-chat__copy">{t.detailAssistantCompleteProfilePrompt}</p>
-                <Link className="btn btn--primary" to="/complete-profile" state={{ from: location.pathname }}>
-                  {t.detailAssistantCompleteProfileCta}
-                </Link>
-              </>
-            ) : !user.email_verified && user.auth_provider === 'google' ? (
-              <p className="assistant-chat__copy">{t.detailAssistantGoogleRestriction}</p>
-            ) : (
-              <p className="assistant-chat__copy">{t.detailAssistantLocalRestriction}</p>
-            )}
-          </div>
-        </section>
-      ) : null}
       <ProjectAssistantChat slug={project.slug} enabled={showAssistantChat} lang={locale} />
       {activeLightboxImage ? (
         <div className="detail__lightbox" role="dialog" aria-modal="true" aria-label={t.detailLightboxAria} onClick={() => setLightboxIndex(null)}>

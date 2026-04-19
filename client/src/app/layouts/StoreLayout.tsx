@@ -128,6 +128,7 @@ export function StoreLayout() {
       {isEditorialLanding ? (
         <div className="landing-composition">
           <div className="app-header__brand landing-composition__brand">
+            <p className="app-header__caption app-header__caption--landing">{t.headerCaption}</p>
             <NavLink className="app-header__home" to="/">
               <h1>{t.headerTitle}</h1>
             </NavLink>
@@ -165,7 +166,6 @@ export function StoreLayout() {
                   </div>
                 </>
               )}
-              <p className="landing-hero__logo-caption">{t.headerCaption}</p>
             </div>
           </aside>
 

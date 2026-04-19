@@ -38,7 +38,7 @@ func (s *stubProjectReader) GetTechnologiesByProjectID(context.Context, uuid.UUI
 	return s.technologiesResp, nil
 }
 
-func (s *stubProjectReader) GetAssistantContextBySlug(context.Context, string) (model.ProjectAssistantContext, error) {
+func (s *stubProjectReader) GetAssistantContextBySlug(context.Context, string, string) (model.ProjectAssistantContext, error) {
 	return model.ProjectAssistantContext{}, nil
 }
 

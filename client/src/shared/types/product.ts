@@ -27,6 +27,8 @@ export interface ProductSummary {
   description?: string;
   category: string;
   brand?: string;
+  industry_type?: string;
+  final_product?: string;
   images: string[];
   media?: ProjectMedia[];
   active: boolean;

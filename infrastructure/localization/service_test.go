@@ -68,10 +68,12 @@ func (s *stubLocalizationRepo) UpsertManual(context.Context, uuid.UUID, string, 
 
 func TestBuildProjectFieldMapIncludesClientNameWithoutProfile(t *testing.T) {
 	fields := BuildProjectFieldMap(model.Project{
-		Name:        "Proyecto base",
-		Description: "Descripción base",
-		Category:    "automation",
-		ClientName:  "Cliente base",
+		Name:         "Proyecto base",
+		Description:  "Descripción base",
+		Category:     "automation",
+		ClientName:   "Cliente base",
+		IndustryType: "automatización industrial",
+		FinalProduct: "Panel HMI",
 	})
 
 	if got := string(fields["client_name"]); got != `"Cliente base"` {
@@ -80,20 +82,36 @@ func TestBuildProjectFieldMapIncludesClientNameWithoutProfile(t *testing.T) {
 	if got := string(fields["business_goal"]); got != `""` {
 		t.Fatalf("business_goal default = %s", got)
 	}
+	if got := string(fields["final_product"]); got != `"Panel HMI"` {
+		t.Fatalf("final_product = %s", got)
+	}
+	if got := string(fields["industry_type"]); got != `"automatización industrial"` {
+		t.Fatalf("industry_type = %s", got)
+	}
 }
 
 func TestLocalizeProjectAppliesClientNameFallback(t *testing.T) {
 	projectID := uuid.New()
 	service := NewService(&stubLocalizationRepo{rowsByProject: map[uuid.UUID][]model.ProjectLocalization{
-		projectID: {{ProjectID: projectID, Locale: model.LocaleEN, FieldKey: "client_name", Value: json.RawMessage(`"Acme Industries"`)}},
+		projectID: {
+			{ProjectID: projectID, Locale: model.LocaleEN, FieldKey: "client_name", Value: json.RawMessage(`"Acme Industries"`)},
+			{ProjectID: projectID, Locale: model.LocaleEN, FieldKey: "industry_type", Value: json.RawMessage(`"industrial automation"`)},
+			{ProjectID: projectID, Locale: model.LocaleEN, FieldKey: "final_product", Value: json.RawMessage(`"Operator dashboard"`)},
+		},
 	}}, nil)
 
-	localized, err := service.LocalizeProject(context.Background(), model.Project{ID: projectID, ClientName: "Cliente base"}, model.LocaleEN)
+	localized, err := service.LocalizeProject(context.Background(), model.Project{ID: projectID, ClientName: "Cliente base", IndustryType: "automatización industrial", FinalProduct: "Panel HMI"}, model.LocaleEN)
 	if err != nil {
 		t.Fatalf("LocalizeProject() error = %v", err)
 	}
 	if localized.ClientName != "Acme Industries" {
 		t.Fatalf("ClientName = %q", localized.ClientName)
+	}
+	if localized.IndustryType != "industrial automation" {
+		t.Fatalf("IndustryType = %q", localized.IndustryType)
+	}
+	if localized.FinalProduct != "Operator dashboard" {
+		t.Fatalf("FinalProduct = %q", localized.FinalProduct)
 	}
 
 	fallback, err := service.LocalizeProject(context.Background(), model.Project{ID: projectID, ClientName: "Cliente base"}, model.LocaleDE)
@@ -105,19 +123,64 @@ func TestLocalizeProjectAppliesClientNameFallback(t *testing.T) {
 	}
 }
 
+func TestLocalizeProjectFallsBackToSpanishIndustryTypeWhenLocalizationMissing(t *testing.T) {
+	projectID := uuid.New()
+	service := NewService(&stubLocalizationRepo{rowsByProject: map[uuid.UUID][]model.ProjectLocalization{
+		projectID: {
+			{ProjectID: projectID, Locale: model.LocaleEN, FieldKey: "industry_type", Value: json.RawMessage(`"industrial automation"`)},
+		},
+	}}, nil)
+
+	localized, err := service.LocalizeProject(context.Background(), model.Project{
+		ID:           projectID,
+		IndustryType: "metalurgia",
+		FinalProduct: "Panel HMI",
+	}, model.LocaleDE)
+	if err != nil {
+		t.Fatalf("LocalizeProject() error = %v", err)
+	}
+	if localized.IndustryType != "metalurgia" {
+		t.Fatalf("IndustryType fallback = %q", localized.IndustryType)
+	}
+	if localized.FinalProduct != "Panel HMI" {
+		t.Fatalf("FinalProduct fallback = %q", localized.FinalProduct)
+	}
+}
+
 func TestLocalizeSearchResultsAppliesClientName(t *testing.T) {
 	projectID := uuid.New()
 	service := NewService(&stubLocalizationRepo{rowsByProject: map[uuid.UUID][]model.ProjectLocalization{
-		projectID: {{ProjectID: projectID, Locale: model.LocaleEN, FieldKey: "client_name", Value: json.RawMessage(`"Acme Industries"`)}},
+		projectID: {
+			{ProjectID: projectID, Locale: model.LocaleEN, FieldKey: "client_name", Value: json.RawMessage(`"Acme Industries"`)},
+			{ProjectID: projectID, Locale: model.LocaleEN, FieldKey: "industry_type", Value: json.RawMessage(`"industrial automation"`)},
+		},
 	}}, nil)
 
 	baseClient := "Cliente base"
-	localized, err := service.LocalizeSearchResults(context.Background(), []model.SearchResultItem{{ID: projectID.String(), Title: "Proyecto", ClientName: &baseClient}}, model.LocaleEN)
+	baseIndustry := "automatización industrial"
+	localized, err := service.LocalizeSearchResults(context.Background(), []model.SearchResultItem{{
+		ID:           projectID.String(),
+		Title:        "Proyecto",
+		ClientName:   &baseClient,
+		IndustryType: &baseIndustry,
+		Evidence: []model.EvidenceField{{
+			Field:       "industry_type",
+			MatchedText: "automatización industrial",
+			MatchType:   model.MatchTypeStructured,
+			Score:       1,
+		}},
+	}}, model.LocaleEN)
 	if err != nil {
 		t.Fatalf("LocalizeSearchResults() error = %v", err)
 	}
 	if localized[0].ClientName == nil || *localized[0].ClientName != "Acme Industries" {
 		t.Fatalf("ClientName = %#v", localized[0].ClientName)
+	}
+	if localized[0].IndustryType == nil || *localized[0].IndustryType != "industrial automation" {
+		t.Fatalf("IndustryType = %#v", localized[0].IndustryType)
+	}
+	if localized[0].Evidence[0].MatchedText != "industrial automation" {
+		t.Fatalf("Evidence = %#v", localized[0].Evidence)
 	}
 }
 

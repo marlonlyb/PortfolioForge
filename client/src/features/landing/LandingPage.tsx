@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 
 import { CatalogPage } from '../catalog/CatalogPage';
 import { SearchBar } from '../search/SearchBar';
@@ -19,6 +19,17 @@ export function LandingPage() {
     scrollToProjects();
   }
 
+  function buildQuickPromptStyle(color?: string): CSSProperties | undefined {
+    const accent = color?.trim();
+    if (!accent) return undefined;
+
+    return {
+      borderColor: accent,
+      backgroundColor: accent.startsWith('#') ? `${accent}14` : undefined,
+      ['--landing-topic-accent' as string]: accent,
+    };
+  }
+
   return (
     <>
       <article className="card landing-hero landing-hero--search landing-page">
@@ -26,7 +37,6 @@ export function LandingPage() {
           <div className="landing-hero__search-focus">
             <div className="landing-search-panel">
               <div className="landing-search-panel__header">
-                <p className="eyebrow">{t.landingSearchEyebrow}</p>
                 {t.landingSearchTitle ? <h1 className="landing-search-panel__title">{t.landingSearchTitle}</h1> : null}
                 <p className="landing-search-panel__lead">{t.landingSearchLead}</p>
               </div>
@@ -49,8 +59,10 @@ export function LandingPage() {
                       key={prompt.label}
                       className="landing-search-panel__topic"
                       type="button"
+                      style={buildQuickPromptStyle(prompt.color)}
                       onClick={() => submitLandingQuery(prompt.query)}
                     >
+                      <span className="landing-search-panel__topic-dot" aria-hidden="true" />
                       <span>{prompt.label}</span>
                     </button>
                   ))}

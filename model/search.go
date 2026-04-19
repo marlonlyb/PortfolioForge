@@ -62,6 +62,8 @@ type SearchResultItem struct {
 	Title        string              `json:"title"`
 	Category     string              `json:"category"`
 	ClientName   *string             `json:"client_name"`
+	IndustryType *string             `json:"industry_type,omitempty"`
+	FinalProduct *string             `json:"final_product,omitempty"`
 	Summary      *string             `json:"summary"`
 	Technologies []TechnologySummary `json:"technologies"`
 	HeroImage    *string             `json:"hero_image"`

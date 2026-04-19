@@ -7,6 +7,7 @@ import {
   type SearchFilters,
   type SearchResult,
 } from '../../shared/types/search';
+import { normalizeEditorialMetadataText } from '../../shared/lib/projectMetadata';
 
 const MAX_EVIDENCE_TEXT_LENGTH = 160;
 const MAX_LOCAL_EVIDENCE_ITEMS = 3;
@@ -124,6 +125,8 @@ function getProjectSearchFields(project: Project): ProjectSearchField[] {
     { field: 'description', value: project.description },
     { field: 'category', value: project.category },
     { field: 'client_name', value: project.client_name ?? '' },
+    { field: 'industry_type', value: normalizeEditorialMetadataText(project.industry_type) },
+    { field: 'final_product', value: project.final_product ?? '' },
     { field: 'business_goal', value: project.profile?.business_goal ?? '' },
     { field: 'solution_summary', value: project.profile?.solution_summary ?? '' },
     { field: 'architecture', value: project.profile?.architecture ?? '' },
@@ -221,6 +224,8 @@ export function formatEvidenceField(field: string, t: SearchMatchMessages): stri
     architecture: t.searchEvidenceFieldArchitecture,
     business_goal: t.searchEvidenceFieldBusinessGoal,
     ai_usage: t.searchEvidenceFieldAIUsage,
+    industry_type: t.searchEvidenceFieldIndustry,
+    final_product: t.searchEvidenceFieldFinalProduct,
     technical_decisions: t.searchEvidenceFieldTechnicalDecisions,
     results: t.searchEvidenceFieldResults,
   };

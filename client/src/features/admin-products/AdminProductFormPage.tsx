@@ -36,6 +36,9 @@ import {
   type PublicContentFieldKey,
   type PublicLocale,
 } from '../../shared/i18n/config';
+import {
+  INDUSTRY_TYPE_MAX_LENGTH,
+} from '../../shared/lib/projectMetadata';
 
 const TRANSLATABLE_LOCALES = [PUBLIC_LOCALE.CA, PUBLIC_LOCALE.EN, PUBLIC_LOCALE.DE] as const;
 
@@ -113,6 +116,8 @@ const TRANSLATION_FIELD_LABELS: Record<PublicContentFieldKey, string> = {
   description: 'Descripción',
   category: 'Categoría',
   client_name: 'Cliente / Contexto',
+  industry_type: 'Industria',
+  final_product: 'Producto final',
   business_goal: 'Business Goal',
   problem_statement: 'Problem Statement',
   solution_summary: 'Solution Summary',
@@ -268,6 +273,8 @@ export function AdminProductFormPage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [brand, setBrand] = useState('');
+  const [industryType, setIndustryType] = useState('');
+  const [finalProduct, setFinalProduct] = useState('');
   const [sourceMarkdownURL, setSourceMarkdownURL] = useState('');
   const [sourceMarkdownURLManuallyEdited, setSourceMarkdownURLManuallyEdited] = useState(false);
   const [mediaItems, setMediaItems] = useState<MediaFormItem[]>([createEmptyMediaItem(0)]);
@@ -342,6 +349,8 @@ export function AdminProductFormPage() {
           setDescription(project.description);
           setCategory(project.category);
           setBrand(project.brand ?? '');
+          setIndustryType(project.industry_type ?? '');
+          setFinalProduct(project.final_product ?? '');
           setSourceMarkdownURL(explicitMarkdownURL || inferredMarkdownURL);
           setSourceMarkdownURLManuallyEdited(Boolean(explicitMarkdownURL) && explicitMarkdownURL !== inferredMarkdownURL);
           setMediaItems(project.media && project.media.length > 0 ? project.media : createFallbackMediaItems(project.images ?? []));
@@ -489,6 +498,8 @@ export function AdminProductFormPage() {
           description,
           category,
           brand: brand || undefined,
+          industry_type: industryType || undefined,
+          final_product: finalProduct.trim() || undefined,
           source_markdown_url: sourceMarkdownURL.trim(),
           images: imageList,
           media: normalizedMedia,
@@ -501,6 +512,8 @@ export function AdminProductFormPage() {
           description,
           category,
           brand: brand || undefined,
+          industry_type: industryType || undefined,
+          final_product: finalProduct.trim() || undefined,
           source_markdown_url: sourceMarkdownURL.trim(),
           images: imageList,
           media: normalizedMedia,
@@ -617,6 +630,28 @@ export function AdminProductFormPage() {
                   type="text"
                   value={brand}
                   onChange={(e) => setBrand(e.target.value)}
+                />
+              </label>
+
+              <label className="admin__label">
+                Industry type
+                  <input
+                    className="admin__input"
+                    type="text"
+                    maxLength={INDUSTRY_TYPE_MAX_LENGTH}
+                    value={industryType}
+                    onChange={(event) => setIndustryType(event.target.value)}
+                  />
+                </label>
+
+              <label className="admin__label">
+                Final product
+                <input
+                  className="admin__input"
+                  type="text"
+                  maxLength={160}
+                  value={finalProduct}
+                  onChange={(event) => setFinalProduct(event.target.value)}
                 />
               </label>
             </div>

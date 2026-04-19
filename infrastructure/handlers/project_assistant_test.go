@@ -22,7 +22,7 @@ type stubAssistantHandlerRepo struct {
 	err     error
 }
 
-func (s *stubAssistantHandlerRepo) GetAssistantContextBySlug(context.Context, string) (model.ProjectAssistantContext, error) {
+func (s *stubAssistantHandlerRepo) GetAssistantContextBySlug(context.Context, string, string) (model.ProjectAssistantContext, error) {
 	return s.context, s.err
 }
 

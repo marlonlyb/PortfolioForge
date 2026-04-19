@@ -101,6 +101,8 @@ function buildProject(overrides: Partial<Project> = {}): Project {
     slug: 'portfolioforge',
     description: 'Detailed project description.',
     category: 'platform',
+    industry_type: 'industrial automation',
+    final_product: 'Operator diagnostic HMI panel',
     status: 'published',
     featured: false,
     active: true,
@@ -112,6 +114,20 @@ function buildProject(overrides: Partial<Project> = {}): Project {
     technologies: [],
     ...overrides,
   };
+}
+
+function setViewport(width: number, height = 844) {
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    writable: true,
+    value: width,
+  });
+  Object.defineProperty(window, 'innerHeight', {
+    configurable: true,
+    writable: true,
+    value: height,
+  });
+  window.dispatchEvent(new Event('resize'));
 }
 
 function renderDetailPage() {
@@ -232,12 +248,18 @@ describe('ProductDetailPage', () => {
   it('renders the public project detail without assistant UI for signed-out visitors and without admin source leak', async () => {
     mockedFetchProjectBySlug.mockResolvedValue(buildProject());
 
-    renderDetailPage();
+    const { container } = renderDetailPage();
 
     expect(await screen.findByText('Detailed project description.')).toBeInTheDocument();
+    expect(screen.getByText('Industry')).toBeInTheDocument();
+    expect(screen.getByText('industrial automation')).toBeInTheDocument();
+    expect(screen.getByText('Final product')).toBeInTheDocument();
+    expect(screen.getByText('Operator diagnostic HMI panel')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ask project assistant' })).not.toBeInTheDocument();
-    expect(screen.queryByText('Project assistant')).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Sign in with Google' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Unlock project assistant' })).toBeInTheDocument();
+    expect(screen.getByText('Log in to unlock project-specific guidance for this case study.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login');
+    expect(container.querySelector('.detail__side-column .detail__assistant-discovery')).not.toBeNull();
     expect(screen.queryByRole('link', { name: 'Admin markdown source' })).not.toBeInTheDocument();
     expect(mockedFetchAdminProjectById).not.toHaveBeenCalled();
   });
@@ -284,6 +306,7 @@ describe('ProductDetailPage', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ask project assistant' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Unlock project assistant' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Complete profile' })).toBeInTheDocument();
   });
 
@@ -312,8 +335,53 @@ describe('ProductDetailPage', () => {
     renderDetailPage();
 
     expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
-    expect(screen.getByText('Verify your email to keep your local account eligible for the assistant.')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Unlock project assistant' })).toBeInTheDocument();
+    expect(screen.getByText('Verify your email to keep assistant access enabled for your local account.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Verify email' })).toBeInTheDocument();
+  });
+
+  it('shows a restricted informational discovery card for residual non-eligible users without duplicating the launcher', async () => {
+    mockedFetchProjectBySlug.mockResolvedValue(buildProject());
+    mockPrivateMe(buildSessionUser({
+      auth_provider: 'google',
+      email_verified: false,
+      assistant_eligible: false,
+      can_use_project_assistant: false,
+    }));
+    window.sessionStorage.setItem('auth_token', 'token');
+
+    const { container } = renderDetailPage();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Unlock project assistant' })).toBeInTheDocument();
+    expect(screen.getByText('Assistant access is still restricted for this account state.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Log in' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ask project assistant' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(container.querySelector('.detail__side-column .detail__assistant-discovery')).not.toBeNull();
+  });
+
+  it('keeps the inline discovery CTA in page flow on narrow viewports without duplicating the launcher', async () => {
+    setViewport(390);
+    mockedFetchProjectBySlug.mockResolvedValue(buildProject());
+
+    const { container } = renderDetailPage();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
+
+    const discoveryCard = screen.getByRole('region', { name: 'Unlock project assistant' });
+    const contentLayout = container.querySelector('.detail__content-layout');
+    const mainColumn = container.querySelector('.detail__main-column');
+    const sideColumn = container.querySelector('.detail__side-column');
+
+    expect(screen.getAllByRole('region', { name: 'Unlock project assistant' })).toHaveLength(1);
+    expect(discoveryCard).toContainElement(screen.getByRole('link', { name: 'Log in' }));
+    expect(contentLayout).toContainElement(discoveryCard);
+    expect(sideColumn).toContainElement(discoveryCard);
+    expect(contentLayout?.children.item(0)).toBe(mainColumn);
+    expect(contentLayout?.children.item(1)).toBe(sideColumn);
+    expect(screen.queryByRole('button', { name: 'Ask project assistant' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('updates detail assistant and complete-profile copy when the locale changes', async () => {
@@ -448,14 +516,14 @@ describe('ProductDetailPage', () => {
 		);
 	});
 
-   	it('hides the assistant entrypoint when markdown is absent or cleared', async () => {
+     it('hides the assistant entrypoint when markdown is absent or cleared', async () => {
 	  mockedFetchProjectBySlug.mockResolvedValue(buildProject({ assistant_available: false }));
 
 	  renderDetailPage();
 
 	  expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
 	  expect(screen.queryByRole('button', { name: 'Ask project assistant' })).not.toBeInTheDocument();
-	  expect(screen.queryByRole('link', { name: 'Sign in with Google' })).not.toBeInTheDocument();
+	  expect(screen.queryByRole('region', { name: 'Unlock project assistant' })).not.toBeInTheDocument();
 	  expect(mockedFetchAdminProjectById).not.toHaveBeenCalled();
 	});
 
@@ -558,8 +626,10 @@ describe('ProductDetailPage', () => {
 	  renderDetailPage();
 
 	  expect(await screen.findByRole('heading', { level: 1, name: 'PortfolioForge' })).toBeInTheDocument();
-	  expect(screen.getByText('Acme Corp · Internal operations')).toBeInTheDocument();
 	  expect(screen.getByText('platform · Acme Corp · Internal operations')).toBeInTheDocument();
+	  const heroFacts = screen.getByLabelText('Project highlights');
+	  expect(within(heroFacts).getByText('Updated')).toBeInTheDocument();
+	  expect(within(heroFacts).queryByText('Context')).not.toBeInTheDocument();
 	  expect(screen.queryByText('Acme Corp | Internal operations')).not.toBeInTheDocument();
 	  expect(screen.queryByText('Project overview')).not.toBeInTheDocument();
 	});

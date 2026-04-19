@@ -90,6 +90,8 @@ function buildProjectDetail(): AdminProjectDetail {
     slug: 'portfolioforge',
     description: 'Original description',
     category: 'platform',
+    industry_type: 'automatización industrial',
+    final_product: 'Panel HMI para diagnóstico y monitoreo',
     images: [],
     media: [],
     variants: [],
@@ -184,9 +186,13 @@ describe('AdminProductFormPage', () => {
         'project-1',
         expect.objectContaining({
           description: 'Updated description only',
+          industry_type: 'automatización industrial',
+          final_product: 'Panel HMI para diagnóstico y monitoreo',
         }),
       );
     });
+
+    expect(screen.getByLabelText('Industry type')).toHaveAttribute('maxlength', '160');
 
     await waitFor(() => {
       expect(mockedUpdateProjectEnrichment).toHaveBeenCalledWith(

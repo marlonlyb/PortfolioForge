@@ -175,6 +175,12 @@ func (s *Search) fuseAndBoost(results []model.SearchResult, query string) []mode
 			if strings.ToLower(r.Project.Category) == normalizedQuery {
 				boost += s.constants.CategoryBoost
 			}
+			if strings.ToLower(r.Project.IndustryType) == normalizedQuery {
+				boost += s.constants.CategoryBoost
+			}
+			if strings.ToLower(r.Project.FinalProduct) == normalizedQuery {
+				boost += s.constants.TechBoost
+			}
 			if strings.ToLower(r.Project.ClientName) == normalizedQuery {
 				boost += s.constants.TechBoost
 			}
@@ -216,10 +222,12 @@ func (s *Search) extractEvidence(result model.SearchResult, query string, techs 
 
 	// Check text fields
 	fieldTexts := map[string]string{
-		"name":        result.Project.Name,
-		"description": result.Project.Description,
-		"client_name": result.Project.ClientName,
-		"category":    result.Project.Category,
+		"name":          result.Project.Name,
+		"description":   result.Project.Description,
+		"client_name":   result.Project.ClientName,
+		"category":      result.Project.Category,
+		"industry_type": result.Project.IndustryType,
+		"final_product": result.Project.FinalProduct,
 	}
 
 	if result.Project.Profile != nil {
@@ -355,6 +363,12 @@ func (s *Search) buildResponse(results []model.SearchResult, params model.Search
 
 		if r.Project.ClientName != "" {
 			item.ClientName = &r.Project.ClientName
+		}
+		if r.Project.IndustryType != "" {
+			item.IndustryType = &r.Project.IndustryType
+		}
+		if r.Project.FinalProduct != "" {
+			item.FinalProduct = &r.Project.FinalProduct
 		}
 
 		if r.Project.Profile != nil && r.Project.Profile.SolutionSummary != "" {

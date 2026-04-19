@@ -25,7 +25,7 @@ const (
 )
 
 type projectAssistantRepository interface {
-	GetAssistantContextBySlug(ctx context.Context, slug string) (model.ProjectAssistantContext, error)
+	GetAssistantContextBySlug(ctx context.Context, slug string, locale string) (model.ProjectAssistantContext, error)
 }
 
 type markdownChunk struct {
@@ -44,11 +44,13 @@ type projectAssistantProvider interface {
 }
 
 type ProjectAssistantAnswerInput struct {
-	ProjectName string
-	Language    string
-	Question    string
-	History     []model.ProjectAssistantMessage
-	Sections    []markdownChunk
+	ProjectName  string
+	IndustryType string
+	FinalProduct string
+	Language     string
+	Question     string
+	History      []model.ProjectAssistantMessage
+	Sections     []markdownChunk
 }
 
 type ProjectAssistant struct {
@@ -70,7 +72,8 @@ func (s ProjectAssistant) Answer(ctx context.Context, slug string, request model
 		return model.ProjectAssistantResponse{}, fmt.Errorf("%w: question length", ErrAssistantInvalidQuestion)
 	}
 
-	project, err := s.repo.GetAssistantContextBySlug(ctx, slug)
+	locale := normalizeAssistantLanguage(request.Lang)
+	project, err := s.repo.GetAssistantContextBySlug(ctx, slug, locale)
 	if err != nil {
 		return model.ProjectAssistantResponse{}, fmt.Errorf("%w: %v", ErrAssistantProjectNotFound, err)
 	}
@@ -93,11 +96,13 @@ func (s ProjectAssistant) Answer(ctx context.Context, slug string, request model
 	normalizedHistory := normalizeAssistantHistory(request.History)
 
 	answer, err := s.provider.GenerateAnswer(ctx, ProjectAssistantAnswerInput{
-		ProjectName: project.Name,
-		Language:    normalizeAssistantLanguage(request.Lang),
-		Question:    question,
-		History:     normalizedHistory,
-		Sections:    selectRelevantChunks(question, normalizedHistory, chunks),
+		ProjectName:  project.Name,
+		IndustryType: project.IndustryType,
+		FinalProduct: project.FinalProduct,
+		Language:     locale,
+		Question:     question,
+		History:      normalizedHistory,
+		Sections:     selectRelevantChunks(question, normalizedHistory, chunks),
 	})
 	if err != nil {
 		if errors.Is(err, ErrAssistantUnavailable) {

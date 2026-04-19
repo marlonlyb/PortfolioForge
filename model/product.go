@@ -23,6 +23,8 @@ type Product struct {
 	Name              string          `json:"name,omitempty"`
 	Slug              string          `json:"slug,omitempty"`
 	Category          string          `json:"category,omitempty"`
+	IndustryType      string          `json:"industry_type,omitempty"`
+	FinalProduct      string          `json:"final_product,omitempty"`
 	Brand             string          `json:"brand,omitempty"`
 	Active            bool            `json:"active"`
 	CreatedAt         int64           `json:"created_at"`
@@ -30,9 +32,11 @@ type Product struct {
 }
 
 // SetStoreFields sets the extended store fields on the product.
-func (p *Product) SetStoreFields(name, category, brand string, active bool) {
+func (p *Product) SetStoreFields(name, category, industryType, finalProduct, brand string, active bool) {
 	p.Name = name
 	p.Category = category
+	p.IndustryType = NormalizeIndustryTypeKey(industryType)
+	p.FinalProduct = NormalizeFinalProduct(finalProduct)
 	p.Brand = brand
 	p.Active = active
 

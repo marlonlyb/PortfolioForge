@@ -42,7 +42,7 @@ func (h *ProjectCatalog) Create(c echo.Context) error {
 
 	req.Normalize()
 
-	if contractErr := validateCreateProductRequest(req.Name, req.Category, req.ClientName, req.SourceMarkdownURL); contractErr != nil {
+	if contractErr := validateCreateProductRequest(req.Name, req.Category, req.ClientName, req.IndustryType, req.FinalProduct, req.SourceMarkdownURL); contractErr != nil {
 		return contractErr
 	}
 
@@ -89,7 +89,7 @@ func (h *ProjectCatalog) Create(c echo.Context) error {
 	return c.JSON(response.ContractCreated(projectData))
 }
 
-func validateCreateProductRequest(name, category, clientName, sourceMarkdownURL string) *model.ContractError {
+func validateCreateProductRequest(name, category, clientName, industryType, finalProduct, sourceMarkdownURL string) *model.ContractError {
 	if name == "" {
 		return response.ContractError(400, "validation_error", "El nombre del proyecto es requerido", model.APIErrorDetail{Field: "name", Issue: "required"})
 	}
@@ -104,6 +104,18 @@ func validateCreateProductRequest(name, category, clientName, sourceMarkdownURL 
 
 	if len([]rune(clientName)) > 80 {
 		return response.ContractError(400, "validation_error", "El cliente/contexto no puede exceder 80 caracteres", model.APIErrorDetail{Field: "client_name", Issue: "max_length:80"})
+	}
+
+	if strings.TrimSpace(industryType) != "" {
+		if err := model.ValidateIndustryType(industryType); err != nil {
+			return response.ContractError(400, "validation_error", "El industry_type debe ser un texto corto de hasta 160 caracteres", model.APIErrorDetail{Field: "industry_type", Issue: "max_length:160"})
+		}
+	}
+
+	if strings.TrimSpace(finalProduct) != "" {
+		if err := model.ValidateFinalProduct(finalProduct); err != nil {
+			return response.ContractError(400, "validation_error", "El final_product debe ser un texto corto de hasta 160 caracteres", model.APIErrorDetail{Field: "final_product", Issue: "max_length:160"})
+		}
 	}
 
 	if len([]rune(sourceMarkdownURL)) > 2048 {
@@ -168,6 +180,10 @@ func productLengthViolationMessage(column string) (field string, message string)
 		return "category", "La categoría no puede exceder 80 caracteres"
 	case "brand":
 		return "client_name", "El cliente/contexto no puede exceder 80 caracteres"
+	case "industry_type":
+		return "industry_type", "El industry_type debe ser un texto corto de hasta 160 caracteres"
+	case "final_product":
+		return "final_product", "El final_product debe ser un texto corto de hasta 160 caracteres"
 	case "slug":
 		return "name", "El nombre del proyecto genera un slug demasiado largo"
 	case "source_markdown_url":
@@ -235,7 +251,7 @@ func (h *ProjectCatalog) Update(c echo.Context) error {
 	req.ID = ID
 	req.Normalize()
 
-	if contractErr := validateCreateProductRequest(req.Name, req.Category, req.ClientName, req.SourceMarkdownURL); contractErr != nil {
+	if contractErr := validateCreateProductRequest(req.Name, req.Category, req.ClientName, req.IndustryType, req.FinalProduct, req.SourceMarkdownURL); contractErr != nil {
 		return contractErr
 	}
 

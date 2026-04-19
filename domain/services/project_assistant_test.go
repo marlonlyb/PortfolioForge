@@ -15,9 +15,11 @@ import (
 type stubAssistantRepo struct {
 	context model.ProjectAssistantContext
 	err     error
+	locale  string
 }
 
-func (s *stubAssistantRepo) GetAssistantContextBySlug(context.Context, string) (model.ProjectAssistantContext, error) {
+func (s *stubAssistantRepo) GetAssistantContextBySlug(_ context.Context, _ string, locale string) (model.ProjectAssistantContext, error) {
+	s.locale = locale
 	return s.context, s.err
 }
 
@@ -146,7 +148,7 @@ func TestNormalizeAssistantLanguage(t *testing.T) {
 func TestProjectAssistantAnswerUsesNormalizedHistoryForProviderAndRetrieval(t *testing.T) {
 	provider := &stubAssistantProvider{resp: "Detailed grounded answer."}
 	service := NewProjectAssistant(
-		&stubAssistantRepo{context: model.ProjectAssistantContext{ID: uuid.New(), Name: "PortfolioForge", Active: true, SourceMarkdownURL: "https://mlbautomation.com/docs.md"}},
+		&stubAssistantRepo{context: model.ProjectAssistantContext{ID: uuid.New(), Name: "PortfolioForge", Active: true, SourceMarkdownURL: "https://mlbautomation.com/docs.md", IndustryType: "metalworking", FinalProduct: "Operator HMI panel"}},
 		&stubAssistantRetriever{chunks: []MarkdownChunkAlias{
 			{Heading: "Dropped Topic", Body: "This section mentions droppedtopic only."},
 			{Heading: "Recent Topic", Body: "This section explains keeptopic and rollout details."},
@@ -193,6 +195,45 @@ func TestProjectAssistantAnswerUsesNormalizedHistoryForProviderAndRetrieval(t *t
 	}
 	if provider.input.Language != "en" {
 		t.Fatalf("language = %q, want en", provider.input.Language)
+	}
+	if repo, ok := service.repo.(*stubAssistantRepo); ok && repo.locale != "en" {
+		t.Fatalf("repo locale = %q, want en", repo.locale)
+	}
+	if provider.input.IndustryType != "metalworking" {
+		t.Fatalf("industry type = %q, want metalworking", provider.input.IndustryType)
+	}
+	if provider.input.FinalProduct != "Operator HMI panel" {
+		t.Fatalf("final product = %q, want Operator HMI panel", provider.input.FinalProduct)
+	}
+}
+
+func TestProjectAssistantAnswerPassesIndustryAndFinalProductGrounding(t *testing.T) {
+	provider := &stubAssistantProvider{resp: "Grounded metadata answer."}
+	service := NewProjectAssistant(
+		&stubAssistantRepo{context: model.ProjectAssistantContext{
+			ID:                uuid.New(),
+			Name:              "PortfolioForge",
+			Active:            true,
+			SourceMarkdownURL: "https://mlbautomation.com/docs.md",
+			IndustryType:      "metalworking",
+			FinalProduct:      "Operator HMI panel",
+		}},
+		&stubAssistantRetriever{chunks: []MarkdownChunkAlias{{Heading: "Metadata", Body: "Industry Type: metalworking\nFinal Product: Operator HMI panel"}}},
+		provider,
+	)
+
+	_, err := service.Answer(context.Background(), "portfolioforge", model.ProjectAssistantRequest{
+		Question: "What industry and final product does this case study target?",
+		Lang:     "en",
+	})
+	if err != nil {
+		t.Fatalf("Answer() error = %v", err)
+	}
+	if provider.input.IndustryType != "metalworking" {
+		t.Fatalf("industry type = %q", provider.input.IndustryType)
+	}
+	if provider.input.FinalProduct != "Operator HMI panel" {
+		t.Fatalf("final product = %q", provider.input.FinalProduct)
 	}
 }
 

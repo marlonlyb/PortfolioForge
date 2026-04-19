@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -27,6 +27,8 @@ function buildSearchResponse(overrides: Partial<SearchResponse> = {}): SearchRes
         title: 'PortfolioForge',
         category: 'platform',
         client_name: 'Acme',
+        industry_type: 'automatización industrial',
+        final_product: 'Panel HMI para diagnóstico y monitoreo',
         summary: 'Search-ready portfolio platform',
         technologies: [{ id: 'tech-1', name: 'React', slug: 'react', color: '#61dafb' }],
         hero_image: 'https://img/portfolioforge.png',
@@ -105,6 +107,8 @@ describe('SearchResultsPage', () => {
 
     expect(await screen.findByText('PortfolioForge')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'React' })).toBeInTheDocument();
+    expect(screen.getByText('automatización industrial')).toBeInTheDocument();
+    expect(screen.getByText('Panel HMI para diagnóstico y monitoreo')).toBeInTheDocument();
   });
 
   it('keeps load-more filters stable and resets pagination when a filter changes', async () => {
@@ -310,5 +314,57 @@ describe('SearchResultsPage', () => {
     expect(await screen.findByText('Public search')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Filters' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Load more' })).toBeInTheDocument();
+  });
+
+  it('explains matches coming only from industry and final product fields', async () => {
+    mockedSearchProjects.mockResolvedValue(buildSearchResponse({
+      data: [
+        {
+          id: 'project-1',
+          slug: 'portfolioforge',
+          title: 'PortfolioForge',
+          category: 'platform',
+          client_name: 'Acme',
+          industry_type: 'automatización industrial',
+          final_product: 'Panel HMI para diagnóstico y monitoreo',
+          summary: 'Search-ready portfolio platform',
+          technologies: [],
+          hero_image: null,
+          score: 0.95,
+          explanation: 'Coincide con la búsqueda por Industria y Producto final.',
+          evidence: [
+            {
+              field: 'industry_type',
+              matched_text: 'automatización industrial',
+              match_type: 'structured',
+              score: 1,
+            },
+            {
+              field: 'final_product',
+              matched_text: 'Panel HMI para diagnóstico y monitoreo',
+              match_type: 'structured',
+              score: 1,
+            },
+          ],
+        },
+      ],
+      meta: {
+        total: 1,
+        page_size: 10,
+        cursor: null,
+        query: 'automatización panel',
+        filters_applied: { category: null, client: null, technologies: [] },
+      },
+    }));
+
+    renderSearchPage('/search?q=automatizaci%C3%B3n%20panel');
+
+    expect(await screen.findByText('Coincide con la búsqueda por Industria y Producto final.')).toBeInTheDocument();
+    const matchDetails = screen.getByRole('region', { name: 'Detalles de coincidencia' });
+    expect(within(matchDetails).getByText('Industria')).toBeInTheDocument();
+    expect(within(matchDetails).getByText('Producto final')).toBeInTheDocument();
+    expect(within(matchDetails).getAllByText('Coincidencia estructurada')).toHaveLength(2);
+    expect(within(matchDetails).queryByText('Cliente')).not.toBeInTheDocument();
+    expect(within(matchDetails).queryByText('Tecnología')).not.toBeInTheDocument();
   });
 });

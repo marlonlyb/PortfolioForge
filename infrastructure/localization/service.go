@@ -60,10 +60,12 @@ func NormalizeLocale(locale string) string {
 
 func BuildProjectFieldMap(project model.Project) map[string]json.RawMessage {
 	fields := map[string]json.RawMessage{
-		"name":        mustMarshal(project.Name),
-		"description": mustMarshal(project.Description),
-		"category":    mustMarshal(project.Category),
-		"client_name": normalizeRaw(project.ClientName),
+		"name":          mustMarshal(project.Name),
+		"description":   mustMarshal(project.Description),
+		"category":      mustMarshal(project.Category),
+		"client_name":   normalizeRaw(project.ClientName),
+		"industry_type": normalizeRaw(project.IndustryType),
+		"final_product": normalizeRaw(project.FinalProduct),
 	}
 
 	profile := project.Profile
@@ -333,6 +335,10 @@ func applyLocalizedFields(project *model.Project, rows []model.ProjectLocalizati
 			project.Category = decodeString(row.Value, project.Category)
 		case "client_name":
 			project.ClientName = decodeString(row.Value, project.ClientName)
+		case "industry_type":
+			project.IndustryType = decodeString(row.Value, project.IndustryType)
+		case "final_product":
+			project.FinalProduct = decodeString(row.Value, project.FinalProduct)
 		case "business_goal":
 			ensureProfile(project)
 			project.Profile.BusinessGoal = decodeString(row.Value, project.Profile.BusinessGoal)
@@ -391,6 +397,26 @@ func applyLocalizedSearchResult(item *model.SearchResultItem, rows []model.Proje
 			if strings.TrimSpace(clientName) != "" {
 				item.ClientName = &clientName
 			}
+		case "industry_type":
+			industryType := decodeString(row.Value, derefString(item.IndustryType))
+			if strings.TrimSpace(industryType) != "" {
+				item.IndustryType = &industryType
+				applyLocalizedEvidence(item, "industry_type", industryType)
+			}
+		case "final_product":
+			finalProduct := decodeString(row.Value, derefString(item.FinalProduct))
+			if strings.TrimSpace(finalProduct) != "" {
+				item.FinalProduct = &finalProduct
+				applyLocalizedEvidence(item, "final_product", finalProduct)
+			}
+		}
+	}
+}
+
+func applyLocalizedEvidence(item *model.SearchResultItem, fieldKey string, localizedValue string) {
+	for index := range item.Evidence {
+		if item.Evidence[index].Field == fieldKey {
+			item.Evidence[index].MatchedText = localizedValue
 		}
 	}
 }

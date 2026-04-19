@@ -34,17 +34,15 @@ describe('LandingPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('BÚSQUEDA GUIADA')).toBeInTheDocument();
+    expect(screen.queryByText('BÚSQUEDA GUIADA')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
     expect(screen.getByText('Busca proyectos, casos y experiencias reales.')).toBeInTheDocument();
 
-    const prompt = screen.getByRole('button', {
-      name: 'Muéstrame la migración PLC de Printer 05',
-    });
+    const prompt = screen.getByRole('button', { name: 'CompactLogix' });
 
     fireEvent.click(prompt);
 
-    expect(screen.getByRole('textbox', { name: 'Buscar' })).toHaveValue('Printer 05');
+    expect(screen.getByRole('textbox', { name: 'Buscar' })).toHaveValue('CompactLogix');
     expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
   });
 });

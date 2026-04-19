@@ -34,6 +34,8 @@ function buildProject(overrides: Partial<Project> = {}): Project {
     slug: 'portfolioforge',
     description: 'Detailed project description.',
     category: 'platform',
+    industry_type: 'automatización industrial',
+    final_product: 'Panel HMI para diagnóstico y monitoreo',
     status: 'published',
     featured: true,
     active: true,
@@ -93,5 +95,7 @@ describe('CatalogPage', () => {
 
     const image = await screen.findByRole('img', { name: 'PortfolioForge' });
     expect(image).toHaveAttribute('src', 'https://cdn.example.com/project-low.webp');
+    expect(screen.getByText('automatización industrial')).toBeInTheDocument();
+    expect(screen.getByText('Panel HMI para diagnóstico y monitoreo')).toBeInTheDocument();
   });
 });

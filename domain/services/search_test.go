@@ -48,7 +48,7 @@ func (m *mockProjectReader) GetTechnologiesByProjectID(_ context.Context, projec
 	return m.techsByProject[projectID], nil
 }
 
-func (m *mockProjectReader) GetAssistantContextBySlug(_ context.Context, _ string) (model.ProjectAssistantContext, error) {
+func (m *mockProjectReader) GetAssistantContextBySlug(_ context.Context, _ string, _ string) (model.ProjectAssistantContext, error) {
 	return model.ProjectAssistantContext{}, nil
 }
 

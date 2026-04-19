@@ -81,6 +81,8 @@ export interface Project {
   description: string;
   category: string;
   client_name?: string;
+  industry_type?: string;
+  final_product?: string;
   status: ProjectStatus;
   featured: boolean;
   active: boolean;

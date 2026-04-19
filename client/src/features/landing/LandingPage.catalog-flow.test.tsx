@@ -115,20 +115,20 @@ describe('LandingPage catalog flow', () => {
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Selected case studies' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show me the Printer 05 PLC migration' }));
+    fireEvent.click(screen.getByRole('button', { name: 'CompactLogix' }));
 
-    expect(screen.getByRole('textbox', { name: 'Search' })).toHaveValue('Printer 05');
+    expect(screen.getByRole('textbox', { name: 'Search' })).toHaveValue('CompactLogix');
     expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
 
     await waitFor(() => {
       expect(mockedSearchProjects).toHaveBeenCalledWith({
-        q: 'Printer 05',
+        q: 'CompactLogix',
         category: undefined,
         lang: 'en',
       });
     }, { timeout: 2000 });
 
-    expect(screen.getByRole('button', { name: 'Printer 05 PLC Migration' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Printer 05 PLC Migration/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'Printer 05 PLC Migration' }).closest('a')).toHaveAttribute(
       'href',
       '/projects/printer-05-plc-migration',

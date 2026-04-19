@@ -91,6 +91,8 @@ type StoreProduct struct {
 	Description       string                `json:"description"`
 	Category          string                `json:"category"`
 	Brand             string                `json:"brand,omitempty"`
+	IndustryType      string                `json:"industry_type,omitempty"`
+	FinalProduct      string                `json:"final_product,omitempty"`
 	SourceMarkdownURL string                `json:"source_markdown_url,omitempty"`
 	Images            []string              `json:"images"`
 	Media             []ProjectMedia        `json:"media,omitempty"`

@@ -48,7 +48,7 @@ func (s *stubSearchProjectReader) ListPublished(context.Context) ([]model.Projec
 func (s *stubSearchProjectReader) GetTechnologiesByProjectID(context.Context, uuid.UUID) ([]model.Technology, error) {
 	return nil, nil
 }
-func (s *stubSearchProjectReader) GetAssistantContextBySlug(context.Context, string) (model.ProjectAssistantContext, error) {
+func (s *stubSearchProjectReader) GetAssistantContextBySlug(context.Context, string, string) (model.ProjectAssistantContext, error) {
 	return model.ProjectAssistantContext{}, nil
 }
 

@@ -24,6 +24,8 @@ export interface CreateAdminProjectPayload {
   description: string;
   category: string;
   brand?: string;
+  industry_type?: string;
+  final_product?: string;
   source_markdown_url?: string;
   images: string[];
   media?: ProjectMedia[];
@@ -45,6 +47,8 @@ export interface UpdateAdminProjectPayload {
   description: string;
   category: string;
   brand?: string;
+  industry_type?: string;
+  final_product?: string;
   source_markdown_url?: string;
   images: string[];
   media?: ProjectMedia[];

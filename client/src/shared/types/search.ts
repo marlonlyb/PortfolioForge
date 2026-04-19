@@ -31,6 +31,8 @@ export interface SearchResult {
   title: string;
   category: string;
   client_name: string | null;
+  industry_type?: string | null;
+  final_product?: string | null;
   summary: string | null;
   technologies: TechnologySummary[];
   hero_image: string | null;
